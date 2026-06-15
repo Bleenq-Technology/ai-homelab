@@ -80,7 +80,7 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **Grafana** | `grafana.…` | Metrics dashboards | 🔑 OIDC |
 | **Prometheus** | `prometheus.…` | Metrics collection | 🛡️ |
 | **Alertmanager** | `alertmanager.…` | Alert routing | 🛡️ |
-| **Uptime Kuma** | `uptime.…` | Uptime / status monitoring | 🔒 |
+| **Uptime Kuma** | `uptime.…` | Uptime / status monitoring (+ Discord alerts) | 🛡️ |
 | **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI), Tavily web search, Qdrant RAG | 🔑 OIDC |
 | **LiteLLM** | `litellm.…` | LLM gateway → unsloth, auto-traces to Langfuse | 🎟️ master key |
 | **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |

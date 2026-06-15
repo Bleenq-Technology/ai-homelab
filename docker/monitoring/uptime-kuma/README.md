@@ -1,13 +1,24 @@
 # Uptime Kuma
 **Purpose:** Self-hosted uptime / status board — health-checks every homelab service.
 **URL:** https://uptime.pdx.sanctioned.tech
-**Auth:** local login (Uptime Kuma's own account; Traefik uses `secure-chain@file`, no forward-auth)
+**Auth:** Keycloak SSO via Traefik **forward-auth** (`sso@file,secure-chain-stream@file`); Uptime
+Kuma's own login is disabled (`disableAuth`) so there's no double prompt.
 **Image:** louislam/uptime-kuma:2.4.0
 **Networks / data:** `proxy`, `ai`, `data`, `monitoring`; named volume `uptime_kuma_data:/app/data`
 
 ## Setup as deployed
-- Exposed on container port 3001; Traefik routes `uptime.${DOMAIN}` over `websecure` with TLS via the
-  `secure-chain@file` middleware. Not behind Keycloak forward-auth — it manages its own auth.
+- Exposed on container port 3001; Traefik routes `uptime.${DOMAIN}` over `websecure` with TLS.
+- **SSO via Keycloak forward-auth.** The route uses `sso@file,secure-chain-stream@file` — the
+  `sso` forward-auth gate plus the streaming-friendly chain (no rate-limit, so socket.io isn't
+  throttled), mirroring how ComfyUI is gated. Uptime Kuma has **no native OIDC/SAML** (free,
+  open-source, but the feature doesn't exist in any version), so SSO is done at the proxy:
+  - Built-in login is turned off via the **`disableAuth`** setting, so Keycloak is the only gate
+    (no double prompt). `disableAuth` lives in the `uptime_kuma_data` volume (runtime setting, not
+    in compose) — re-enable + re-disable from **Settings → Security** if rebuilding from scratch.
+  - `https://uptime.${DOMAIN}/_oauth` is registered on the Keycloak `oauth2-proxy` client.
+  - **Trade-off:** forward-auth only protects the **public route**; with `disableAuth` on, anything
+    that can reach the container directly on the internal Docker networks gets an unauthenticated
+    dashboard. Standard homelab pattern (internal network trusted), but not the same as native SSO.
 - **On all four networks on purpose.** That lets Uptime Kuma reach each service **directly on its
   internal container endpoint** (e.g. `http://grafana:3000/api/health`), which **bypasses Traefik's
   forward-auth**. The result is a true backend-health signal — clean `200`s — instead of the `302`

@@ -222,5 +222,5 @@ services:
       - "traefik.http.routers.uptime.rule=Host(`uptime.${DOMAIN}`)"
       - "traefik.http.routers.uptime.entrypoints=websecure"
       - "traefik.http.routers.uptime.tls=true"
-      - "traefik.http.routers.uptime.middlewares=secure-chain@file"
+      - "traefik.http.routers.uptime.middlewares=sso@file,secure-chain-stream@file"
       - "traefik.http.services.uptime.loadbalancer.server.port=3001"
