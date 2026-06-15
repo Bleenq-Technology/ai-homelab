@@ -25,7 +25,8 @@ secrets/*
 **/pgdata/
 **/redis-data/
 
-# Backups, logs, editor cruft
+# Backups (DB dumps contain secrets), logs, editor cruft
+backups/
 *.bak
 *.backup
 *.log

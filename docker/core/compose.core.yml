@@ -56,10 +56,10 @@ services:
       - "traefik.http.routers.dashboard.tls.domains[0].main=${DOMAIN}"
       - "traefik.http.routers.dashboard.tls.domains[0].sans=*.${DOMAIN}"
       - "traefik.http.routers.dashboard.service=api@internal"
-      # Dashboard behind basic-auth + the hardened chain.
-      # Swap basicauth for a Keycloak forward-auth middleware once SSO is wired.
-      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker,secure-chain@file"
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+      # Dashboard gated by Keycloak SSO (forward-auth), same as the other no-auth
+      # services. (Previously basic-auth, but the htpasswd hash's $ chars don't
+      # survive Infisical's quoted .env export, so it's gated via SSO instead.)
+      - "traefik.http.routers.dashboard.middlewares=secure-sso@file"
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s

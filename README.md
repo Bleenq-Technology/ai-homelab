@@ -62,7 +62,7 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 
 | Service | URL | Purpose | Auth |
 |---------|-----|---------|------|
-| **Traefik** | `traefik.…/dashboard/` | Reverse proxy, wildcard TLS, routing | 🧰 |
+| **Traefik** | `traefik.…/dashboard/` | Reverse proxy, wildcard TLS, routing | 🛡️ |
 | **Keycloak** | `keycloak.…` | Identity provider (SSO) | 🔒 (is the IdP) |
 | **Portainer** | `portainer.…` | Docker management UI | 🔑 OAuth |
 | **Infisical** | `infisical.…` | Secrets management | 🔒 |
@@ -137,7 +137,10 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [ ] VPN for external access (NetBird — WireGuard + Keycloak SSO)
 - [x] **Secrets in Infisical** — all secrets in the `homelab` project; deploys pull via
       `pull-secrets.sh`; `.env` is a generated artifact (bootstrap set kept out-of-band)
-- [ ] Hardening (rotate defaults, restrict open services) + backups (incl. Infisical DB)
+- [x] **Backups** — nightly `pg_dumpall` (all DBs incl. Infisical's encrypted store) →
+      local (rotated) + MinIO, via `backup.sh` cron. *(ClickHouse, MinIO object data, and
+      off-host replication still TODO.)*
+- [ ] Hardening (rotate defaults, restrict remaining surfaces) + off-host backup replication
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 
 ## Known / deferred
