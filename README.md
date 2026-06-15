@@ -35,12 +35,14 @@ flowchart TD
       PR[Prometheus] & GR[Grafana] & LK[Loki] & AM[Alertmanager] & UK[Uptime Kuma]
     end
     subgraph ai[ai]
-      OW[Open WebUI] & N8[n8n] & CF[ComfyUI] & QD[Qdrant] & NEO[Neo4j] & LF[Langfuse] & SX[SearXNG]
+      OW[Open WebUI] & LL[LiteLLM] & N8[n8n] & CF[ComfyUI] & QD[Qdrant] & NEO[Neo4j] & LF[Langfuse] & MLF[MLflow] & SX[SearXNG]
     end
     TR --> core & data & mon & ai
-    OW -. LLM .-> UNS[unsloth · host:8888]
+    OW -. LLM .-> LL -. OpenAI API .-> UNS[unsloth · host:8888]
+    LL -. traces .-> LF
     OW -. images .-> CF
     LF --> PG & CH & RD & MIN
+    MLF -. tracking .-> PG & MIN
 ```
 
 - **One reverse proxy, one cert.** Traefik issues a single Let's Encrypt **wildcard**
