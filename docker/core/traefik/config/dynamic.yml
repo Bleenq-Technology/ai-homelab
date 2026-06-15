@@ -34,10 +34,30 @@ http:
     compress:
       compress: {}
 
+    # ---- Keycloak SSO via traefik-forward-auth ----
+    # On no/expired session, TFA returns a 307 to Keycloak (relayed to the
+    # browser); it also handles the /_oauth callback. Attach as `sso@file`, or
+    # use `secure-sso@file` to combine with the hardening chain.
+    sso:
+      forwardAuth:
+        address: "http://traefik-forward-auth:4181"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - X-Forwarded-User
+
     # ---- Reusable chain: attach this ONE name to most services ----
     secure-chain:
       chain:
         middlewares:
+          - security-headers
+          - rate-limit
+          - compress
+
+    # ---- secure-chain + SSO gate, for services with no native auth ----
+    secure-sso:
+      chain:
+        middlewares:
+          - sso
           - security-headers
           - rate-limit
           - compress

@@ -100,8 +100,9 @@ docker compose -f docker/compose.yml logs -f traefik   # watch wildcard cert iss
 - [x] Traefik v3 + EasyDNS DNS-01 wildcard TLS
 - [x] Deploy & verify all four layers on jarvis (GPU included)
 - [x] Open WebUI ↔ unsloth + ComfyUI integration
-- [ ] EdgeRouter internal DNS for all service hostnames
-- [ ] **Keycloak SSO wiring** — OIDC clients + forward-auth for no-auth services *(deployed, not yet wired)*
+- [x] EdgeRouter internal DNS for all service hostnames
+- [x] **Keycloak SSO** — `homelab` realm; native OIDC (Grafana, Open WebUI, Portainer,
+      Langfuse) + `traefik-forward-auth` gating the no-auth services
 - [ ] VPN for external access (NetBird — WireGuard + Keycloak SSO)
 - [ ] Hardening (rotate defaults, restrict open services) + backups
 - [ ] Migrate secrets into Infisical
@@ -110,8 +111,9 @@ docker compose -f docker/compose.yml logs -f traefik   # watch wildcard cert iss
 ## Known / deferred
 
 - **Firezone** deferred — the 0.7 image is EOL; replacing with a modern SSO-integrated VPN.
-- **AdGuard** needs its first-run setup wizard (`:3000`) before it serves the web UI.
-- **SSO is deployed but not yet enforced** — services currently use local auth or none.
+- **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin —
+  these keep local logins (can be forward-auth gated later). Traefik dashboard stays on
+  basic-auth as a break-glass.
 - `clickhouse-exporter` removed (unmaintained image) — pending ClickHouse-native metrics.
 
 ## License
