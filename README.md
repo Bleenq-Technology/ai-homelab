@@ -85,6 +85,7 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **Neo4j** | `neo4j.…` | Graph database | 🔒 |
 | **SearXNG** | `searxng.…` | Privacy meta-search | 🛡️ |
 | **Langfuse** | `langfuse.…` | LLM observability/tracing | 🔑 OIDC |
+| **MLflow** | `mlflow.…` | ML experiment tracking + model registry | 🛡️ (UI) |
 | **Wyoming Piper/Whisper** | `tcp :10200/:10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 |
 | *Postgres · Redis* | internal | Unified DB / cache (no UI) | — |
 | *Firezone* | *deferred* | VPN (EOL image; replacing) | — |
