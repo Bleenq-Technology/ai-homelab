@@ -33,6 +33,11 @@ services:
       OPENAI_API_BASE_URL: "http://litellm:4000/v1"
       OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
       ENABLE_OLLAMA_API: "false"
+      # Web search via the internal SearXNG (JSON). Internal URL bypasses the SSO
+      # gate on searxng.pdx; the literal <query> placeholder is required.
+      ENABLE_WEB_SEARCH: "true"
+      WEB_SEARCH_ENGINE: "searxng"
+      SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
       # Image generation via ComfyUI (same `ai` network)
       ENABLE_IMAGE_GENERATION: "true"
       IMAGE_GENERATION_ENGINE: comfyui
