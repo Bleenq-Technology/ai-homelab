@@ -23,7 +23,7 @@ services:
     image: ghcr.io/open-webui/open-webui:main   # pin to a release digest for prod
     container_name: openwebui
     restart: unless-stopped
-    networks: [proxy, ai]
+    networks: [proxy, ai, data]   # data: reach shared Redis (Qdrant is on ai)
     environment:
       # Config is authoritative from env (not persisted to the DB), so the LLM
       # backend below is applied on every boot. User accounts/chats are unaffected.
@@ -102,6 +102,18 @@ services:
       OAUTH_SCOPES: "openid email profile"
       WEBUI_NAME: "Jarvis Open WebUI"
       WEBUI_URL: https://openwebui.${DOMAIN}
+      # ---- Vector store: shared Qdrant (replaces the local embedded Chroma) ----
+      # Backs document/Knowledge RAG with a persistent, shared vector DB. (Web
+      # search bypasses retrieval above, so this is for uploaded docs/knowledge.)
+      VECTOR_DB: "qdrant"
+      QDRANT_URI: "http://qdrant:6333"
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      QDRANT_COLLECTION_PREFIX: "open-webui"
+      # ---- Redis: websocket manager + app cache (shared instance, DB 2) ----
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
+      WEBSOCKET_MANAGER: "redis"
+      WEBSOCKET_REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
+      ENABLE_WEBSOCKET_SUPPORT: "true"
       TZ: ${TZ}
     volumes:
       - ./openwebui/data:/app/backend/data
@@ -255,7 +267,7 @@ services:
 
   # ---- Qdrant — vector database -------------------------------------------
   qdrant:
-    image: qdrant/qdrant:v1.12.5
+    image: qdrant/qdrant:v1.16.1   # within 1 minor of Open WebUI's 1.17 client
     container_name: qdrant
     restart: unless-stopped
     networks: [proxy, ai]
