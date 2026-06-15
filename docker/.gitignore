@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Infisical machine-identity bootstrap (auth to pull secrets) — never commit
+.infisical-auth
+
 # Local credentials/links reference (contains secrets) — never commit
 LOCAL_LINKS.html
 *.local.html

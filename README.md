@@ -114,11 +114,16 @@ EasyDNS, and the jarvis bring-up sequence).
 ```bash
 docker context use jarvis
 for n in proxy data ai monitoring; do docker network create "$n"; done
-cp docker/.env.example docker/.env        # fill in; add docker/secrets/easydns_{token,key}
-docker compose -f docker/compose.yml up -d postgres redis minio minio-init clickhouse
-docker compose -f docker/compose.yml up -d
-docker compose -f docker/compose.yml logs -f traefik   # watch wildcard cert issuance
+# Secrets come from Infisical — pull them into .env (needs .infisical-auth bootstrap):
+cd /opt/homelab && ./pull-secrets.sh        # or, first-ever bootstrap: cp .env.example .env
+docker compose -f compose.yml up -d postgres redis minio minio-init clickhouse
+docker compose -f compose.yml up -d
+docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 ```
+
+> Secrets are managed in **Infisical** (project `homelab`, env `prod`); `.env` is a generated
+> artifact. See [docker/core/infisical/README.md](docker/core/infisical/README.md) for the
+> bootstrap set + rebuild runbook.
 
 ## Roadmap
 
@@ -130,8 +135,9 @@ docker compose -f docker/compose.yml logs -f traefik   # watch wildcard cert iss
 - [x] **Keycloak SSO** — `homelab` realm; native OIDC (Grafana, Open WebUI, Portainer,
       Langfuse) + `traefik-forward-auth` gating the no-auth services
 - [ ] VPN for external access (NetBird — WireGuard + Keycloak SSO)
-- [ ] Hardening (rotate defaults, restrict open services) + backups
-- [ ] Migrate secrets into Infisical
+- [x] **Secrets in Infisical** — all secrets in the `homelab` project; deploys pull via
+      `pull-secrets.sh`; `.env` is a generated artifact (bootstrap set kept out-of-band)
+- [ ] Hardening (rotate defaults, restrict open services) + backups (incl. Infisical DB)
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 
 ## Known / deferred
