@@ -300,3 +300,32 @@ services:
     restart: unless-stopped
     networks: [ai, data]
     environment: *langfuse-env
+
+  # ---- MLflow — experiment tracking + model registry ----------------------
+  # Postgres backend store + MinIO artifact store (server proxies artifacts, so
+  # clients don't need S3 creds). UI gated by Keycloak (secure-sso@file); ML jobs
+  # log to the internal http://mlflow:5000 (no auth needed in-cluster).
+  mlflow:
+    build: ./mlflow
+    image: homelab/mlflow:3.13.0
+    container_name: mlflow
+    restart: unless-stopped
+    networks: [proxy, ai, data]
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_DEFAULT_REGION: us-east-1
+      TZ: ${TZ}
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://mlflow:${MLFLOW_DB_PASSWORD}@postgres:5432/mlflow
+      --artifacts-destination s3://mlflow/
+      --serve-artifacts
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mlflow.rule=Host(`mlflow.${DOMAIN}`)"
+      - "traefik.http.routers.mlflow.entrypoints=websecure"
+      - "traefik.http.routers.mlflow.tls=true"
+      - "traefik.http.routers.mlflow.middlewares=secure-sso@file"
+      - "traefik.http.services.mlflow.loadbalancer.server.port=5000"
