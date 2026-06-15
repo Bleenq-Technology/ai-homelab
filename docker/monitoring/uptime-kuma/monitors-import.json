@@ -1,0 +1,791 @@
+{
+  "version": "1.23.16",
+  "notificationList": [],
+  "proxyList": [],
+  "monitorList": [
+    {
+      "name": "Traefik",
+      "type": "http",
+      "url": "http://traefik:8080/ping",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "core",
+          "color": "#6c5ce7",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Keycloak",
+      "type": "http",
+      "url": "http://keycloak:9000/health/ready",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "core",
+          "color": "#6c5ce7",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Portainer",
+      "type": "http",
+      "url": "http://portainer:9000/api/system/status",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "core",
+          "color": "#6c5ce7",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Infisical",
+      "type": "http",
+      "url": "http://infisical:8080/api/status",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "core",
+          "color": "#6c5ce7",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "AdGuard Home",
+      "type": "http",
+      "url": "http://adguard:80/",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299",
+        "302"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "core",
+          "color": "#6c5ce7",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "NetBox",
+      "type": "http",
+      "url": "https://netbox.pdx.sanctioned.tech/login/",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "core",
+          "color": "#6c5ce7",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "MinIO",
+      "type": "http",
+      "url": "http://minio:9000/minio/health/live",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "data",
+          "color": "#0984e3",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "ClickHouse",
+      "type": "http",
+      "url": "http://clickhouse:8123/ping",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "data",
+          "color": "#0984e3",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Baserow",
+      "type": "http",
+      "url": "http://baserow:80/_health/",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "data",
+          "color": "#0984e3",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "pgAdmin",
+      "type": "http",
+      "url": "http://pgadmin:80/misc/ping",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "data",
+          "color": "#0984e3",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Postgres",
+      "type": "port",
+      "hostname": "postgres",
+      "port": 5432,
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "data",
+          "color": "#0984e3",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false,
+      "ignoreTls": false,
+      "maxredirects": 10
+    },
+    {
+      "name": "Redis",
+      "type": "port",
+      "hostname": "redis",
+      "port": 6379,
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "data",
+          "color": "#0984e3",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false,
+      "ignoreTls": false,
+      "maxredirects": 10
+    },
+    {
+      "name": "Prometheus",
+      "type": "http",
+      "url": "http://prometheus:9090/-/healthy",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "monitoring",
+          "color": "#00b894",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Alertmanager",
+      "type": "http",
+      "url": "http://alertmanager:9093/-/healthy",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "monitoring",
+          "color": "#00b894",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Grafana",
+      "type": "http",
+      "url": "http://grafana:3000/api/health",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "monitoring",
+          "color": "#00b894",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Loki",
+      "type": "http",
+      "url": "http://loki:3100/loki/api/v1/status/buildinfo",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "monitoring",
+          "color": "#00b894",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Open WebUI",
+      "type": "http",
+      "url": "http://openwebui:8080/health",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "LiteLLM",
+      "type": "http",
+      "url": "http://litellm:4000/health/liveliness",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "n8n",
+      "type": "http",
+      "url": "http://n8n:5678/healthz",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "ComfyUI",
+      "type": "http",
+      "url": "http://comfyui:8188/system_stats",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Jupyter",
+      "type": "http",
+      "url": "http://jupyter:8888/api",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Flowise",
+      "type": "http",
+      "url": "http://flowise:3000/api/v1/ping",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Qdrant",
+      "type": "http",
+      "url": "http://qdrant:6333/healthz",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Neo4j",
+      "type": "http",
+      "url": "http://neo4j:7474/",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "SearXNG",
+      "type": "http",
+      "url": "http://searxng:8080/healthz",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Langfuse",
+      "type": "http",
+      "url": "http://langfuse-web:3000/api/public/health",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "MLflow",
+      "type": "http",
+      "url": "http://mlflow:5000/health",
+      "method": "GET",
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "maxredirects": 10,
+      "ignoreTls": false,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false
+    },
+    {
+      "name": "Wyoming Piper (TTS)",
+      "type": "port",
+      "hostname": "wyoming-piper",
+      "port": 10200,
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false,
+      "ignoreTls": false,
+      "maxredirects": 10
+    },
+    {
+      "name": "Wyoming Whisper (STT)",
+      "type": "port",
+      "hostname": "wyoming-faster-whisper",
+      "port": 10300,
+      "interval": 60,
+      "retryInterval": 60,
+      "resendInterval": 0,
+      "maxretries": 2,
+      "timeout": 48,
+      "upsideDown": false,
+      "active": 1,
+      "accepted_statuscodes": [
+        "200-299"
+      ],
+      "notificationIDList": {},
+      "tags": [
+        {
+          "name": "ai",
+          "color": "#e17055",
+          "value": ""
+        }
+      ],
+      "invertKeyword": false,
+      "ignoreTls": false,
+      "maxredirects": 10
+    }
+  ]
+}
