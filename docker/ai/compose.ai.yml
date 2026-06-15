@@ -22,11 +22,12 @@ services:
     restart: unless-stopped
     networks: [proxy, ai]
     environment:
-      # LLM backend: local unsloth (llama.cpp, OpenAI-compatible) on the host.
-      # OpenWebUI reaches the host via its LAN IP. Override per-host if needed.
+      # LLM backend: via the LiteLLM gateway (which fronts unsloth and traces every
+      # call to Langfuse). NOTE: OpenWebUI persists this in its DB after first boot,
+      # so on the RUNNING instance change it in Settings -> Admin -> Connections.
       ENABLE_OPENAI_API: "true"
-      OPENAI_API_BASE_URL: "http://${HOST_LAN_IP:-192.168.2.10}:8888/v1"
-      OPENAI_API_KEY: ${UNSLOTH_API_KEY}
+      OPENAI_API_BASE_URL: "http://litellm:4000/v1"
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
       ENABLE_OLLAMA_API: "false"
       # Image generation via ComfyUI (same `ai` network)
       ENABLE_IMAGE_GENERATION: "true"
@@ -300,6 +301,33 @@ services:
     restart: unless-stopped
     networks: [ai, data]
     environment: *langfuse-env
+
+  # ---- LiteLLM — OpenAI-compatible gateway for unsloth, logs to Langfuse ---
+  # One chokepoint: clients hit LiteLLM (master-key auth) instead of unsloth, and
+  # every call is traced in Langfuse. UI/API not SSO-gated (it's a programmatic
+  # API); auth is the LiteLLM master key.
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: litellm
+    restart: unless-stopped
+    networks: [proxy, ai]
+    environment:
+      UNSLOTH_API_KEY: ${UNSLOTH_API_KEY}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_HOST: http://langfuse-web:3000
+      TZ: ${TZ}
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.litellm.rule=Host(`litellm.${DOMAIN}`)"
+      - "traefik.http.routers.litellm.entrypoints=websecure"
+      - "traefik.http.routers.litellm.tls=true"
+      - "traefik.http.routers.litellm.middlewares=secure-chain@file"
+      - "traefik.http.services.litellm.loadbalancer.server.port=4000"
 
   # ---- MLflow — experiment tracking + model registry ----------------------
   # Postgres backend store + MinIO artifact store (server proxies artifacts, so
