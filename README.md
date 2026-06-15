@@ -77,6 +77,7 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **Alertmanager** | `alertmanager.…` | Alert routing | 🛡️ |
 | **Uptime Kuma** | `uptime.…` | Uptime / status monitoring | 🔒 |
 | **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI) | 🔑 OIDC |
+| **LiteLLM** | `litellm.…` | LLM gateway → unsloth, auto-traces to Langfuse | 🎟️ master key |
 | **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |
 | **ComfyUI** | `comfyui.…` | Image generation (GPU) | 🛡️ |
 | **Jupyter** | `jupyter.…` | Notebooks | 🎟️ token |

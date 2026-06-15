@@ -1,0 +1,17 @@
+# LiteLLM proxy — OpenAI-compatible gateway in front of the local unsloth LLM,
+# with every request/response logged to Langfuse. Point clients here instead of
+# at unsloth directly, and all calls are traced centrally.
+model_list:
+  - model_name: unsloth/Qwen3.5-4B-GGUF          # name clients request
+    litellm_params:
+      model: openai/unsloth/Qwen3.5-4B-GGUF      # openai/ = OpenAI-compatible upstream
+      api_base: http://192.168.2.10:8888/v1      # unsloth runs on the host
+      api_key: os.environ/UNSLOTH_API_KEY
+
+litellm_settings:
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY      # clients send: Authorization: Bearer <master key>
