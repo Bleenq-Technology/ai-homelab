@@ -54,14 +54,40 @@ flowchart TD
 - **Secure by construction.** Hardened middleware chain (HSTS, security headers, rate-limit,
   compression), Docker secrets for the ACME DNS API, aligned credentials from a single `.env`.
 
-## Service inventory
+## Services
 
-| Stack | Services |
-|-------|----------|
-| **core** | Traefik · Keycloak · Portainer · Infisical · NetBox · AdGuard · *(Firezone — deferred)* |
-| **data** | Postgres 16 (per-service DBs) · Redis · MinIO (S3 + bucket) · ClickHouse (+ Keeper) · Baserow · pgAdmin |
-| **monitoring** | Prometheus · Grafana · Loki · Promtail · Alertmanager · cAdvisor · node/blackbox/postgres/adguard exporters · Watchtower · Uptime Kuma |
-| **ai** | Open WebUI · n8n · ComfyUI (GPU) · Wyoming TTS/STT (GPU) · Jupyter · Flowise · Qdrant · Neo4j · SearXNG · Langfuse (web + worker) |
+All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
+🔑 Keycloak OIDC · 🛡️ Keycloak forward-auth · 🔒 local login · 🎟️ token/API-key ·
+🔓 none · 🧰 break-glass basic-auth.
+
+| Service | URL | Purpose | Auth |
+|---------|-----|---------|------|
+| **Traefik** | `traefik.…/dashboard/` | Reverse proxy, wildcard TLS, routing | 🧰 |
+| **Keycloak** | `keycloak.…` | Identity provider (SSO) | 🔒 (is the IdP) |
+| **Portainer** | `portainer.…` | Docker management UI | 🔑 OAuth |
+| **Infisical** | `infisical.…` | Secrets management | 🔒 |
+| **NetBox** | `netbox.…` | IPAM / DCIM | 🔒 |
+| **AdGuard** | `adguard.…` | Network DNS + ad-blocking | 🔒 |
+| **MinIO** | `minio.…` / `s3.…` | S3 object storage (console / API) | 🔒 |
+| **ClickHouse** | `clickhouse.…` | OLAP DB (Langfuse analytics backend) | 🔒 |
+| **Baserow** | `baserow.…` | No-code database | 🔒 |
+| **pgAdmin** | `pgadmin.…` | Postgres admin UI | 🔒 |
+| **Grafana** | `grafana.…` | Metrics dashboards | 🔑 OIDC |
+| **Prometheus** | `prometheus.…` | Metrics collection | 🛡️ |
+| **Alertmanager** | `alertmanager.…` | Alert routing | 🛡️ |
+| **Uptime Kuma** | `uptime.…` | Uptime / status monitoring | 🔒 |
+| **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI) | 🔑 OIDC |
+| **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |
+| **ComfyUI** | `comfyui.…` | Image generation (GPU) | 🛡️ |
+| **Jupyter** | `jupyter.…` | Notebooks | 🎟️ token |
+| **Flowise** | `flowise.…` | LLM workflow builder | 🔒 (OIDC = paid) |
+| **Qdrant** | `qdrant.…` | Vector database | 🎟️ API key |
+| **Neo4j** | `neo4j.…` | Graph database | 🔒 |
+| **SearXNG** | `searxng.…` | Privacy meta-search | 🛡️ |
+| **Langfuse** | `langfuse.…` | LLM observability/tracing | 🔑 OIDC |
+| **Wyoming Piper/Whisper** | `tcp :10200/:10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 |
+| *Postgres · Redis* | internal | Unified DB / cache (no UI) | — |
+| *Firezone* | *deferred* | VPN (EOL image; replacing) | — |
 
 **AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`)
 on the host, and → **ComfyUI** for image generation.
