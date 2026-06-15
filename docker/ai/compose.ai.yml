@@ -38,6 +38,23 @@ services:
       ENABLE_WEB_SEARCH: "true"
       WEB_SEARCH_ENGINE: "searxng"
       SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
+      # Grounding template for retrieved web-search context: answer ONLY from the
+      # context; if it's empty/insufficient, say so instead of hallucinating.
+      RAG_TEMPLATE: |
+        ### Task
+        Answer the user's query using ONLY the context below (web-search results).
+        ### Rules
+        - Use only information present in the context; do NOT use prior knowledge to fill gaps.
+        - If the context is empty or does not contain the answer, reply that you could not find
+          reliable sources and cannot verify it. Do NOT guess, fabricate, or invent facts, names,
+          dates, numbers, quotes, citations, or URLs.
+        - Cite only sources that actually appear in the context.
+        <context>
+        {{CONTEXT}}
+        </context>
+        <user_query>
+        {{QUERY}}
+        </user_query>
       # Image generation via ComfyUI (same `ai` network)
       ENABLE_IMAGE_GENERATION: "true"
       IMAGE_GENERATION_ENGINE: comfyui
