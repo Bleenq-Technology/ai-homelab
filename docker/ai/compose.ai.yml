@@ -32,6 +32,14 @@ services:
       ENABLE_IMAGE_GENERATION: "true"
       IMAGE_GENERATION_ENGINE: comfyui
       COMFYUI_BASE_URL: "http://comfyui:8188"
+      # ---- Keycloak SSO (OIDC); merges onto the existing account by email ----
+      ENABLE_OAUTH_SIGNUP: "true"
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL: "true"
+      OAUTH_PROVIDER_NAME: Keycloak
+      OAUTH_CLIENT_ID: openwebui
+      OAUTH_CLIENT_SECRET: ${OPENWEBUI_OIDC_CLIENT_SECRET}
+      OPENID_PROVIDER_URL: https://keycloak.${DOMAIN}/realms/homelab/.well-known/openid-configuration
+      OAUTH_SCOPES: "openid email profile"
       WEBUI_NAME: "Jarvis Open WebUI"
       WEBUI_URL: https://openwebui.${DOMAIN}
       TZ: ${TZ}
@@ -94,7 +102,7 @@ services:
       - "traefik.http.routers.comfyui.rule=Host(`comfyui.${DOMAIN}`)"
       - "traefik.http.routers.comfyui.entrypoints=websecure"
       - "traefik.http.routers.comfyui.tls=true"
-      - "traefik.http.routers.comfyui.middlewares=secure-chain-stream@file"
+      - "traefik.http.routers.comfyui.middlewares=sso@file,secure-chain-stream@file"
       - "traefik.http.services.comfyui.loadbalancer.server.port=8188"
 
   # ---- Wyoming Piper — TTS (Wyoming protocol, TCP — not HTTP) --------------
@@ -240,7 +248,7 @@ services:
       - "traefik.http.routers.searxng.rule=Host(`searxng.${DOMAIN}`)"
       - "traefik.http.routers.searxng.entrypoints=websecure"
       - "traefik.http.routers.searxng.tls=true"
-      - "traefik.http.routers.searxng.middlewares=secure-chain@file"
+      - "traefik.http.routers.searxng.middlewares=secure-sso@file"
       - "traefik.http.services.searxng.loadbalancer.server.port=8080"
 
   # ---- Langfuse v3 — AI observability (web + worker) ----------------------
@@ -271,6 +279,12 @@ services:
       LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
       LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      # ---- Keycloak SSO (dedicated provider; handles Keycloak's extra token
+      # fields like refresh_expires_in that break the generic 'custom' provider) ----
+      AUTH_KEYCLOAK_CLIENT_ID: langfuse
+      AUTH_KEYCLOAK_CLIENT_SECRET: ${LANGFUSE_OIDC_CLIENT_SECRET}
+      AUTH_KEYCLOAK_ISSUER: https://keycloak.${DOMAIN}/realms/homelab
+      AUTH_KEYCLOAK_ALLOW_ACCOUNT_LINKING: "true"
       TZ: ${TZ}
     labels:
       - "traefik.enable=true"
