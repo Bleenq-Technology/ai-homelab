@@ -22,9 +22,10 @@ services:
     restart: unless-stopped
     networks: [proxy, ai]
     environment:
-      # LLM backend: via the LiteLLM gateway (which fronts unsloth and traces every
-      # call to Langfuse). NOTE: OpenWebUI persists this in its DB after first boot,
-      # so on the RUNNING instance change it in Settings -> Admin -> Connections.
+      # Config is authoritative from env (not persisted to the DB), so the LLM
+      # backend below is applied on every boot. User accounts/chats are unaffected.
+      ENABLE_PERSISTENT_CONFIG: "False"
+      # LLM backend: via the LiteLLM gateway (fronts unsloth, traces to Langfuse).
       ENABLE_OPENAI_API: "true"
       OPENAI_API_BASE_URL: "http://litellm:4000/v1"
       OPENAI_API_KEY: ${LITELLM_MASTER_KEY}

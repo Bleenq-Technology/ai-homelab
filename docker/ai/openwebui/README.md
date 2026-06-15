@@ -7,11 +7,13 @@
 **Networks / data:** proxy, ai; bind mount `./openwebui/data` -> `/app/backend/data`
 
 ## Setup as deployed
-- LLM backend is the local **unsloth** server (llama.cpp, OpenAI-compatible) running on the host:
+- **Config is authoritative from env:** `ENABLE_PERSISTENT_CONFIG=False` — settings come from compose
+  on every boot instead of the DB. User accounts/chats are unaffected (that's data, not config).
+- LLM backend is the **LiteLLM gateway** (fronts unsloth and traces every call to Langfuse):
   - `ENABLE_OPENAI_API=true`
-  - `OPENAI_API_BASE_URL=http://192.168.2.10:8888/v1` (host LAN IP, via `HOST_LAN_IP` with that default)
-  - `OPENAI_API_KEY=${UNSLOTH_API_KEY}`
-  - `ENABLE_OLLAMA_API=false` (Ollama disabled; unsloth only)
+  - `OPENAI_API_BASE_URL=http://litellm:4000/v1`
+  - `OPENAI_API_KEY=${LITELLM_MASTER_KEY}`
+  - `ENABLE_OLLAMA_API=false` (Ollama disabled)
 - Image generation via ComfyUI on the `ai` network:
   - `ENABLE_IMAGE_GENERATION=true`, `IMAGE_GENERATION_ENGINE=comfyui`, `COMFYUI_BASE_URL=http://comfyui:8188`
 - Keycloak SSO (OIDC), merges onto existing accounts by email:
@@ -27,11 +29,11 @@
 
 ## Issues & Fixes
 
-**Symptom:** The unsloth / ComfyUI / OIDC settings set via environment variables did not take effect, because Open WebUI persists configuration in its database after first boot.
-**Fix:** wipe the data directory once and recreate the container so the settings re-seed from the environment (safe only because no user accounts existed yet).
+**Symptom:** settings set via environment variables did not take effect — Open WebUI persists config in its DB after first boot, and the DB copy wins.
+**Fix:** set `ENABLE_PERSISTENT_CONFIG=False` so env config is authoritative on every boot (the DB no longer overrides it); user data is unaffected. (Initially worked around by wiping the data dir to re-seed — the env flag is the clean fix.)
 
 ## Secrets
-- `UNSLOTH_API_KEY` — API key for the local unsloth LLM server.
+- `LITELLM_MASTER_KEY` — auth for the LiteLLM gateway (the LLM backend).
 - `OPENWEBUI_OIDC_CLIENT_SECRET` — Keycloak client secret for the `openwebui` client.
 - `DOMAIN`, `TZ`, optional `HOST_LAN_IP`.
 - All secrets come from `/opt/homelab/.env` (gitignored); nothing sensitive is committed.
