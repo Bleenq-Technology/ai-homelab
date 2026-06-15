@@ -4,7 +4,8 @@
 **Auth:** native Keycloak OIDC
 **Image:** ghcr.io/open-webui/open-webui:main
 **GPU:** no
-**Networks / data:** proxy, ai; bind mount `./openwebui/data` -> `/app/backend/data`
+**Networks / data:** proxy, ai, data; bind mount `./openwebui/data` -> `/app/backend/data`
+(the `data` network is for the shared Redis; Qdrant is on `ai`)
 
 ## Setup as deployed
 - **Config is authoritative from env:** `ENABLE_PERSISTENT_CONFIG=False` — settings come from compose
@@ -28,6 +29,16 @@
   - `OAUTH_PROVIDER_NAME=Keycloak`, `OAUTH_CLIENT_ID=openwebui`, `OAUTH_CLIENT_SECRET=${OPENWEBUI_OIDC_CLIENT_SECRET}`
   - `OPENID_PROVIDER_URL=https://keycloak.${DOMAIN}/realms/homelab/.well-known/openid-configuration`
   - `OAUTH_SCOPES=openid email profile`
+- **Vector store = shared Qdrant** (replaces the default embedded Chroma), so document/Knowledge
+  RAG is persistent and shared, not trapped in `./openwebui/data`:
+  - `VECTOR_DB=qdrant`, `QDRANT_URI=http://qdrant:6333`, `QDRANT_API_KEY=${QDRANT_API_KEY}`,
+    `QDRANT_COLLECTION_PREFIX=open-webui`
+  - Qdrant server pinned to `v1.16.1` to stay within one minor of Open WebUI's bundled 1.17 client
+    (a wider gap logs an incompatibility warning).
+  - Note: web search **bypasses** retrieval (see above), so Qdrant backs *uploaded docs/Knowledge*.
+- **Redis** (shared instance, DB 2) for the websocket manager + app cache:
+  - `REDIS_URL` / `WEBSOCKET_REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/2`,
+    `WEBSOCKET_MANAGER=redis`, `ENABLE_WEBSOCKET_SUPPORT=true`
 - Branding: `WEBUI_NAME="Jarvis Open WebUI"`, `WEBUI_URL=https://openwebui.${DOMAIN}`
 - Traefik router on `websecure`, TLS, middleware `secure-chain-stream@file`, backend port 8080.
 
@@ -61,5 +72,7 @@ curl -s -X POST https://openwebui.pdx.sanctioned.tech/api/v1/models/create \
 - `LITELLM_MASTER_KEY` — auth for the LiteLLM gateway (the LLM backend).
 - `OPENWEBUI_OIDC_CLIENT_SECRET` — Keycloak client secret for the `openwebui` client.
 - `TAVILY_API_KEY` — Tavily web-search API key (free tier; in Infisical).
+- `QDRANT_API_KEY` — auth for the shared Qdrant vector DB.
+- `REDIS_PASSWORD` — auth for the shared Redis (websocket manager + cache).
 - `DOMAIN`, `TZ`, optional `HOST_LAN_IP`.
 - All secrets come from `/opt/homelab/.env` (gitignored); nothing sensitive is committed.

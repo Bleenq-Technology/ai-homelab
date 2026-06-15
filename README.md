@@ -41,6 +41,9 @@ flowchart TD
     OW -. LLM .-> LL -. OpenAI API .-> UNS[unsloth · host:8888]
     LL -. traces .-> LF
     OW -. images .-> CF
+    OW -. web search .-> TAV([Tavily])
+    OW -. doc vectors .-> QD
+    OW -. ws / cache .-> RD
     LF --> PG & CH & RD & MIN
     MLF -. tracking .-> PG & MIN
 ```
@@ -78,15 +81,15 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **Prometheus** | `prometheus.…` | Metrics collection | 🛡️ |
 | **Alertmanager** | `alertmanager.…` | Alert routing | 🛡️ |
 | **Uptime Kuma** | `uptime.…` | Uptime / status monitoring | 🔒 |
-| **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI) | 🔑 OIDC |
+| **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI), Tavily web search, Qdrant RAG | 🔑 OIDC |
 | **LiteLLM** | `litellm.…` | LLM gateway → unsloth, auto-traces to Langfuse | 🎟️ master key |
 | **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |
 | **ComfyUI** | `comfyui.…` | Image generation (GPU) | 🛡️ |
 | **Jupyter** | `jupyter.…` | Notebooks | 🎟️ token |
 | **Flowise** | `flowise.…` | LLM workflow builder | 🔒 (OIDC = paid) |
-| **Qdrant** | `qdrant.…` | Vector database | 🎟️ API key |
+| **Qdrant** | `qdrant.…` | Vector database (backs Open WebUI document/Knowledge RAG) | 🎟️ API key |
 | **Neo4j** | `neo4j.…` | Graph database | 🔒 |
-| **SearXNG** | `searxng.…` | Privacy meta-search | 🛡️ |
+| **SearXNG** | `searxng.…` | Privacy meta-search (self-hosted web-search fallback) | 🛡️ |
 | **Langfuse** | `langfuse.…` | LLM observability/tracing | 🔑 OIDC |
 | **MLflow** | `mlflow.…` | ML experiment tracking + model registry | 🛡️ (UI) |
 | **Wyoming Piper/Whisper** | `tcp :10200/:10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 |
@@ -94,7 +97,9 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | *Firezone* | *deferred* | VPN (EOL image; replacing) | — |
 
 **AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`)
-on the host, and → **ComfyUI** for image generation.
+on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI** for
+image generation, → **Tavily** for web search, and → **Qdrant** for document/Knowledge RAG, with
+**Redis** as the websocket manager / cache.
 
 ## Repository layout
 
