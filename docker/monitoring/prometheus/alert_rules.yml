@@ -1,0 +1,64 @@
+groups:
+  - name: instance-health
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{ $labels.instance }} has been down for more than 2 minutes."
+
+  - name: resource-usage
+    rules:
+      - alert: HighCPUUsage
+        expr: sum(rate(container_cpu_usage_seconds_total[5m])) by (container_label_com_docker_compose_service) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.container_label_com_docker_compose_service }} has high CPU usage."
+
+      - alert: HighMemoryUsage
+        expr: sum(container_memory_usage_bytes) by (container_label_com_docker_compose_service) > 1000000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container {{ $labels.container_label_com_docker_compose_service }} has high memory usage."
+
+  - name: traefik-health
+    rules:
+      - alert: TraefikDown
+        expr: up{job="traefik"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Traefik is down"
+          description: "Traefik reverse proxy is not reachable."
+
+  - name: docker-health
+    rules:
+      - alert: DockerDaemonDown
+        expr: up{job="docker"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Docker Daemon is down"
+          description: "Docker daemon is not reachable."
+
+  - name: blackbox-endpoints
+    rules:
+      - alert: EndpointDown
+        expr: probe_success == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Endpoint {{ $labels.instance }} is down"
+          description: "Blackbox exporter reports {{ $labels.instance }} is unreachable."

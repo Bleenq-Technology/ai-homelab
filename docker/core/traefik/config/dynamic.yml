@@ -1,0 +1,51 @@
+# ============================================================================
+# Traefik dynamic configuration — reusable middlewares (file provider, hot-reloaded)
+# Attach to any service with a single label:  traefik.http.routers.<r>.middlewares=secure-chain@file
+# ============================================================================
+http:
+  middlewares:
+
+    # ---- Security headers (incl. HSTS) ----
+    security-headers:
+      headers:
+        # HSTS — 2 years, includeSubDomains, preload-eligible.
+        # Only fully safe once every name is HTTPS-only (it is, behind Traefik).
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=()"
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+
+    # ---- Rate limiting (per source IP) ----
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+
+    # ---- Compression ----
+    compress:
+      compress: {}
+
+    # ---- Reusable chain: attach this ONE name to most services ----
+    secure-chain:
+      chain:
+        middlewares:
+          - security-headers
+          - rate-limit
+          - compress
+
+    # ---- Looser chain for streaming/websocket apps (chat, comfyui) ----
+    # Same hardening, higher rate ceiling for long-lived/streaming connections.
+    secure-chain-stream:
+      chain:
+        middlewares:
+          - security-headers
+          - compress

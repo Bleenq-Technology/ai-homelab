@@ -1,0 +1,31 @@
+# Real environment files — never commit. Templates (*.example) ARE committed.
+.env
+.env.*
+!.env.example
+
+# Local credentials/links reference (contains secrets) — never commit
+LOCAL_LINKS.html
+*.local.html
+
+# Docker secrets — real values live only on the host (jarvis)
+secrets/*
+!secrets/.gitkeep
+!secrets/README.md
+
+# Per-service runtime data and persistent volumes (bind-mounted under each service)
+*/*/data/
+*/*/letsencrypt/
+*/*/acme.json
+**/acme.json
+
+# Postgres / Redis / object-store data
+**/pgdata/
+**/redis-data/
+
+# Backups, logs, editor cruft
+*.bak
+*.backup
+*.log
+logs/
+.DS_Store
+Thumbs.db
