@@ -1,0 +1,207 @@
+# ============================================================================
+# MONITORING stack — metrics, logs, dashboards, alerting, uptime, auto-updates
+# Exporters that read data-layer services attach to the `data` network too.
+# ============================================================================
+
+networks:
+  proxy:
+    external: true
+  data:
+    external: true
+  monitoring:
+    external: true
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  loki_data:
+  uptime_kuma_data:
+
+services:
+
+  # ---- Prometheus ---------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: prometheus
+    restart: unless-stopped
+    networks: [proxy, monitoring]
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    depends_on: [alertmanager]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.routers.prometheus.middlewares=secure-chain@file"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  # ---- Alertmanager -------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    container_name: alertmanager
+    restart: unless-stopped
+    networks: [proxy, monitoring]
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.${DOMAIN}`)"
+      - "traefik.http.routers.alertmanager.entrypoints=websecure"
+      - "traefik.http.routers.alertmanager.tls=true"
+      - "traefik.http.routers.alertmanager.middlewares=secure-chain@file"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
+
+  # ---- Grafana ------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    restart: unless-stopped
+    networks: [proxy, monitoring]
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+      TZ: ${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.middlewares=secure-chain@file"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  # ---- Loki ---------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    restart: unless-stopped
+    networks: [monitoring]
+    volumes:
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # ---- Promtail (log shipper) ---------------------------------------------
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail
+    restart: unless-stopped
+    networks: [monitoring]
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail:/etc/promtail:ro
+    command: -config.file=/etc/promtail/promtail.yml
+
+  # ---- cAdvisor (per-container metrics) -----------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    restart: unless-stopped
+    networks: [monitoring]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    privileged: true
+
+  # ---- Node Exporter (host metrics) ---------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    networks: [monitoring]
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+
+  # ---- Blackbox Exporter --------------------------------------------------
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    networks: [monitoring]
+    volumes:
+      - ./blackbox-exporter/config:/config:ro
+    command:
+      - '--config.file=/config/blackbox.yml'
+      - '--web.listen-address=:9115'
+
+  # ---- Exporters that read the data layer ---------------------------------
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    container_name: postgres-exporter
+    restart: unless-stopped
+    networks: [data, monitoring]
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_SUPERUSER}:${POSTGRES_PASSWORD}@postgres:5432/postgres?sslmode=disable"
+
+  # clickhouse-exporter removed: the f1yegor image is unmaintained and panics on
+  # startup. TODO: scrape ClickHouse's native Prometheus endpoint instead — enable
+  # <prometheus> on :9363 via a config.d file, then add a clickhouse:9363 scrape job.
+
+  adguard-exporter:
+    image: ebrianne/adguard-exporter:latest
+    container_name: adguard-exporter
+    restart: unless-stopped
+    networks: [proxy, monitoring]
+    environment:
+      ADGUARD_PROTOCOL: http
+      ADGUARD_HOSTNAME: adguard
+      ADGUARD_PORT: "80"
+      ADGUARD_USERNAME: ${ADGUARD_USERNAME:-admin}
+      ADGUARD_PASSWORD: ${ADGUARD_PASSWORD:-change_me_adguard}
+
+  # ---- Watchtower (auto-update labelled containers) -----------------------
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    container_name: watchtower
+    restart: unless-stopped
+    networks: [monitoring]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOCKER_API_VERSION: "1.44"   # Engine 29 rejects watchtower's legacy default
+    command:
+      - '--interval=3600'
+      - '--cleanup'
+      - '--label-enable'
+
+  # ---- Uptime Kuma --------------------------------------------------------
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.16
+    container_name: uptime-kuma
+    restart: unless-stopped
+    networks: [proxy, monitoring]
+    volumes:
+      - uptime_kuma_data:/app/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.rule=Host(`uptime.${DOMAIN}`)"
+      - "traefik.http.routers.uptime.entrypoints=websecure"
+      - "traefik.http.routers.uptime.tls=true"
+      - "traefik.http.routers.uptime.middlewares=secure-chain@file"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"

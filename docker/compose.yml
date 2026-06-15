@@ -1,0 +1,20 @@
+# ============================================================================
+# Homelab unified stack — root compose
+# ----------------------------------------------------------------------------
+# Modular per-layer files, unified here via Compose `include:`.
+# Bring everything up:   docker --context jarvis compose -f docker/compose.yml up -d
+# Cycle one layer:       docker --context jarvis compose -f docker/ai/compose.ai.yml up -d
+#
+# Shared networks are EXTERNAL and created once (see docker/README.md):
+#   docker network create proxy
+#   docker network create data
+#   docker network create ai
+#   docker network create monitoring
+# ============================================================================
+name: homelab
+
+include:
+  - core/compose.core.yml
+  - data/compose.data.yml
+  - monitoring/compose.monitoring.yml
+  - ai/compose.ai.yml

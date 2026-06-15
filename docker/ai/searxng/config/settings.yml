@@ -1,0 +1,18 @@
+# SearXNG settings — minimal overrides.
+# Redis/Valkey connection is supplied via the SEARXNG_REDIS_URL env var in
+# compose.ai.yml (authenticated, DB 6). Do NOT hardcode the redis url here or it
+# will override the env and drop the password.
+# Secret is injected via SEARXNG_SECRET env.
+# See https://docs.searxng.org/admin/settings/ for the full reference.
+
+use_default_settings: true
+
+server:
+  limiter: false
+  image_proxy: true
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json

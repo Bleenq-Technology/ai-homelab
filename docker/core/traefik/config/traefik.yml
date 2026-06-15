@@ -1,0 +1,66 @@
+# ============================================================================
+# Traefik v3 static configuration
+# Wildcard TLS for *.pdx.sanctioned.tech via EasyDNS DNS-01 — set once here,
+# every routed service inherits it (no per-service certresolver labels needed).
+# ============================================================================
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+log:
+  level: INFO          # set to DEBUG for the first cert issuance, then revert
+
+accessLog: {}
+
+api:
+  dashboard: true      # exposed via a router + basic-auth in compose labels
+
+ping: {}               # /ping healthcheck endpoint
+
+metrics:
+  prometheus:
+    entryPoint: metrics   # served on :8082, scraped by Prometheus (job 'traefik')
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: le
+        domains:
+          - main: "pdx.sanctioned.tech"
+            sans:
+              - "*.pdx.sanctioned.tech"
+  # Internal entrypoint for Prometheus metrics scraping (not published to host)
+  metrics:
+    address: ":8082"
+
+providers:
+  docker:
+    exposedByDefault: false      # only containers with traefik.enable=true are routed
+    network: proxy
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  le:
+    acme:
+      email: "paul.vilevac@bleenq.com"
+      storage: /letsencrypt/acme.json
+      dnsChallenge:
+        provider: easydns
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+        # EasyDNS can be slow to propagate TXT records
+        propagation:
+          delayBeforeChecks: 60s

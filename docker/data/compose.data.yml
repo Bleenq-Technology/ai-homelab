@@ -1,0 +1,199 @@
+# ============================================================================
+# DATA stack — unified Postgres, Redis, MinIO (S3), ClickHouse + data UIs
+# `postgres` is the single Postgres host for the whole lab; per-service DBs and
+# roles are created on first boot by postgres/init/01-init-databases.sh.
+# ============================================================================
+
+networks:
+  proxy:
+    external: true
+  data:
+    external: true
+
+volumes:
+  postgres_data:
+
+services:
+
+  # ---- Postgres (unified) — host name "postgres" --------------------------
+  # Standard Postgres (not supabase/postgres, whose baked-in data dir caused
+  # ownership conflicts). The stack only needs plain Postgres + per-service DBs.
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+    networks: [data]
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # consumed by the init script to provision per-service roles
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      NETBOX_DB_PASSWORD: ${NETBOX_DB_PASSWORD}
+      INFISICAL_DB_PASSWORD: ${INFISICAL_DB_PASSWORD}
+      BASEROW_DB_PASSWORD: ${BASEROW_DB_PASSWORD}
+      LANGFUSE_DB_PASSWORD: ${LANGFUSE_DB_PASSWORD}
+      FIREZONE_DB_PASSWORD: ${FIREZONE_DB_PASSWORD:-change_me_firezone_db}
+      TZ: ${TZ}
+    volumes:
+      # Named volume (not a bind mount): the supabase/postgres image runs as a
+      # non-root user and refuses a root-owned bind dir. Docker manages ownership.
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---- Redis (shared cache / queues) --------------------------------------
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    restart: unless-stopped
+    networks: [data]
+    command: redis-server --requirepass ${REDIS_PASSWORD} --save 60 1 --loglevel warning
+    volumes:
+      - ./redis/data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---- MinIO — S3-compatible object storage -------------------------------
+  minio:
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    container_name: minio
+    restart: unless-stopped
+    networks: [proxy, data]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_SERVER_URL: https://s3.${DOMAIN}
+      MINIO_BROWSER_REDIRECT_URL: https://minio.${DOMAIN}
+      TZ: ${TZ}
+    volumes:
+      - ./minio/data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      # Console UI
+      - "traefik.http.routers.minio-console.rule=Host(`minio.${DOMAIN}`)"
+      - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.routers.minio-console.tls=true"
+      - "traefik.http.routers.minio-console.middlewares=secure-chain@file"
+      - "traefik.http.routers.minio-console.service=minio-console"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+      # S3 API
+      - "traefik.http.routers.minio-api.rule=Host(`s3.${DOMAIN}`)"
+      - "traefik.http.routers.minio-api.entrypoints=websecure"
+      - "traefik.http.routers.minio-api.tls=true"
+      - "traefik.http.routers.minio-api.middlewares=secure-chain@file"
+      - "traefik.http.routers.minio-api.service=minio-api"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+
+  # ---- One-shot: create the buckets dependent services need ---------------
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-03T17-07-56Z
+    container_name: minio-init
+    networks: [data]
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${LANGFUSE_S3_BUCKET} &&
+      echo 'buckets ready';
+      "
+    restart: "no"
+
+  # ---- ClickHouse — OLAP (Langfuse analytics backend) ---------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12
+    container_name: clickhouse
+    restart: unless-stopped
+    networks: [proxy, data]
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      TZ: ${TZ}
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./clickhouse/data:/var/lib/clickhouse
+      - ./clickhouse/config/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clickhouse.rule=Host(`clickhouse.${DOMAIN}`)"
+      - "traefik.http.routers.clickhouse.entrypoints=websecure"
+      - "traefik.http.routers.clickhouse.tls=true"
+      - "traefik.http.routers.clickhouse.middlewares=secure-chain@file"
+      - "traefik.http.services.clickhouse.loadbalancer.server.port=8123"
+
+  # ---- Baserow — no-code DB (backed by unified Postgres + Redis) ----------
+  baserow:
+    image: baserow/baserow:1.30.1
+    container_name: baserow
+    restart: unless-stopped
+    networks: [proxy, data]
+    environment:
+      BASEROW_PUBLIC_URL: https://baserow.${DOMAIN}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: baserow
+      DATABASE_USER: baserow
+      DATABASE_PASSWORD: ${BASEROW_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      BASEROW_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/4
+      SECRET_KEY: ${BASEROW_SECRET_KEY:-change_me_baserow_secret}
+      TZ: ${TZ}
+    volumes:
+      - ./baserow/data:/baserow/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.baserow.rule=Host(`baserow.${DOMAIN}`)"
+      - "traefik.http.routers.baserow.entrypoints=websecure"
+      - "traefik.http.routers.baserow.tls=true"
+      - "traefik.http.routers.baserow.middlewares=secure-chain@file"
+      - "traefik.http.services.baserow.loadbalancer.server.port=80"
+
+  # ---- pgAdmin — Postgres admin UI ----------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    container_name: pgadmin
+    restart: unless-stopped
+    networks: [proxy, data]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@pdx.sanctioned.tech}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-change_me_pgadmin}
+      PGADMIN_LISTEN_PORT: "80"
+      PGADMIN_LISTEN_ADDRESS: "0.0.0.0"   # default binds IPv6-only; Docker net is IPv4
+      TZ: ${TZ}
+    volumes:
+      - ./pgadmin/data:/var/lib/pgadmin
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pgadmin.rule=Host(`pgadmin.${DOMAIN}`)"
+      - "traefik.http.routers.pgadmin.entrypoints=websecure"
+      - "traefik.http.routers.pgadmin.tls=true"
+      - "traefik.http.routers.pgadmin.middlewares=secure-chain@file"
+      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"

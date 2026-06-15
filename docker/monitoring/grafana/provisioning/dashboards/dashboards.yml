@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  # Dashboard provider configuration
+  - name: 'Homelab'
+    orgId: 1
+    folder: 'Homelab'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/homelab

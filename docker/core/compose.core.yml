@@ -1,0 +1,239 @@
+# ============================================================================
+# CORE stack — edge proxy, identity, secrets, VPN, DNS, Docker mgmt
+# Canonical patterns every other stack follows:
+#   * networks: external `proxy` (edge) + segment networks
+#   * routed service labels: enable + Host rule + websecure + secure-chain@file
+#   * TLS is inherited from the wildcard cert on the websecure entrypoint
+#     (no per-service certresolver label needed)
+# ============================================================================
+
+secrets:
+  easydns_token:
+    file: ../secrets/easydns_token
+  easydns_key:
+    file: ../secrets/easydns_key
+
+networks:
+  proxy:
+    external: true
+  data:
+    external: true
+
+services:
+
+  # ---- Traefik — reverse proxy + wildcard TLS (EasyDNS DNS-01) -------------
+  traefik:
+    image: traefik:v3.7.5
+    container_name: traefik
+    restart: unless-stopped
+    networks: [proxy]
+    ports:
+      - "80:80"
+      - "443:443"
+    secrets:
+      - easydns_token
+      - easydns_key
+    environment:
+      EASYDNS_TOKEN_FILE: /run/secrets/easydns_token
+      EASYDNS_KEY_FILE: /run/secrets/easydns_key
+      EASYDNS_ENDPOINT: https://rest.easydns.net
+      # Ubuntu 26.04's Docker engine (API 1.54, min 1.40) rejects Traefik's
+      # legacy default API negotiation — pin a supported version explicitly.
+      DOCKER_API_VERSION: "1.44"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/config/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./traefik/letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      # Force issuance of the ONE wildcard cert here; it lands in the default
+      # store and is then served for every other *.pdx.sanctioned.tech service.
+      - "traefik.http.routers.dashboard.tls.certresolver=le"
+      - "traefik.http.routers.dashboard.tls.domains[0].main=${DOMAIN}"
+      - "traefik.http.routers.dashboard.tls.domains[0].sans=*.${DOMAIN}"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      # Dashboard behind basic-auth + the hardened chain.
+      # Swap basicauth for a Keycloak forward-auth middleware once SSO is wired.
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker,secure-chain@file"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---- Keycloak — identity / SSO ------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: keycloak
+    restart: unless-stopped
+    command: start
+    networks: [proxy, data]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: https://keycloak.${DOMAIN}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ./keycloak/themes:/opt/keycloak/themes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=Host(`keycloak.${DOMAIN}`)"
+      - "traefik.http.routers.keycloak.entrypoints=websecure"
+      - "traefik.http.routers.keycloak.tls=true"
+      - "traefik.http.routers.keycloak.middlewares=secure-chain@file"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+
+  # ---- Portainer — Docker management UI -----------------------------------
+  portainer:
+    image: portainer/portainer-ce:2.21.5
+    container_name: portainer
+    restart: unless-stopped
+    networks: [proxy]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./portainer/data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls=true"
+      - "traefik.http.routers.portainer.middlewares=secure-chain@file"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+  # ---- Infisical — secrets management (adopt as backend later) ------------
+  infisical:
+    image: infisical/infisical:latest-postgres
+    container_name: infisical
+    restart: unless-stopped
+    networks: [proxy, data]
+    environment:
+      DB_CONNECTION_URI: postgresql://infisical:${INFISICAL_DB_PASSWORD}@postgres:5432/infisical
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY:-change_me_infisical_enc}
+      AUTH_SECRET: ${INFISICAL_AUTH_SECRET:-change_me_infisical_auth}
+      SITE_URL: https://infisical.${DOMAIN}
+      TZ: ${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.infisical.rule=Host(`infisical.${DOMAIN}`)"
+      - "traefik.http.routers.infisical.entrypoints=websecure"
+      - "traefik.http.routers.infisical.tls=true"
+      - "traefik.http.routers.infisical.middlewares=secure-chain@file"
+      - "traefik.http.services.infisical.loadbalancer.server.port=8080"
+
+  # ---- Firezone — WireGuard VPN with Keycloak SSO -------------------------
+  firezone:
+    image: firezone/firezone:0.7.36
+    container_name: firezone
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      net.ipv4.ip_forward: "1"
+      net.ipv6.conf.all.disable_ipv6: "0"
+    networks: [proxy, data]
+    environment:
+      EXTERNAL_URL: https://vpn.${DOMAIN}
+      DEFAULT_ADMIN_EMAIL: ${FIREZONE_ADMIN_EMAIL}
+      DEFAULT_ADMIN_PASSWORD: ${FIREZONE_ADMIN_PASSWORD}
+      GUARDIAN_SECRET_KEY: ${FIREZONE_SECRET_KEY_BASE}
+      SECRET_KEY_BASE: ${FIREZONE_SECRET_KEY_BASE}
+      LIVE_VIEW_SIGNING_SALT: ${FIREZONE_LIVE_VIEW_SIGNING_SALT}
+      COOKIE_SIGNING_SALT: ${FIREZONE_COOKIE_SIGNING_SALT}
+      COOKIE_ENCRYPTION_SALT: ${FIREZONE_COOKIE_ENCRYPTION_SALT}
+      DATABASE_HOST: postgres
+      DATABASE_NAME: firezone
+      DATABASE_USER: firezone
+      DATABASE_PASSWORD: ${FIREZONE_DB_PASSWORD:-change_me_firezone_db}
+      AUTH_OIDC_LABEL: Keycloak
+      AUTH_OIDC_CLIENT_ID: firezone
+      AUTH_OIDC_CLIENT_SECRET: ${FIREZONE_OIDC_CLIENT_SECRET}
+      AUTH_OIDC_SITE: https://keycloak.${DOMAIN}/realms/master
+      AUTH_OIDC_REDIRECT_URI: https://vpn.${DOMAIN}/auth/oidc/callback
+      AUTH_OIDC_RESPONSE_TYPE: code
+      AUTH_OIDC_SCOPE: openid email profile
+      AUTH_OIDC_DISCOVERY: "true"
+      WIREGUARD_IPV4_NETWORK: 10.44.0.0/24
+      WIREGUARD_IPV6_NETWORK: fd00:44::/64
+      WIREGUARD_PORT: 51820
+      TZ: ${TZ}
+    ports:
+      - "51820:51820/udp"
+    volumes:
+      - ./firezone/data:/var/firezone
+      - /lib/modules:/lib/modules:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.firezone.rule=Host(`vpn.${DOMAIN}`)"
+      - "traefik.http.routers.firezone.entrypoints=websecure"
+      - "traefik.http.routers.firezone.tls=true"
+      - "traefik.http.routers.firezone.middlewares=secure-chain@file"
+      - "traefik.http.services.firezone.loadbalancer.server.port=13000"
+
+  # ---- AdGuard Home — network DNS + ad blocking ---------------------------
+  adguard:
+    image: adguard/adguardhome:v0.107.55
+    container_name: adguard
+    restart: unless-stopped
+    networks: [proxy]
+    ports:
+      # Bind DNS to the LAN IP specifically — the host's systemd-resolved already
+      # holds 127.0.0.53:53, so 0.0.0.0:53 would conflict. Override per-host.
+      - "${ADGUARD_DNS_IP:-192.168.2.10}:53:53/tcp"
+      - "${ADGUARD_DNS_IP:-192.168.2.10}:53:53/udp"
+      - "3000:3000/tcp"   # initial setup wizard; can be removed after first run
+    volumes:
+      - ./adguard/work:/opt/adguardhome/work
+      - ./adguard/conf:/opt/adguardhome/conf
+    environment:
+      TZ: ${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adguard.rule=Host(`adguard.${DOMAIN}`)"
+      - "traefik.http.routers.adguard.entrypoints=websecure"
+      - "traefik.http.routers.adguard.tls=true"
+      - "traefik.http.routers.adguard.middlewares=secure-chain@file"
+      - "traefik.http.services.adguard.loadbalancer.server.port=80"
+
+  # ---- NetBox — IPAM / DCIM -----------------------------------------------
+  netbox:
+    image: lscr.io/linuxserver/netbox:latest
+    container_name: netbox
+    restart: unless-stopped
+    networks: [proxy, data]
+    environment:
+      SUPERUSER_EMAIL: ${NETBOX_ADMIN_EMAIL:-admin@pdx.sanctioned.tech}
+      SUPERUSER_PASSWORD: ${NETBOX_ADMIN_PASSWORD:-change_me_netbox_admin}
+      ALLOWED_HOST: netbox.${DOMAIN}
+      DB_HOST: postgres
+      DB_NAME: netbox
+      DB_USER: netbox
+      DB_PASSWORD: ${NETBOX_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB_TASK: "2"
+      REDIS_DB_CACHE: "3"
+      TZ: ${TZ}
+    volumes:
+      - ./netbox/config:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.netbox.rule=Host(`netbox.${DOMAIN}`)"
+      - "traefik.http.routers.netbox.entrypoints=websecure"
+      - "traefik.http.routers.netbox.tls=true"
+      - "traefik.http.routers.netbox.middlewares=secure-chain@file"
+      - "traefik.http.services.netbox.loadbalancer.server.port=8000"
