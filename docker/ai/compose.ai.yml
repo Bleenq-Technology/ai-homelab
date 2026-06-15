@@ -13,6 +13,9 @@ networks:
   data:
     external: true
 
+volumes:
+  comfyui_storage:
+
 services:
 
   # ---- Open WebUI — LLM frontend ------------------------------------------
@@ -34,6 +37,31 @@ services:
       ENABLE_IMAGE_GENERATION: "true"
       IMAGE_GENERATION_ENGINE: comfyui
       COMFYUI_BASE_URL: "http://comfyui:8188"
+      IMAGE_GENERATION_MODEL: "sd_xl_base_1.0.safetensors"
+      IMAGE_SIZE: "1024x1024"
+      IMAGE_STEPS: "30"
+      # SDXL txt2img workflow (ComfyUI API format) + node mapping. YAML literal
+      # blocks keep the JSON intact (no .env/Infisical quoting issues).
+      COMFYUI_WORKFLOW: |
+        {
+          "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 30, "cfg": 7.0, "sampler_name": "euler", "scheduler": "normal", "denoise": 1.0, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+          "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "sd_xl_base_1.0.safetensors"}},
+          "5": {"class_type": "EmptyLatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+          "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["4", 1]}},
+          "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["4", 1]}},
+          "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+          "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "owui", "images": ["8", 0]}}
+        }
+      COMFYUI_WORKFLOW_NODES: |
+        [
+          {"type": "model", "key": "ckpt_name", "node_ids": ["4"]},
+          {"type": "prompt", "key": "text", "node_ids": ["6"]},
+          {"type": "negative_prompt", "key": "text", "node_ids": ["7"]},
+          {"type": "width", "key": "width", "node_ids": ["5"]},
+          {"type": "height", "key": "height", "node_ids": ["5"]},
+          {"type": "steps", "key": "steps", "node_ids": ["3"]},
+          {"type": "seed", "key": "seed", "node_ids": ["3"]}
+        ]
       # ---- Keycloak SSO (OIDC); merges onto the existing account by email ----
       ENABLE_OAUTH_SIGNUP: "true"
       OAUTH_MERGE_ACCOUNTS_BY_EMAIL: "true"
@@ -90,6 +118,10 @@ services:
     networks: [proxy, ai]
     environment:
       TZ: ${TZ}
+      # ai-dock gates ComfyUI behind a caddy login portal on :8188; disable it so
+      # :8188 proxies straight to the ComfyUI API (Keycloak SSO still gates the
+      # Traefik route; OpenWebUI reaches it internally on the `ai` network).
+      WEB_ENABLE_AUTH: "false"
     deploy:
       resources:
         reservations:
@@ -99,6 +131,9 @@ services:
               capabilities: [gpu]
     volumes:
       - ./comfyui/data:/data
+      # Persist the ai-dock model store (checkpoints/loras/vae/...). Named volume
+      # so Docker seeds it from the image's dir structure; survives recreate.
+      - comfyui_storage:/opt/storage
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.comfyui.rule=Host(`comfyui.${DOMAIN}`)"
