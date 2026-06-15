@@ -36,7 +36,10 @@ services:
       # Web search via the internal SearXNG (JSON). Internal URL bypasses the SSO
       # gate on searxng.pdx; the literal <query> placeholder is required.
       ENABLE_WEB_SEARCH: "true"
-      WEB_SEARCH_ENGINE: "searxng"
+      # Tavily (LLM/RAG-optimized; returns extracted content -> better grounding).
+      # Switch to "searxng" to use the self-hosted fallback below instead.
+      WEB_SEARCH_ENGINE: "tavily"
+      TAVILY_API_KEY: ${TAVILY_API_KEY}
       SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
       # Grounding template for retrieved web-search context: answer ONLY from the
       # context; if it's empty/insufficient, say so instead of hallucinating.

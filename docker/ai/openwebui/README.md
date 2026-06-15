@@ -16,6 +16,13 @@
   - `ENABLE_OLLAMA_API=false` (Ollama disabled)
 - Image generation via ComfyUI on the `ai` network:
   - `ENABLE_IMAGE_GENERATION=true`, `IMAGE_GENERATION_ENGINE=comfyui`, `COMFYUI_BASE_URL=http://comfyui:8188`
+- **Web search via Tavily** (LLM/RAG-optimized — returns extracted page content, not just links,
+  so grounding is stronger and "no sources" is rare):
+  - `ENABLE_WEB_SEARCH=true`, `WEB_SEARCH_ENGINE=tavily`, `TAVILY_API_KEY=${TAVILY_API_KEY}`
+  - Self-hosted **SearXNG** stays configured (`SEARXNG_QUERY_URL`) as a fully-private fallback —
+    flip `WEB_SEARCH_ENGINE` to `searxng` to use it.
+  - `RAG_TEMPLATE` instructs the model to answer **only** from retrieved context and to say it
+    could not find reliable sources when search is empty (curbs hallucination on weak results).
 - Keycloak SSO (OIDC), merges onto existing accounts by email:
   - `ENABLE_OAUTH_SIGNUP=true`, `OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true`
   - `OAUTH_PROVIDER_NAME=Keycloak`, `OAUTH_CLIENT_ID=openwebui`, `OAUTH_CLIENT_SECRET=${OPENWEBUI_OIDC_CLIENT_SECRET}`
@@ -53,5 +60,6 @@ curl -s -X POST https://openwebui.pdx.sanctioned.tech/api/v1/models/create \
 ## Secrets
 - `LITELLM_MASTER_KEY` — auth for the LiteLLM gateway (the LLM backend).
 - `OPENWEBUI_OIDC_CLIENT_SECRET` — Keycloak client secret for the `openwebui` client.
+- `TAVILY_API_KEY` — Tavily web-search API key (free tier; in Infisical).
 - `DOMAIN`, `TZ`, optional `HOST_LAN_IP`.
 - All secrets come from `/opt/homelab/.env` (gitignored); nothing sensitive is committed.
