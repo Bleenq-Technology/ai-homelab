@@ -8,6 +8,8 @@ networks:
     external: true
   data:
     external: true
+  ai:
+    external: true
   monitoring:
     external: true
 
@@ -206,10 +208,13 @@ services:
 
   # ---- Uptime Kuma --------------------------------------------------------
   uptime-kuma:
-    image: louislam/uptime-kuma:1.23.16
+    image: louislam/uptime-kuma:2.4.0
     container_name: uptime-kuma
     restart: unless-stopped
-    networks: [proxy, monitoring]
+    # All four segments so it can health-check every service directly on its
+    # internal container endpoint (bypasses Traefik forward-auth -> true backend
+    # health, clean 200s, no SSO redirects).
+    networks: [proxy, ai, data, monitoring]
     volumes:
       - uptime_kuma_data:/app/data
     labels:
