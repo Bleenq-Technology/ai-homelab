@@ -33,3 +33,20 @@ datasources:
       implementation: prometheus
       disableDeleteAlerts: false
       disableCreateAlert: false
+
+  # QuestDB — market/time-series data, queried over the Postgres wire protocol
+  # (reached via the shared `proxy` network). Password is injected from the
+  # QUESTDB_PG_PASSWORD env (Infisical -> .env -> grafana service).
+  - name: QuestDB
+    type: postgres
+    uid: questdb
+    access: proxy
+    url: questdb:8812
+    user: ${QUESTDB_PG_USER}
+    editable: true
+    jsonData:
+      database: qdb
+      sslmode: disable
+      postgresVersion: 1200
+    secureJsonData:
+      password: ${QUESTDB_PG_PASSWORD}

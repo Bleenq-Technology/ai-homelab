@@ -40,6 +40,11 @@ scrape_configs:
     static_configs:
       - targets: ['redis-exporter:9121']
 
+  # QuestDB operational metrics (ingest/query/health — NOT the market data itself)
+  - job_name: 'questdb'
+    static_configs:
+      - targets: ['questdb:9003']
+
   # MinIO exposes cluster metrics without a bearer token because the service sets
   # MINIO_PROMETHEUS_AUTH_TYPE=public (see data/compose.data.yml).
   - job_name: 'minio'
