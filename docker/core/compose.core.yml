@@ -133,55 +133,9 @@ services:
       - "traefik.http.routers.infisical.middlewares=secure-chain@file"
       - "traefik.http.services.infisical.loadbalancer.server.port=8080"
 
-  # ---- Firezone — WireGuard VPN with Keycloak SSO -------------------------
-  firezone:
-    image: firezone/firezone:0.7.36
-    container_name: firezone
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    sysctls:
-      net.ipv4.ip_forward: "1"
-      net.ipv6.conf.all.disable_ipv6: "0"
-    networks: [proxy, data]
-    environment:
-      EXTERNAL_URL: https://vpn.${DOMAIN}
-      DEFAULT_ADMIN_EMAIL: ${FIREZONE_ADMIN_EMAIL}
-      DEFAULT_ADMIN_PASSWORD: ${FIREZONE_ADMIN_PASSWORD}
-      GUARDIAN_SECRET_KEY: ${FIREZONE_SECRET_KEY_BASE}
-      SECRET_KEY_BASE: ${FIREZONE_SECRET_KEY_BASE}
-      LIVE_VIEW_SIGNING_SALT: ${FIREZONE_LIVE_VIEW_SIGNING_SALT}
-      COOKIE_SIGNING_SALT: ${FIREZONE_COOKIE_SIGNING_SALT}
-      COOKIE_ENCRYPTION_SALT: ${FIREZONE_COOKIE_ENCRYPTION_SALT}
-      DATABASE_HOST: postgres
-      DATABASE_NAME: firezone
-      DATABASE_USER: firezone
-      DATABASE_PASSWORD: ${FIREZONE_DB_PASSWORD:-change_me_firezone_db}
-      AUTH_OIDC_LABEL: Keycloak
-      AUTH_OIDC_CLIENT_ID: firezone
-      AUTH_OIDC_CLIENT_SECRET: ${FIREZONE_OIDC_CLIENT_SECRET}
-      AUTH_OIDC_SITE: https://keycloak.${DOMAIN}/realms/master
-      AUTH_OIDC_REDIRECT_URI: https://vpn.${DOMAIN}/auth/oidc/callback
-      AUTH_OIDC_RESPONSE_TYPE: code
-      AUTH_OIDC_SCOPE: openid email profile
-      AUTH_OIDC_DISCOVERY: "true"
-      WIREGUARD_IPV4_NETWORK: 10.44.0.0/24
-      WIREGUARD_IPV6_NETWORK: fd00:44::/64
-      WIREGUARD_PORT: 51820
-      TZ: ${TZ}
-    ports:
-      - "51820:51820/udp"
-    volumes:
-      - ./firezone/data:/var/firezone
-      - /lib/modules:/lib/modules:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.firezone.rule=Host(`vpn.${DOMAIN}`)"
-      - "traefik.http.routers.firezone.entrypoints=websecure"
-      - "traefik.http.routers.firezone.tls=true"
-      - "traefik.http.routers.firezone.middlewares=secure-chain@file"
-      - "traefik.http.services.firezone.loadbalancer.server.port=13000"
+  # Firezone (WireGuard VPN) removed — image 0.7.x is EOL, and remote access is
+  # now provided by WireGuard on the EdgeRouter (see host/wireguard/). The unused
+  # FIREZONE_* env keys and the firezone DB in postgres/init can be cleaned later.
 
   # ---- AdGuard Home — network DNS + ad blocking ---------------------------
   adguard:
