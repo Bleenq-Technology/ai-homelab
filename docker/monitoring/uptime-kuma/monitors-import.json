@@ -545,33 +545,6 @@
       "invertKeyword": false
     },
     {
-      "name": "Jupyter",
-      "type": "http",
-      "url": "http://jupyter:8888/api",
-      "method": "GET",
-      "interval": 60,
-      "retryInterval": 60,
-      "resendInterval": 0,
-      "maxretries": 2,
-      "timeout": 48,
-      "maxredirects": 10,
-      "ignoreTls": false,
-      "upsideDown": false,
-      "active": 1,
-      "accepted_statuscodes": [
-        "200-299"
-      ],
-      "notificationIDList": {},
-      "tags": [
-        {
-          "name": "ai",
-          "color": "#e17055",
-          "value": ""
-        }
-      ],
-      "invertKeyword": false
-    },
-    {
       "name": "Flowise",
       "type": "http",
       "url": "http://flowise:3000/api/v1/ping",
