@@ -199,6 +199,10 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [x] **Observability** — Uptime Kuma (29 monitors + Discord alerts), Promtail→Loki log
       shipping (Docker SD), and provisioned Grafana dashboards: Jarvis Overview (host + GPU),
       GPU (RTX 3090 via `nvidia-gpu-exporter`), Service Traffic (Traefik), Node Exporter Full
+- [x] **Metric alerting → Discord** — Prometheus rules + Alertmanager dispatch to the
+      Discord channel: GPU/CPU temperature, disk usage, host-memory pressure, container
+      OOM-kills / restart-loops, Postgres connection saturation, Redis memory
+      (see [docker/monitoring/alertmanager/](docker/monitoring/alertmanager/README.md))
 - [ ] VPN for external access (NetBird — WireGuard + Keycloak SSO)
 - [x] **Secrets in Infisical** — all secrets in the `homelab` project; deploys pull via
       `pull-secrets.sh`; `.env` is a generated artifact (bootstrap set kept out-of-band)

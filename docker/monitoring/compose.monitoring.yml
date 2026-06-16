@@ -21,6 +21,14 @@ volumes:
   uptime_kuma_data:
   promtail_positions:
 
+# Discord webhook for Alertmanager notifications. Source of truth is Infisical
+# (key DISCORD_WEBHOOK_URL, pulled into .env by pull-secrets.sh); Compose
+# materialises it as a Docker secret at /run/secrets/discord_webhook_url, which
+# config.yml reads via webhook_url_file (Alertmanager doesn't expand ${ENV}).
+secrets:
+  discord_webhook_url:
+    environment: DISCORD_WEBHOOK_URL
+
 services:
 
   # ---- Prometheus ---------------------------------------------------------
@@ -59,6 +67,8 @@ services:
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
+    secrets:
+      - discord_webhook_url
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.${DOMAIN}`)"
