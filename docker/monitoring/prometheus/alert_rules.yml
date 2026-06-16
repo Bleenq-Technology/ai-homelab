@@ -1,4 +1,18 @@
+# Prometheus alerting rules for the jarvis homelab.
+# Routed to Discord via Alertmanager (see ../alertmanager/config.yml).
+# Thresholds are deliberately conservative/high-signal — tune in git, then
+# `curl -X POST https://prometheus.../-/reload` (or restart the container).
+#
+# Metric-name notes (verified against the live TSDB, 2026-06-16):
+#   - GPU temp:   nvidia_smi_temperature_gpu          (utkuozdemir/nvidia_gpu_exporter)
+#   - CPU temp:   node_hwmon_temp_celsius{chip=~"pci.*18_3"}  -> AMD k10temp ONLY.
+#                 (node_hwmon also exposes the NVMe SSD and a flaky WMI chip that
+#                  reports a bogus 216 C — both are excluded by the chip match.)
+#   - Containers: docker_container_status_{oomkilled,restart_count}  (telegraf docker input)
+#   - Redis maxmemory is 0 (unbounded), so Redis is alerted on absolute bytes.
 groups:
+
+  # ---- Up / reachability --------------------------------------------------
   - name: instance-health
     rules:
       - alert: InstanceDown
@@ -7,30 +21,10 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Instance {{ $labels.instance }} down"
-          description: "{{ $labels.instance }} has been down for more than 2 minutes."
+          summary: "Scrape target {{ $labels.job }} ({{ $labels.instance }}) is down"
+          description: "Prometheus has been unable to scrape {{ $labels.instance }} (job {{ $labels.job }}) for over 2 minutes."
 
-  - name: resource-usage
-    rules:
-      - alert: HighCPUUsage
-        expr: sum(rate(container_cpu_usage_seconds_total[5m])) by (container_label_com_docker_compose_service) > 0.8
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High CPU usage detected"
-          description: "Container {{ $labels.container_label_com_docker_compose_service }} has high CPU usage."
-
-      - alert: HighMemoryUsage
-        expr: sum(container_memory_usage_bytes) by (container_label_com_docker_compose_service) > 1000000000
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High memory usage detected"
-          description: "Container {{ $labels.container_label_com_docker_compose_service }} has high memory usage."
-
-  - name: traefik-health
+  - name: edge-health
     rules:
       - alert: TraefikDown
         expr: up{job="traefik"} == 0
@@ -39,26 +33,139 @@ groups:
           severity: critical
         annotations:
           summary: "Traefik is down"
-          description: "Traefik reverse proxy is not reachable."
+          description: "The Traefik reverse proxy metrics endpoint is unreachable — web routing is likely affected."
 
-  - name: docker-health
-    rules:
-      - alert: DockerDaemonDown
-        expr: up{job="docker"} == 0
+      - alert: EndpointDown
+        expr: probe_success == 0
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "Docker Daemon is down"
-          description: "Docker daemon is not reachable."
+          summary: "Endpoint {{ $labels.instance }} is failing its HTTPS probe"
+          description: "Blackbox exporter reports {{ $labels.instance }} has not returned a healthy response for 2 minutes."
 
-  - name: blackbox-endpoints
+  # ---- Temperatures (top priority: GPU + CPU) -----------------------------
+  - name: temperatures
     rules:
-      - alert: EndpointDown
-        expr: probe_success == 0
+      - alert: GPUTempHigh
+        expr: nvidia_smi_temperature_gpu > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU temperature high ({{ $value | printf \"%.0f\" }} C)"
+          description: "RTX 3090 has been above 80 C for 5 minutes (throttles around 83 C). Check airflow / sustained load."
+
+      - alert: GPUTempCritical
+        expr: nvidia_smi_temperature_gpu > 87
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
+          description: "RTX 3090 has been above 87 C for 2 minutes — sustained throttling / thermal risk. Investigate cooling now."
+
+      - alert: CPUTempHigh
+        expr: max(node_hwmon_temp_celsius{chip=~"pci.*18_3"}) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU temperature high ({{ $value | printf \"%.0f\" }} C)"
+          description: "AMD CPU (k10temp) has been above 80 C for 5 minutes. Check cooling / sustained load."
+
+      - alert: CPUTempCritical
+        expr: max(node_hwmon_temp_celsius{chip=~"pci.*18_3"}) > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPU temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
+          description: "AMD CPU (k10temp) has been above 90 C for 2 minutes — approaching thermal throttle. Investigate now."
+
+  # ---- Disk ---------------------------------------------------------------
+  - name: disk
+    rules:
+      - alert: DiskSpaceLow
+        expr: 100 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs"} * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk {{ $labels.mountpoint }} over 80% full ({{ $value | printf \"%.0f\" }}%)"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} has been over 80% full for 10 minutes. Free space or it will fill."
+
+      - alert: DiskSpaceCritical
+        expr: 100 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs"} * 100) > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk {{ $labels.mountpoint }} over 90% full ({{ $value | printf \"%.0f\" }}%)"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} is over 90% full — imminent out-of-space. Clean up now (you hit 90% once before)."
+
+  # ---- Host memory pressure (ties into OOM risk) --------------------------
+  - name: memory-pressure
+    rules:
+      - alert: HostMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory low ({{ $value | printf \"%.0f\" }}% available)"
+          description: "Less than 10% of host RAM has been available for 10 minutes — OOM-kill risk rising."
+
+  # ---- Containers: OOM kills + restart loops ------------------------------
+  - name: containers
+    rules:
+      - alert: ContainerOOMKilled
+        expr: docker_container_status_oomkilled == 1
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Endpoint {{ $labels.instance }} is down"
-          description: "Blackbox exporter reports {{ $labels.instance }} is unreachable."
+          summary: "Container {{ $labels.container_name }} was OOM-killed"
+          description: "{{ $labels.container_name }} has its OOMKilled flag set — the kernel killed it for exceeding memory. Raise its limit or fix the leak."
+
+      - alert: ContainerRestarting
+        expr: increase(docker_container_status_restart_count[1h]) >= 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.container_name }} is restart-looping"
+          description: "{{ $labels.container_name }} has restarted 3+ times in the last hour — likely crash-looping. Check its logs."
+
+  # ---- Postgres -----------------------------------------------------------
+  - name: postgres
+    rules:
+      - alert: PostgresConnectionsHigh
+        expr: sum(pg_stat_activity_count) / max(pg_settings_max_connections) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Postgres connections over 80% of max"
+          description: "Active connections have been above 80% of max_connections ({{ with query \"max(pg_settings_max_connections)\" }}{{ . | first | value | printf \"%.0f\" }}{{ end }}) for 5 minutes. Connection leak or pool too large?"
+
+  # ---- Redis (maxmemory unbounded -> absolute thresholds) -----------------
+  - name: redis
+    rules:
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes > 2e9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis using over 2 GB ({{ $value | humanize1024 }}B)"
+          description: "Redis memory has exceeded 2 GB for 10 minutes. maxmemory is unset (unbounded) — consider setting maxmemory + an eviction policy."
+
+      - alert: RedisMemoryCritical
+        expr: redis_memory_used_bytes > 4e9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis using over 4 GB ({{ $value | humanize1024 }}B)"
+          description: "Redis memory has exceeded 4 GB — unbounded growth risks host OOM. Set maxmemory and investigate what is filling it."

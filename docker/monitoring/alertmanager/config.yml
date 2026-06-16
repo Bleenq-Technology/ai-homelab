@@ -1,70 +1,33 @@
-global:
-  # The smarthost and SMTP sender used for mail notifications.
-  smtp_smarthost: 'smtp.gmail.com:587'
-  smtp_from: '${ALERTMANAGER_EMAIL}'
-  smtp_auth_username: '${ALERTMANAGER_EMAIL}'
-  smtp_auth_password: '${ALERTMANAGER_EMAIL_PASSWORD}'
-  smtp_require_tls: true
+# Alertmanager — routes Prometheus alerts (../prometheus/alert_rules.yml) to Discord.
+#
+# The Discord webhook URL is a secret: it is mounted as a Docker secret at
+# /run/secrets/discord_webhook_url (see ../compose.monitoring.yml + ../secrets/)
+# and referenced via `webhook_url_file`, so nothing sensitive is committed.
+# NOTE: Alertmanager does NOT expand ${ENV} in this file — use *_file fields.
 
-# The directory from which notification templates are read.
-templates: 
-  - '/etc/alertmanager/template/*.tmpl'
-
-# The root route on which each incoming alert enters.
 route:
-  # The labels by which incoming alerts are grouped together. For example,
-  # multiple alerts coming in for cluster=A and alertname=LatencyHigh are
-  # batched into a single group.
-  group_by: ['alertname', 'cluster', 'service']
+  # Group alerts so a burst (e.g. several InstanceDown at once) is one message.
+  group_by: ['alertname']
+  group_wait: 30s        # batch alerts that fire close together
+  group_interval: 5m     # wait before sending new alerts for an existing group
+  repeat_interval: 3h    # re-notify for a still-firing alert this often
+  receiver: 'discord'
 
-  # When a new group of alerts is created by an incoming alert, wait at
-  # least 'group_wait' to send the initial notification.
-  # This way ensures that you get multiple alerts for the same group that start
-  # firing shortly after another are batched together on the first
-  # notification.
-  group_wait: 30s
-
-  # When the first notification was sent, wait 'group_interval' to send a batch
-  # of new alerts that started firing for that group.
-  group_interval: 5m
-
-  # If an alert has successfully been sent, wait 'repeat_interval' to
-  # resend them.
-  repeat_interval: 3h 
-
-  # A default receiver
-  receiver: 'email'
-
-  # All the above attributes are inherited by all child routes and can 
-  # overwritten on each.
   routes:
-  - match:
-      alertname: Watchdog
-    receiver: 'null'
+    # Always-firing Watchdog (if present) is a dead-man's-switch — never notify.
+    - match:
+        alertname: Watchdog
+      receiver: 'null'
 
-  # Example: Send all alerts with label team=frontend to frontend-team
-  #- receiver: 'frontend-team'
-  #  match:
-  #    team: frontend
-
-# Receivers
 receivers:
-- name: 'null'
-  # No configuration needed for the null receiver
+  - name: 'null'
 
-- name: 'email'
-  email_configs:
-  - to: '${ALERTMANAGER_EMAIL}'
-    send_resolved: true
-
-#- name: 'slack'
-#  slack_configs:
-#  - api_url: '${SLACK_WEBHOOK_URL}'
-#    channel: '#alerts'
-#    send_resolved: true
-
-#- name: 'pagerduty'
-#  pagerduty_configs:
-#  - routing_key: '${PAGERDUTY_ROUTING_KEY}'
-#    service_key: '${PAGERDUTY_SERVICE_KEY}'
-#    send_resolved: true
+  - name: 'discord'
+    discord_configs:
+      - webhook_url_file: /run/secrets/discord_webhook_url
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }}: {{ .CommonLabels.alertname }}{{ if gt (len .Alerts.Firing) 1 }} ×{{ len .Alerts.Firing }}{{ end }}'
+        message: |
+          {{ range .Alerts }}**[{{ .Labels.severity | toUpper }}]** {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
