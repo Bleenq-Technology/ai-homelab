@@ -133,36 +133,21 @@ services:
       - promtail_positions:/promtail
     command: -config.file=/etc/promtail/promtail.yml
 
-  # ---- cAdvisor (per-container metrics) -----------------------------------
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: cadvisor
+  # ---- Telegraf (per-container metrics via the Docker Engine API) ---------
+  # Replaces cadvisor: it reads container stats straight from the Docker API,
+  # so it gets real container names/compose labels even with the containerd
+  # image store (which broke cadvisor's cgroup->name mapping). Prometheus format.
+  telegraf:
+    image: telegraf:1.34-alpine
+    container_name: telegraf
     restart: unless-stopped
     networks: [monitoring]
+    user: telegraf
+    group_add:
+      - "980"   # host 'docker' group gid, to read /var/run/docker.sock
     volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-      # Docker uses the containerd image store here, so cadvisor's Docker driver
-      # can't find the overlay2 layerdb -> no container names/labels. Give it the
-      # containerd socket so it reads container metadata (names, compose labels)
-      # from the moby namespace instead.
-      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
-    devices:
-      - /dev/kmsg
-    privileged: true
-    command:
-      - '--containerd=/run/containerd/containerd.sock'
-      - '--containerd-namespace=moby'
-      # Disable the Docker factory: it expects the overlay2 layerdb that the
-      # containerd image store doesn't have (spams "failed to identify rw layer"
-      # and drops names). Pointing --docker at a dead socket forces cadvisor to
-      # resolve the docker-*.scope cgroups via the containerd factory instead.
-      - '--docker=unix:///run/cadvisor-no-docker.sock'
-      - '--store_container_labels=false'
-      - '--whitelisted_container_labels=com.docker.compose.service,com.docker.compose.project'
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   # ---- Node Exporter (host metrics) ---------------------------------------
   node-exporter:
