@@ -68,7 +68,7 @@ services:
 
   # ---- Keycloak — identity / SSO ------------------------------------------
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1
+    image: quay.io/keycloak/keycloak:26.6.3
     container_name: keycloak
     restart: unless-stopped
     command: start
@@ -97,7 +97,7 @@ services:
 
   # ---- Portainer — Docker management UI -----------------------------------
   portainer:
-    image: portainer/portainer-ce:2.21.5
+    image: portainer/portainer-ce:2.42.0
     container_name: portainer
     restart: unless-stopped
     networks: [proxy]
@@ -114,7 +114,7 @@ services:
 
   # ---- Infisical — secrets management (adopt as backend later) ------------
   infisical:
-    image: infisical/infisical:latest-postgres
+    image: infisical/infisical:v0.161.0
     container_name: infisical
     restart: unless-stopped
     networks: [proxy, data]
@@ -139,7 +139,7 @@ services:
 
   # ---- AdGuard Home — network DNS + ad blocking ---------------------------
   adguard:
-    image: adguard/adguardhome:v0.107.55
+    image: adguard/adguardhome:v0.107.77
     container_name: adguard
     restart: unless-stopped
     networks: [proxy]
@@ -164,7 +164,7 @@ services:
 
   # ---- NetBox — IPAM / DCIM -----------------------------------------------
   netbox:
-    image: lscr.io/linuxserver/netbox:latest
+    image: lscr.io/linuxserver/netbox:v4.6.3-ls358
     container_name: netbox
     restart: unless-stopped
     networks: [proxy, data]

@@ -20,7 +20,7 @@ services:
 
   # ---- Open WebUI — LLM frontend ------------------------------------------
   openwebui:
-    image: ghcr.io/open-webui/open-webui:main   # pin to a release digest for prod
+    image: ghcr.io/open-webui/open-webui:v0.9.6
     container_name: openwebui
     restart: unless-stopped
     networks: [proxy, ai, data]   # data: reach shared Redis (Qdrant is on ai)
@@ -129,7 +129,7 @@ services:
 
   # ---- n8n — workflow automation ------------------------------------------
   n8n:
-    image: n8nio/n8n:2.25.7
+    image: n8nio/n8n:2.27.0
     container_name: n8n
     restart: unless-stopped
     networks: [proxy, ai, data]
@@ -239,29 +239,11 @@ services:
               count: all
               capabilities: [gpu]
 
-  # ---- Jupyter Lab --------------------------------------------------------
-  jupyter:
-    image: jupyter/base-notebook:latest
-    container_name: jupyter
-    restart: unless-stopped
-    networks: [proxy, ai]
-    environment:
-      JUPYTER_ENABLE_LAB: "yes"
-      DOCKER_STACKS_JUPYTER_CMD: lab
-      TZ: ${TZ}
-    volumes:
-      - ./jupyter/data:/home/jovyan/work
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.jupyter.rule=Host(`jupyter.${DOMAIN}`)"
-      - "traefik.http.routers.jupyter.entrypoints=websecure"
-      - "traefik.http.routers.jupyter.tls=true"
-      - "traefik.http.routers.jupyter.middlewares=secure-chain-stream@file"
-      - "traefik.http.services.jupyter.loadbalancer.server.port=8888"
+  # Jupyter removed (dropped for now).
 
   # ---- Flowise — LLM workflow builder -------------------------------------
   flowise:
-    image: flowiseai/flowise:2.2.4
+    image: flowiseai/flowise:3.1.2
     container_name: flowise
     restart: unless-stopped
     networks: [proxy, ai]
@@ -301,7 +283,7 @@ services:
 
   # ---- Neo4j — graph database ---------------------------------------------
   neo4j:
-    image: neo4j:5.26
+    image: neo4j:5.26.27
     container_name: neo4j
     restart: unless-stopped
     networks: [proxy, ai]
@@ -326,7 +308,7 @@ services:
 
   # ---- SearXNG — privacy meta-search --------------------------------------
   searxng:
-    image: searxng/searxng:latest
+    image: searxng/searxng:2026.6.16-502c820a2
     container_name: searxng
     restart: unless-stopped
     networks: [proxy, ai, data]
@@ -347,7 +329,7 @@ services:
 
   # ---- Langfuse v3 — AI observability (web + worker) ----------------------
   langfuse-web:
-    image: langfuse/langfuse:3
+    image: langfuse/langfuse:3.187.0
     container_name: langfuse-web
     restart: unless-stopped
     networks: [proxy, ai, data]
@@ -389,7 +371,7 @@ services:
       - "traefik.http.services.langfuse.loadbalancer.server.port=3000"
 
   langfuse-worker:
-    image: langfuse/langfuse-worker:3
+    image: langfuse/langfuse-worker:3.187.0
     container_name: langfuse-worker
     restart: unless-stopped
     networks: [ai, data]
@@ -400,7 +382,7 @@ services:
   # every call is traced in Langfuse. UI/API not SSO-gated (it's a programmatic
   # API); auth is the LiteLLM master key.
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:v1.89.1
     container_name: litellm
     restart: unless-stopped
     networks: [proxy, ai]
