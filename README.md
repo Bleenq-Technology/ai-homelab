@@ -5,7 +5,7 @@ identity, data services, full observability, and a GPU-accelerated AI/automation
 all defined as modular Docker Compose and fronted by Traefik with automatic wildcard TLS.
 
 ![Status](https://img.shields.io/badge/status-operational-brightgreen)
-![Containers](https://img.shields.io/badge/containers-36%20running-blue)
+![Containers](https://img.shields.io/badge/containers-40%20running-blue)
 ![Web services](https://img.shields.io/badge/web%20routes-22%2F22-blue)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-v2-2496ED?logo=docker&logoColor=white)
 ![Traefik](https://img.shields.io/badge/Traefik-v3.7-24A1C1?logo=traefikproxy&logoColor=white)
@@ -14,9 +14,9 @@ all defined as modular Docker Compose and fronted by Traefik with automatic wild
 ![Host](https://img.shields.io/badge/host-jarvis%20·%20Ubuntu-E95420?logo=ubuntu&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Status:** Operational on `jarvis` — last verified **2026-06-15**. 36 containers running,
-> 22/22 web routes responding behind the wildcard cert, GPU passthrough confirmed,
-> Open WebUI wired to a local unsloth LLM + ComfyUI.
+> **Status:** Operational on `jarvis` — last verified **2026-06-16**. 40 containers running,
+> GPU passthrough confirmed, Open WebUI wired to a local unsloth LLM + ComfyUI. **All images
+> pinned to stable/secure versions** (audited for CVEs/EOL) — no mutable `:latest`/`:main` tags.
 
 ---
 
@@ -208,6 +208,10 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [x] **Backups** — nightly `pg_dumpall` (all DBs incl. Infisical's encrypted store) →
       local (rotated) + MinIO, via `backup.sh` cron. *(ClickHouse, MinIO object data, and
       off-host replication still TODO.)*
+- [x] **Images pinned (pre-dev hardening)** — audited all ~40 images (CVE/EOL via live
+      registries) and pinned to stable/secure versions; mutable `:latest`/`:main` removed;
+      Watchtower retired; comfyui moved off the unmaintained ai-dock build to
+      `mmartial/comfyui-nvidia-docker`
 - [ ] Hardening (rotate defaults, restrict remaining surfaces) + off-host backup replication
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 

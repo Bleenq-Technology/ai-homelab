@@ -163,22 +163,25 @@ services:
       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
 
   # ---- ComfyUI — image generation (GPU) -----------------------------------
-  # NOTE: there is no official ComfyUI image; this is a popular community build.
-  # Confirm/replace before deploy. Models persist under ./comfyui/data.
+  # mmartial/comfyui-nvidia-docker (actively maintained) — replaced the
+  # unmaintained ai-dock build. Headless API on :8188 with no built-in auth, so
+  # OpenWebUI reaches it internally on the `ai` network; Keycloak SSO gates the
+  # Traefik route. Two mounts: ./comfyui/run (venv + ComfyUI source, populated on
+  # first boot) and ./comfyui/basedir (models + outputs). The SDXL checkpoint
+  # OpenWebUI uses lives at basedir/models/checkpoints/sd_xl_base_1.0.safetensors.
   comfyui:
-    image: ghcr.io/ai-dock/comfyui:latest
+    image: mmartial/comfyui-nvidia-docker:ubuntu24_cuda13.0-20260605
     container_name: comfyui
     restart: unless-stopped
     networks: [proxy, ai]
     environment:
+      WANTED_UID: "1001"        # run as the deploy user (sanctioned) for file perms
+      WANTED_GID: "1001"
+      BASE_DIRECTORY: /basedir  # models/outputs separated from the venv/run dir
+      SECURITY_LEVEL: normal
+      # Offload models from VRAM when idle (frees ~6.5 GB for the LLM between gens).
+      COMFY_CMDLINE_EXTRA: "--disable-smart-memory"
       TZ: ${TZ}
-      # ai-dock gates ComfyUI behind a caddy login portal on :8188; disable it so
-      # :8188 proxies straight to the ComfyUI API (Keycloak SSO still gates the
-      # Traefik route; OpenWebUI reaches it internally on the `ai` network).
-      WEB_ENABLE_AUTH: "false"
-      # Offload models from VRAM when idle (frees ~6.5 GB for the LLM between
-      # image generations; first gen after idle reloads, slightly slower).
-      COMFYUI_ARGS: "--disable-smart-memory"
     deploy:
       resources:
         reservations:
@@ -187,10 +190,8 @@ services:
               count: all
               capabilities: [gpu]
     volumes:
-      - ./comfyui/data:/data
-      # Persist the ai-dock model store (checkpoints/loras/vae/...). Named volume
-      # so Docker seeds it from the image's dir structure; survives recreate.
-      - comfyui_storage:/opt/storage
+      - ./comfyui/run:/comfy/mnt
+      - ./comfyui/basedir:/basedir
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.comfyui.rule=Host(`comfyui.${DOMAIN}`)"
