@@ -145,9 +145,24 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+      # Docker uses the containerd image store here, so cadvisor's Docker driver
+      # can't find the overlay2 layerdb -> no container names/labels. Give it the
+      # containerd socket so it reads container metadata (names, compose labels)
+      # from the moby namespace instead.
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
     devices:
       - /dev/kmsg
     privileged: true
+    command:
+      - '--containerd=/run/containerd/containerd.sock'
+      - '--containerd-namespace=moby'
+      # Disable the Docker factory: it expects the overlay2 layerdb that the
+      # containerd image store doesn't have (spams "failed to identify rw layer"
+      # and drops names). Pointing --docker at a dead socket forces cadvisor to
+      # resolve the docker-*.scope cgroups via the containerd factory instead.
+      - '--docker=unix:///run/cadvisor-no-docker.sock'
+      - '--store_container_labels=false'
+      - '--whitelisted_container_labels=com.docker.compose.service,com.docker.compose.project'
 
   # ---- Node Exporter (host metrics) ---------------------------------------
   node-exporter:
