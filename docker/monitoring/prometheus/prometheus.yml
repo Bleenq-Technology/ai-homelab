@@ -45,6 +45,11 @@ scrape_configs:
     static_configs:
       - targets: ['questdb:9003']
 
+  # ClickHouse native Prometheus endpoint (replaces the removed clickhouse-exporter)
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['clickhouse:9363']
+
   # MinIO exposes cluster metrics without a bearer token because the service sets
   # MINIO_PROMETHEUS_AUTH_TYPE=public (see data/compose.data.yml).
   - job_name: 'minio'
