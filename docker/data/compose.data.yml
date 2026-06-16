@@ -86,6 +86,13 @@ services:
       QDB_TELEMETRY_ENABLED: "false"   # drop anonymous usage telemetry
       QDB_METRICS_ENABLED: "true"      # expose Prometheus metrics on :9003
       TZ: ${TZ}
+    # QuestDB is mmap/file-descriptor heavy. The default container nofile cap
+    # (524288) is below QuestDB's recommended 1048576 (it warns in the console);
+    # raise it here. Host needs vm.max_map_count>=1048576 (see questdb/README.md).
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     ports:
       - "8812:8812"   # Postgres wire (SQL queries) — password-auth
       - "9009:9009"   # InfluxDB Line Protocol /TCP (live/bulk ingest)
