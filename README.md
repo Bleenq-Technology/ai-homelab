@@ -163,7 +163,8 @@ docker/
 ├── monitoring/  compose.monitoring.yml  + prometheus/ grafana/ loki/ … configs
 └── ai/          compose.ai.yml          + searxng/ … configs
 host/                        # host-level (non-Docker) services
-└── unsloth/                 # unsloth LLM systemd unit + override (256k context) — see its README
+├── unsloth/                 # unsloth LLM systemd unit + override (256k context)
+└── wireguard/               # EdgeRouter WireGuard VPN — topology, peers, EdgeOS config, gotchas
 kubernetes/                  # reserved for a future migration
 ```
 
