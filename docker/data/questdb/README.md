@@ -53,6 +53,15 @@ Provisioned datasource **QuestDB** (type `postgres`, `questdb:8812`, db `qdb`),
 reached over the shared `proxy` network. Credentials injected from
 `QUESTDB_PG_USER` / `QUESTDB_PG_PASSWORD` (Infisical → `.env` → grafana env).
 
+## Host tuning (mmap / file descriptors)
+QuestDB is mmap- and file-descriptor-heavy and warns in its web console if limits are low:
+- **`vm.max_map_count` ≥ 1048576** — set on the host (jarvis default 65530 is too low) via
+  `/etc/sysctl.d/99-questdb.conf`:  `vm.max_map_count=1048576`, then `sudo sysctl --system`.
+- **Per-container open files** — compose sets `ulimits.nofile` to `1048576` (the default cap
+  of 524288 is below QuestDB's recommendation; the effective limit is
+  `min(fs.file-max, nofile)`). `fs.file-max` is left at the kernel default (effectively
+  unlimited) — do **not** lower it below a single process's nofile.
+
 ## Security
 - **Console:** SSO-gated via Traefik. REST/console port 9000 not host-exposed.
 - **Queries:** Postgres-wire requires the `QUESTDB_PG_PASSWORD`.
