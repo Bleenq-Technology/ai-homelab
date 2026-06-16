@@ -19,6 +19,7 @@ volumes:
   grafana_data:
   loki_data:
   uptime_kuma_data:
+  promtail_positions:
 
 services:
 
@@ -122,8 +123,14 @@ services:
     networks: [monitoring]
     volumes:
       - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Docker service discovery: enumerate containers + read their logs via the API
+      # (replaces tailing /var/lib/docker/containers/*-json.log — gives clean
+      # container/compose labels instead of parsing raw JSON files).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./promtail:/etc/promtail:ro
+      # Persist read positions so a restart resumes instead of re-ingesting all
+      # container log history (which bursts past Loki's ingestion rate limit).
+      - promtail_positions:/promtail
     command: -config.file=/etc/promtail/promtail.yml
 
   # ---- cAdvisor (per-container metrics) -----------------------------------
