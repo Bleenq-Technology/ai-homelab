@@ -144,7 +144,6 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **MLflow** | `mlflow.…` | ML experiment tracking + model registry | 🛡️ (UI) |
 | **Wyoming Piper/Whisper** | `tcp :10200/:10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 |
 | *Postgres · Redis* | internal | Unified DB / cache (no UI) | — |
-| *Firezone* | *deferred* | VPN (EOL image; replacing) | — |
 
 **AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`)
 on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI** for
@@ -214,7 +213,9 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 
 ## Known / deferred
 
-- **Firezone** deferred — the 0.7 image is EOL; replacing with a modern SSO-integrated VPN.
+- **Firezone removed** — the 0.7 image is EOL; remote access is now WireGuard on the
+  EdgeRouter (see [host/wireguard/](host/wireguard/README.md)). cadvisor likewise removed
+  (replaced by Telegraf's Docker input).
 - **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin —
   these keep local logins (can be forward-auth gated later). Traefik dashboard stays on
   basic-auth as a break-glass.
