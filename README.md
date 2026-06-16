@@ -162,6 +162,8 @@ docker/
 ├── data/        compose.data.yml        + postgres/init, clickhouse/keeper, …
 ├── monitoring/  compose.monitoring.yml  + prometheus/ grafana/ loki/ … configs
 └── ai/          compose.ai.yml          + searxng/ … configs
+host/                        # host-level (non-Docker) services
+└── unsloth/                 # unsloth LLM systemd unit + override (256k context) — see its README
 kubernetes/                  # reserved for a future migration
 ```
 
