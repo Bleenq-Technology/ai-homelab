@@ -12,7 +12,7 @@ back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` 
 | **GPU — RTX 3090** | `jarvis-gpu` | GPU deep-dive: utilisation, VRAM used/free/total, temperature, power, fan, core/SM/memory clocks | `nvidia-gpu-exporter` |
 | **Service Traffic (Traefik)** | `jarvis-traffic` | Per-service request rate, p95 latency, status codes, error rates (OpenWebUI, LiteLLM, Langfuse, …) | `traefik` metrics |
 | **Node Exporter Full** | `rYdddlPWk` | Comprehensive host deep-dive (CPU, memory, disk, filesystem, network, processes) | `node-exporter` |
-| **Docker Monitoring** | _(existing)_ | Per-container CPU/memory/network | `cadvisor` |
+| **Containers (Docker)** | `jarvis-containers` | Per-container CPU %, memory, network & block I/O (by name), + a usage table | `telegraf` (docker input) |
 
 ## Metric sources
 
@@ -25,7 +25,13 @@ back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` 
     `clocks_event_reasons_counters.sync_boost [us]` (invalid Prometheus metric name). Fixed by
     pinning an explicit `--query-field-names=...` list (see the compose service).
 - **Service traffic** — `traefik` metrics entrypoint (`traefik_service_*`), already scraped.
-- **Containers** — `cadvisor` (`container_*`), already scraped.
+- **Containers** — `telegraf` (`job=telegraf`, `docker_container_*`), reading the Docker Engine API
+  via `docker.sock`. **Replaced cadvisor**, whose Docker factory can't map cgroups → names when
+  Docker uses the **containerd image store** (it looks for an overlay2 `layerdb` that doesn't exist,
+  spamming "failed to identify read-write layer" and producing nameless series). Telegraf's docker
+  input gets per-container CPU/mem/net/blkio **with the friendly `container_name` + compose labels**,
+  independent of the storage driver. Needs the host `docker` group (`group_add: ["980"]`) to read
+  the socket — adjust the gid (`stat -c %g /var/run/docker.sock`) if rebuilding on another host.
 
 ## LLM / AI observability
 
