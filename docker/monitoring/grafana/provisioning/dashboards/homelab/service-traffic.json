@@ -1,0 +1,59 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": "-- Grafana --", "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jarvis", "traefik", "traffic"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Service Traffic (Traefik)",
+  "uid": "jarvis-traffic",
+  "panels": [
+    { "type": "text", "title": "", "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+      "options": { "mode": "markdown", "content": "HTTP traffic per service as seen by Traefik (request rate, latency, status codes). **LLM-level analytics** — prompts, completions, tokens, cost, traces — live in **Langfuse** (`langfuse.pdx.sanctioned.tech`); every OpenWebUI/LiteLLM call is traced there. This board shows the request *flow* through the proxy." } },
+
+    { "type": "stat", "title": "Total Requests/s", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 6, "x": 0, "y": 3 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum(rate(traefik_service_requests_total[5m]))", "refId": "A" } ] },
+
+    { "type": "stat", "title": "5xx Errors/s", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 6, "x": 6, "y": 3 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.1 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[5m]))", "refId": "A" } ] },
+
+    { "type": "stat", "title": "4xx Errors/s", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 6, "x": 12, "y": 3 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.5 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum(rate(traefik_service_requests_total{code=~\"4..\"}[5m]))", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Active Services", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 6, "x": 18, "y": 3 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "count(count by (service) (traefik_service_requests_total))", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Request Rate by Service", "datasource": "Prometheus", "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never", "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum by (service) (rate(traefik_service_requests_total[5m]))", "legendFormat": "{{service}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "p95 Latency by Service", "datasource": "Prometheus", "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "histogram_quantile(0.95, sum by (service, le) (rate(traefik_service_request_duration_seconds_bucket[5m])))", "legendFormat": "{{service}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Responses by Status Code", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "bars", "fillOpacity": 60, "showPoints": "never", "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum by (code) (rate(traefik_service_requests_total[5m]))", "legendFormat": "{{code}}", "refId": "A" } ] },
+
+    { "type": "table", "title": "Traffic by Service (last 5m avg)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "align": "auto" } }, "overrides": [] },
+      "options": { "showHeader": true, "sortBy": [ { "displayName": "Value", "desc": true } ] },
+      "targets": [ { "datasource": "Prometheus", "expr": "sort_desc(sum by (service) (rate(traefik_service_requests_total[5m])))", "format": "table", "instant": true, "refId": "A" } ],
+      "transformations": [ { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true }, "renameByName": { "service": "Service", "Value": "Req/s" } } } ] }
+  ]
+}

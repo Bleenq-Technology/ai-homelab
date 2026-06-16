@@ -12,6 +12,10 @@ litellm_settings:
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]
   drop_params: true
+  # Note: LiteLLM's Prometheus /metrics emission is gated behind an enterprise
+  # license (OSS loads the callback but emits nothing), so LLM-level analytics
+  # live in Langfuse instead. Grafana covers LLM *traffic* via Traefik router
+  # metrics + per-container resource usage via cAdvisor.
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY      # clients send: Authorization: Bearer <master key>
