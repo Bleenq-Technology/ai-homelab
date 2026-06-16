@@ -227,6 +227,13 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB_TASK: "2"
       REDIS_DB_CACHE: "3"
+      # Shared Mailjet SMTP (password reset / notifications) — creds from Infisical
+      EMAIL_SERVER: ${SMTP_HOST}
+      EMAIL_PORT: ${SMTP_PORT}
+      EMAIL_USERNAME: ${SMTP_USER}
+      EMAIL_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_USE_TLS: "true"
+      EMAIL_FROM: ${SMTP_FROM}
       TZ: ${TZ}
     volumes:
       - ./netbox/config:/config

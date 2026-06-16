@@ -39,3 +39,25 @@ docker exec keycloak /opt/keycloak/bin/kcadm.sh create clients/<id>/client-secre
 ```
 
 Recreate the user (`paul`) and set a password with `create users` / `set-password`.
+
+## Email / SMTP (password reset, verification)
+
+The realm sends mail via **Mailjet** using the shared `SMTP_*` creds (Infisical →
+`.env`), with **password reset** and **email verification** enabled. Apply (or
+re-apply after a realm rebuild) with the idempotent helper:
+
+```bash
+./core/keycloak/configure-smtp.sh      # run from /opt/homelab
+```
+
+It reads `SMTP_*` + the admin creds from `.env` and sets `realms/homelab`
+`smtpServer` + `resetPasswordAllowed` + `verifyEmail` via `kcadm`.
+
+**Notes & gotchas:**
+- kcadm can't set the `smtpServer` map with `-s key.subkey=...` and `--fields
+  smtpServer` won't echo a nested map back — the script applies a JSON file with
+  `-f` (read the *full* realm to verify, not `--fields`).
+- The `SMTP_FROM` address must be a **Mailjet-verified sender** or mail is rejected.
+- Mailjet SMTP: port **587**, **StartTLS** (`ssl=false`, `starttls=true`),
+  `user` = API key, `password` = secret key.
+- The same `SMTP_*` creds are reused by Grafana, NetBox, and Baserow.
