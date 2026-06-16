@@ -13,6 +13,8 @@ back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` 
 | **Service Traffic (Traefik)** | `jarvis-traffic` | Per-service request rate, p95 latency, status codes, error rates (OpenWebUI, LiteLLM, Langfuse, …) | `traefik` metrics |
 | **Node Exporter Full** | `rYdddlPWk` | Comprehensive host deep-dive (CPU, memory, disk, filesystem, network, processes) | `node-exporter` |
 | **Containers (Docker)** | `jarvis-containers` | Per-container CPU %, memory, network & block I/O (by name), + a usage table | `telegraf` (docker input) |
+| **Postgres** | `jarvis-postgres` | Status, connections vs max, cache-hit ratio, transactions/sec, connections + sizes per database, deadlocks/temp | `postgres-exporter` |
+| **Redis** | `jarvis-redis` | Status, memory, clients, ops/sec, keyspace hit ratio, keys per DB, hits/misses, network I/O, evictions | `redis-exporter` |
 
 ## Metric sources
 
@@ -32,6 +34,16 @@ back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` 
   input gets per-container CPU/mem/net/blkio **with the friendly `container_name` + compose labels**,
   independent of the storage driver. Needs the host `docker` group (`group_add: ["980"]`) to read
   the socket — adjust the gid (`stat -c %g /var/run/docker.sock`) if rebuilding on another host.
+- **Postgres** — `postgres-exporter` (`job=postgres-exporter`, `pg_*`), already scraped. Worth a
+  dashboard because it's the shared backbone (Keycloak, NetBox, Infisical, Baserow, Langfuse, n8n…).
+- **Redis** — `redis-exporter` (`oliver006/redis_exporter`, `job=redis`, `redis_*`), added in
+  [compose.monitoring.yml](../../../compose.monitoring.yml); reads via `REDIS_PASSWORD`.
+
+> **Deliberately not dashboarded:** **Qdrant** exposes native `/metrics` but it requires an
+> `api-key` *header* that Prometheus scrape configs can't send cleanly — not worth it for a leaf
+> RAG service. **Baserow** has no Prometheus endpoint; its container CPU/mem is already in the
+> Containers dashboard. The principle: dashboard things whose failure *cascades* (Postgres, Redis),
+> not every leaf service.
 
 ## LLM / AI observability
 
