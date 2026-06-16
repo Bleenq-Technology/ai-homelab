@@ -1,0 +1,18 @@
+# Reference copy of the base unit CREATED BY THE UNSLOTH STUDIO INSTALLER.
+# On jarvis it lives at /etc/systemd/system/unsloth-studio.service.
+# We don't author this — it's reproduced by installing Unsloth Studio. It's kept
+# here so the deployment is fully documented. Our customization is the drop-in
+# override in ./unsloth-studio.service.d/override.conf.
+[Unit]
+Description=Unsloth Studio LLM Server
+After=network-online.target
+
+[Service]
+Type=simple
+User=unsloth
+Environment=HOME=/opt/unsloth
+ExecStart=/opt/unsloth/.unsloth/studio/unsloth_studio/bin/unsloth run -H 0.0.0.0 -p 8888 --model unsloth/Qwen3.5-4B-GGUF
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
