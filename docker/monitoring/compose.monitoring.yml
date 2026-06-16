@@ -212,6 +212,15 @@ services:
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_SUPERUSER}:${POSTGRES_PASSWORD}@postgres:5432/postgres?sslmode=disable"
 
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.66.0
+    container_name: redis-exporter
+    restart: unless-stopped
+    networks: [data, monitoring]
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
   # clickhouse-exporter removed: the f1yegor image is unmaintained and panics on
   # startup. TODO: scrape ClickHouse's native Prometheus endpoint instead — enable
   # <prometheus> on :9363 via a config.d file, then add a clickhouse:9363 scrape job.
