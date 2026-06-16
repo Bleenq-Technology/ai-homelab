@@ -127,7 +127,7 @@ services:
 
   # ---- n8n — workflow automation ------------------------------------------
   n8n:
-    image: n8nio/n8n:1.74.1
+    image: n8nio/n8n:2.25.7
     container_name: n8n
     restart: unless-stopped
     networks: [proxy, ai, data]
@@ -138,6 +138,8 @@ services:
       N8N_EDITOR_BASE_URL: https://n8n.${DOMAIN}/
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       N8N_PROXY_HOPS: "1"
+      # Task runners are the standard code-execution path in n8n 2.x
+      N8N_RUNNERS_ENABLED: "true"
       GENERIC_TIMEZONE: ${TZ}
       TZ: ${TZ}
     volumes:
