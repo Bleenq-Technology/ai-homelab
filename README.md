@@ -29,8 +29,6 @@ request-time calls.
 
 ```mermaid
 flowchart TB
-    Net([Internet / LAN]) --> TR
-
     subgraph EDGE["① Edge"]
         TR["Traefik<br/>wildcard TLS"]
         AG["AdGuard<br/>DNS filtering"]
@@ -77,6 +75,7 @@ flowchart TB
     end
 
     %% edge + identity
+    Net([Internet / LAN]) --> TR
     TR --> APPS
     KC -. SSO .-> OW & PT & LF & GR
 
