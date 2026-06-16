@@ -8,7 +8,7 @@
 # Note: kcadm can't set the smtpServer map via `-s key.subkey=...`, and `--fields
 # smtpServer` won't echo a nested map back — so we apply a JSON file with `-f`.
 set -euo pipefail
-cd "$(dirname "$0")/../../.."   # -> /opt/homelab (where .env lives)
+cd "$(dirname "$0")/../.."   # core/keycloak -> deploy root (/opt/homelab, where .env lives)
 
 g() { grep "^$1=" .env | cut -d= -f2- | sed -E "s/^['\"]//;s/['\"]\$//"; }
 KC() { docker exec keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
