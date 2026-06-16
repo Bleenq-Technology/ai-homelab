@@ -161,6 +161,30 @@ services:
     volumes:
       - /:/host:ro,rslave
 
+  # ---- NVIDIA GPU Exporter (nvidia-smi -> Prometheus) ---------------------
+  # Scrapes the RTX 3090: utilisation, VRAM used/total, temp, power, clocks.
+  nvidia-gpu-exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.2.0
+    container_name: nvidia-gpu-exporter
+    restart: unless-stopped
+    networks: [monitoring]
+    # The `utility` driver capability mounts nvidia-smi + the management libs.
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: utility
+    # Pin an explicit field list: AUTO-discovery panics on newer nvidia-smi
+    # fields like "clocks_event_reasons_counters.sync_boost [us]" (invalid metric
+    # name). These cover util, VRAM, temp, power, fan, and clocks.
+    command:
+      - '--query-field-names=utilization.gpu,utilization.memory,memory.total,memory.used,memory.free,temperature.gpu,power.draw,fan.speed,clocks.current.graphics,clocks.current.sm,clocks.current.memory'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]
+
   # ---- Blackbox Exporter --------------------------------------------------
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.25.0

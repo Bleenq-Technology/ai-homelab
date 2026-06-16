@@ -1,0 +1,75 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": "-- Grafana --", "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jarvis", "gpu", "nvidia"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "GPU — RTX 3090",
+  "uid": "jarvis-gpu",
+  "panels": [
+    { "type": "gauge", "title": "GPU Utilization", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "showThresholdMarkers": true },
+      "targets": [ { "datasource": "Prometheus", "expr": "nvidia_smi_utilization_gpu_ratio * 100", "refId": "A" } ] },
+
+    { "type": "gauge", "title": "VRAM Used", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 95 } ] } }, "overrides": [] },
+      "options": { "showThresholdMarkers": true },
+      "targets": [ { "datasource": "Prometheus", "expr": "100 * (nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Temperature", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "celsius", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 83 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "nvidia_smi_temperature_gpu", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Power Draw", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "watt", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 250 }, { "color": "red", "value": 330 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "nvidia_smi_power_draw_watts", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Fan Speed", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 4, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "nvidia_smi_fan_speed_ratio * 100", "refId": "A" } ] },
+
+    { "type": "stat", "title": "SM Clock", "datasource": "Prometheus", "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "hertz", "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "nvidia_smi_clocks_current_sm_clock_hz", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Utilization %", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "nvidia_smi_utilization_gpu_ratio * 100", "legendFormat": "GPU", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "nvidia_smi_utilization_memory_ratio * 100", "legendFormat": "Memory controller", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "VRAM", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "nvidia_smi_memory_used_bytes", "legendFormat": "Used", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "nvidia_smi_memory_free_bytes", "legendFormat": "Free", "refId": "B" },
+        { "datasource": "Prometheus", "expr": "nvidia_smi_memory_total_bytes", "legendFormat": "Total", "refId": "C" } ] },
+
+    { "type": "timeseries", "title": "Temperature & Power", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [ { "matcher": { "id": "byName", "options": "Power" }, "properties": [ { "id": "unit", "value": "watt" }, { "id": "custom.axisPlacement", "value": "right" } ] }, { "matcher": { "id": "byName", "options": "Temp" }, "properties": [ { "id": "unit", "value": "celsius" } ] } ] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "nvidia_smi_temperature_gpu", "legendFormat": "Temp", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "nvidia_smi_power_draw_watts", "legendFormat": "Power", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Clocks", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "fieldConfig": { "defaults": { "unit": "hertz", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "nvidia_smi_clocks_current_graphics_clock_hz", "legendFormat": "Graphics", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "nvidia_smi_clocks_current_sm_clock_hz", "legendFormat": "SM", "refId": "B" },
+        { "datasource": "Prometheus", "expr": "nvidia_smi_clocks_current_memory_clock_hz", "legendFormat": "Memory", "refId": "C" } ] }
+  ]
+}
