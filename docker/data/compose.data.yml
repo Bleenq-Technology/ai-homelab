@@ -12,6 +12,7 @@ networks:
 
 volumes:
   postgres_data:
+  questdb_data:
 
 services:
 
@@ -63,6 +64,40 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # ---- QuestDB — time-series store for market/financial data --------------
+  # Dedicated TSDB, kept OUT of Prometheus/Loki (those are infra observability).
+  # Purpose-built for symbols / live feeds / historical bars: designated
+  # timestamps, time-partitioning, ASOF joins. Interfaces:
+  #   - 8812  Postgres wire — SQL queries (Grafana/pgAdmin/clients), password-auth
+  #   - 9009  InfluxDB Line Protocol /TCP — high-throughput live ingest
+  #   - 9000  HTTP (Web Console + REST + ILP/HTTP) — fronted by Traefik+SSO ONLY.
+  #           NOT host-published: its /exec REST endpoint runs arbitrary SQL with
+  #           no auth, so it must stay behind Keycloak. Ingest via 9009 or 8812.
+  #   - 9003  Prometheus metrics (scraped as job 'questdb' — service health, not data)
+  questdb:
+    image: questdb/questdb:9.4.3
+    container_name: questdb
+    restart: unless-stopped
+    networks: [proxy, data]
+    environment:
+      QDB_PG_USER: ${QUESTDB_PG_USER:-admin}
+      QDB_PG_PASSWORD: ${QUESTDB_PG_PASSWORD}
+      QDB_TELEMETRY_ENABLED: "false"   # drop anonymous usage telemetry
+      QDB_METRICS_ENABLED: "true"      # expose Prometheus metrics on :9003
+      TZ: ${TZ}
+    ports:
+      - "8812:8812"   # Postgres wire (SQL queries) — password-auth
+      - "9009:9009"   # InfluxDB Line Protocol /TCP (live/bulk ingest)
+    volumes:
+      - questdb_data:/var/lib/questdb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.questdb.rule=Host(`questdb.${DOMAIN}`)"
+      - "traefik.http.routers.questdb.entrypoints=websecure"
+      - "traefik.http.routers.questdb.tls=true"
+      - "traefik.http.routers.questdb.middlewares=secure-sso@file"
+      - "traefik.http.services.questdb.loadbalancer.server.port=9000"
 
   # ---- MinIO — S3-compatible object storage -------------------------------
   minio:

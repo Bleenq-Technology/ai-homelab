@@ -106,6 +106,9 @@ services:
       GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "'Admin'"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT: "false"
+      # QuestDB datasource creds (Postgres wire) — see provisioning/datasources
+      QUESTDB_PG_USER: ${QUESTDB_PG_USER:-admin}
+      QUESTDB_PG_PASSWORD: ${QUESTDB_PG_PASSWORD}
       # Shared Mailjet SMTP creds (referenced by grafana.ini via $__env{}); from Infisical
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
