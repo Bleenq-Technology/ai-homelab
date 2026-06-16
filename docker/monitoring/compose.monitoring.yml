@@ -33,7 +33,7 @@ services:
 
   # ---- Prometheus ---------------------------------------------------------
   prometheus:
-    image: prom/prometheus:v3.1.0
+    image: prom/prometheus:v3.11.3
     container_name: prometheus
     restart: unless-stopped
     networks: [proxy, monitoring]
@@ -57,7 +57,7 @@ services:
 
   # ---- Alertmanager -------------------------------------------------------
   alertmanager:
-    image: prom/alertmanager:v0.28.0
+    image: prom/alertmanager:v0.33.0
     container_name: alertmanager
     restart: unless-stopped
     networks: [proxy, monitoring]
@@ -79,7 +79,7 @@ services:
 
   # ---- Grafana ------------------------------------------------------------
   grafana:
-    image: grafana/grafana:11.4.0
+    image: grafana/grafana:13.0.2
     container_name: grafana
     restart: unless-stopped
     networks: [proxy, monitoring]
@@ -126,7 +126,7 @@ services:
 
   # ---- Loki ---------------------------------------------------------------
   loki:
-    image: grafana/loki:3.3.2
+    image: grafana/loki:3.7.2
     container_name: loki
     restart: unless-stopped
     networks: [monitoring]
@@ -136,7 +136,7 @@ services:
 
   # ---- Promtail (log shipper) ---------------------------------------------
   promtail:
-    image: grafana/promtail:3.3.2
+    image: grafana/promtail:3.6.11
     container_name: promtail
     restart: unless-stopped
     networks: [monitoring]
@@ -157,7 +157,7 @@ services:
   # so it gets real container names/compose labels even with the containerd
   # image store (which broke cadvisor's cgroup->name mapping). Prometheus format.
   telegraf:
-    image: telegraf:1.34-alpine
+    image: telegraf:1.39.0-alpine
     container_name: telegraf
     restart: unless-stopped
     networks: [monitoring]
@@ -170,7 +170,7 @@ services:
 
   # ---- Node Exporter (host metrics) ---------------------------------------
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.11.1
     container_name: node-exporter
     restart: unless-stopped
     networks: [monitoring]
@@ -183,7 +183,7 @@ services:
   # ---- NVIDIA GPU Exporter (nvidia-smi -> Prometheus) ---------------------
   # Scrapes the RTX 3090: utilisation, VRAM used/total, temp, power, clocks.
   nvidia-gpu-exporter:
-    image: utkuozdemir/nvidia_gpu_exporter:1.2.0
+    image: utkuozdemir/nvidia_gpu_exporter:1.4.1
     container_name: nvidia-gpu-exporter
     restart: unless-stopped
     networks: [monitoring]
@@ -206,7 +206,7 @@ services:
 
   # ---- Blackbox Exporter --------------------------------------------------
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.28.0
     container_name: blackbox-exporter
     restart: unless-stopped
     networks: [monitoring]
@@ -218,7 +218,7 @@ services:
 
   # ---- Exporters that read the data layer ---------------------------------
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.16.0
+    image: prometheuscommunity/postgres-exporter:v0.19.1
     container_name: postgres-exporter
     restart: unless-stopped
     networks: [data, monitoring]
@@ -226,7 +226,7 @@ services:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_SUPERUSER}:${POSTGRES_PASSWORD}@postgres:5432/postgres?sslmode=disable"
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.66.0
+    image: oliver006/redis_exporter:v1.86.0
     container_name: redis-exporter
     restart: unless-stopped
     networks: [data, monitoring]
@@ -239,7 +239,7 @@ services:
   # <prometheus> on :9363 via a config.d file, then add a clickhouse:9363 scrape job.
 
   adguard-exporter:
-    image: ebrianne/adguard-exporter:latest
+    image: ebrianne/adguard-exporter:v1.14
     container_name: adguard-exporter
     restart: unless-stopped
     networks: [proxy, monitoring]
@@ -250,20 +250,8 @@ services:
       ADGUARD_USERNAME: ${ADGUARD_USERNAME:-admin}
       ADGUARD_PASSWORD: ${ADGUARD_PASSWORD:-change_me_adguard}
 
-  # ---- Watchtower (auto-update labelled containers) -----------------------
-  watchtower:
-    image: containrrr/watchtower:1.7.1
-    container_name: watchtower
-    restart: unless-stopped
-    networks: [monitoring]
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      DOCKER_API_VERSION: "1.44"   # Engine 29 rejects watchtower's legacy default
-    command:
-      - '--interval=3600'
-      - '--cleanup'
-      - '--label-enable'
+  # Watchtower removed: containrrr/watchtower is archived (breaks on Docker 29+),
+  # and auto-updating images conflicts with the deliberate version-pinning policy.
 
   # ---- Uptime Kuma --------------------------------------------------------
   uptime-kuma:
