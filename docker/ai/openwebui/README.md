@@ -24,6 +24,10 @@
     flip `WEB_SEARCH_ENGINE` to `searxng` to use it.
   - `RAG_TEMPLATE` instructs the model to answer **only** from retrieved context and to say it
     could not find reliable sources when search is empty (curbs hallucination on weak results).
+  - Results go through **embed → Qdrant retrieve → top-k** (`BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=false`,
+    `WEB_SEARCH_RESULT_COUNT=4`), so only relevant chunks enter the prompt — multi-search chats stay
+    token-light. (We briefly used bypass/full-content injection to fix "no sources"; retrieval is the
+    better default now that Qdrant is wired and the unsloth context is large.)
 - Keycloak SSO (OIDC), merges onto existing accounts by email:
   - `ENABLE_OAUTH_SIGNUP=true`, `OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true`
   - `OAUTH_PROVIDER_NAME=Keycloak`, `OAUTH_CLIENT_ID=openwebui`, `OAUTH_CLIENT_SECRET=${OPENWEBUI_OIDC_CLIENT_SECRET}`
@@ -35,7 +39,7 @@
     `QDRANT_COLLECTION_PREFIX=open-webui`
   - Qdrant server pinned to `v1.16.1` to stay within one minor of Open WebUI's bundled 1.17 client
     (a wider gap logs an incompatibility warning).
-  - Note: web search **bypasses** retrieval (see above), so Qdrant backs *uploaded docs/Knowledge*.
+  - Qdrant backs both **uploaded docs/Knowledge** and **web-search retrieval** (bypass is off).
 - **Redis** (shared instance, DB 2) for the websocket manager + app cache:
   - `REDIS_URL` / `WEBSOCKET_REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/2`,
     `WEBSOCKET_MANAGER=redis`, `ENABLE_WEBSOCKET_SUPPORT=true`
