@@ -33,6 +33,7 @@ create_db_and_role netbox    netbox    "${NETBOX_DB_PASSWORD}"
 create_db_and_role infisical infisical "${INFISICAL_DB_PASSWORD}"
 create_db_and_role baserow   baserow   "${BASEROW_DB_PASSWORD}"
 create_db_and_role langfuse  langfuse  "${LANGFUSE_DB_PASSWORD}"
+create_db_and_role n8n       n8n       "${N8N_DB_PASSWORD}"
 create_db_and_role firezone  firezone  "${FIREZONE_DB_PASSWORD:-change_me_firezone_db}"
 
 echo "==> per-service databases ready"
