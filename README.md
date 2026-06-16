@@ -22,30 +22,81 @@ all defined as modular Docker Compose and fronted by Traefik with automatic wild
 
 ## Architecture
 
+Read it **bottom-up**: every application persists to the shared **data layer**, sits behind
+**identity** and the **edge** proxy, and is observed by the **cross-cutting monitoring** stack.
+Solid arrows are hard runtime dependencies (won't start / function without); dotted arrows are
+request-time calls.
+
 ```mermaid
-flowchart TD
-    Net([Internet / LAN]) --> TR[Traefik v3<br/>wildcard TLS · EasyDNS DNS-01]
-    subgraph core[core]
-      KC[Keycloak] & PT[Portainer] & INF[Infisical] & NB[NetBox] & AG[AdGuard]
+flowchart TB
+    Net([Internet / LAN]) --> TR
+
+    subgraph EDGE["① Edge"]
+        TR["Traefik<br/>wildcard TLS"]
+        AG["AdGuard<br/>DNS filtering"]
     end
-    subgraph data[data]
-      PG[(Postgres)] & RD[(Redis)] & MIN[(MinIO S3)] & CH[(ClickHouse)] & BR[Baserow] & PGA[pgAdmin]
+
+    subgraph IDENT["② Identity &amp; Secrets"]
+        KC["Keycloak<br/>SSO · forward-auth"]
+        INF["Infisical<br/>secrets"]
     end
-    subgraph mon[monitoring]
-      PR[Prometheus] & GR[Grafana] & LK[Loki] & AM[Alertmanager] & UK[Uptime Kuma]
+
+    subgraph APPS["③ Applications"]
+        OW["Open WebUI"]
+        LL["LiteLLM"]
+        CF["ComfyUI"]
+        LF["Langfuse"]
+        MLF["MLflow"]
+        N8["n8n"]
+        SX["SearXNG"]
+        FL["Flowise"]
+        NB["NetBox"]
+        BR["Baserow"]
+        PT["Portainer"]
     end
-    subgraph ai[ai]
-      OW[Open WebUI] & LL[LiteLLM] & N8[n8n] & CF[ComfyUI] & QD[Qdrant] & NEO[Neo4j] & LF[Langfuse] & MLF[MLflow] & SX[SearXNG]
+
+    subgraph LLMB["④ LLM backend · GPU (host)"]
+        UNS["unsloth<br/>Qwen3.5-4B · 256k ctx"]
     end
-    TR --> core & data & mon & ai
-    OW -. LLM .-> LL -. OpenAI API .-> UNS[unsloth · host:8888]
+
+    subgraph DATA["⑤ Data layer"]
+        PG[("Postgres")]
+        RD[("Redis")]
+        QD[("Qdrant")]
+        MIN[("MinIO S3")]
+        CH[("ClickHouse")]
+        NEO[("Neo4j")]
+    end
+
+    subgraph MON["Monitoring · cross-cutting"]
+        PR["Prometheus<br/>+ exporters"]
+        GR["Grafana"]
+        LK["Loki"]
+        UK["Uptime Kuma"]
+        AM["Alertmanager"]
+    end
+
+    %% edge + identity
+    TR --> APPS
+    KC -. SSO .-> OW & PT & LF & GR
+
+    %% AI request path
+    OW --> LL --> UNS
     LL -. traces .-> LF
     OW -. images .-> CF
-    OW -. web search .-> TAV([Tavily])
-    OW -. doc vectors .-> QD
-    OW -. ws / cache .-> RD
+    OW -. web search .-> SX
+    OW -. RAG .-> QD
+
+    %% data-layer dependencies (who persists where)
+    KC & NB & INF & BR & N8 & MLF --> PG
+    INF & NB & BR & SX & OW --> RD
     LF --> PG & CH & RD & MIN
-    MLF -. tracking .-> PG & MIN
+    MLF --> MIN
+
+    %% monitoring spans the whole stack
+    PR -. scrape .-> APPS & DATA & LLMB
+    LK -. logs .-> APPS
+    UK -. probe .-> EDGE & DATA
 ```
 
 - **One reverse proxy, one cert.** Traefik issues a single Let's Encrypt **wildcard**
