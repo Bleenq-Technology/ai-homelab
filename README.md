@@ -6,7 +6,8 @@ all defined as modular Docker Compose and fronted by Traefik with automatic wild
 
 ![Status](https://img.shields.io/badge/status-operational-brightgreen)
 ![Containers](https://img.shields.io/badge/containers-40%20running-blue)
-![Web services](https://img.shields.io/badge/web%20routes-22%2F22-blue)
+![Web routes](https://img.shields.io/badge/web%20routes-26-blue)
+![Images](https://img.shields.io/badge/images-pinned-success)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-v2-2496ED?logo=docker&logoColor=white)
 ![Traefik](https://img.shields.io/badge/Traefik-v3.7-24A1C1?logo=traefikproxy&logoColor=white)
 ![TLS](https://img.shields.io/badge/TLS-Let's%20Encrypt%20wildcard-003A70?logo=letsencrypt&logoColor=white)
@@ -14,9 +15,10 @@ all defined as modular Docker Compose and fronted by Traefik with automatic wild
 ![Host](https://img.shields.io/badge/host-jarvis%20·%20Ubuntu-E95420?logo=ubuntu&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Status:** Operational on `jarvis` — last verified **2026-06-16**. 40 containers running,
-> GPU passthrough confirmed, Open WebUI wired to a local unsloth LLM + ComfyUI. **All images
-> pinned to stable/secure versions** (audited for CVEs/EOL) — no mutable `:latest`/`:main` tags.
+> **Status:** Operational on `jarvis` — last verified **2026-06-16**. 40 containers, 26 web
+> routes behind the wildcard cert, GPU passthrough confirmed, Open WebUI wired to a local
+> unsloth LLM + ComfyUI. **All images pinned to stable/secure versions** (audited for CVEs/EOL;
+> no mutable `:latest`/`:main` tags). Metric alerting → Discord is live.
 
 ---
 
@@ -25,38 +27,44 @@ all defined as modular Docker Compose and fronted by Traefik with automatic wild
 Read it **bottom-up**: every application persists to the shared **data layer**, sits behind
 **identity** and the **edge** proxy, and is observed by the **cross-cutting monitoring** stack.
 Solid arrows are hard runtime dependencies (won't start / function without); dotted arrows are
-request-time calls.
+request-time calls. External services are grey.
 
 ```mermaid
 flowchart TB
+    Net([Internet / LAN])
+    DISC([Discord]):::ext
+    TAV([Tavily]):::ext
+    TE([trading-engine]):::ext
+
     subgraph EDGE["① Edge"]
-        TR["Traefik<br/>wildcard TLS"]
-        AG["AdGuard<br/>DNS filtering"]
+        TR["Traefik · wildcard TLS"]
+        AG["AdGuard · DNS"]
     end
-
     subgraph IDENT["② Identity &amp; Secrets"]
-        KC["Keycloak<br/>SSO · forward-auth"]
-        INF["Infisical<br/>secrets"]
+        KC["Keycloak · OIDC / forward-auth"]
+        INF["Infisical · secrets"]
     end
-
     subgraph APPS["③ Applications"]
-        OW["Open WebUI"]
-        LL["LiteLLM"]
-        CF["ComfyUI"]
-        LF["Langfuse"]
-        MLF["MLflow"]
-        N8["n8n"]
-        SX["SearXNG"]
-        FL["Flowise"]
-        NB["NetBox"]
-        BR["Baserow"]
-        PT["Portainer"]
+        subgraph AILLM["AI / LLM"]
+            OW["Open WebUI"]
+            LL["LiteLLM"]
+            CF["ComfyUI"]
+            SX["SearXNG"]
+            FL["Flowise"]
+            LF["Langfuse"]
+            MLF["MLflow"]
+            WY["Wyoming TTS / STT"]
+        end
+        subgraph AUTO["Automation / data-apps"]
+            N8["n8n"]
+            BR["Baserow"]
+            NB["NetBox"]
+            PT["Portainer"]
+        end
     end
-
     subgraph LLMB["④ LLM backend · GPU (host)"]
-        UNS["unsloth<br/>Qwen3.5-4B · 256k ctx"]
+        UNS["unsloth · Qwen3.5-4B · 256k ctx"]
     end
-
     subgraph DATA["⑤ Data layer"]
         PG[("Postgres")]
         RD[("Redis")]
@@ -64,26 +72,27 @@ flowchart TB
         MIN[("MinIO S3")]
         CH[("ClickHouse")]
         NEO[("Neo4j")]
+        QDB[("QuestDB · time-series")]
     end
-
     subgraph MON["Monitoring · cross-cutting"]
-        PR["Prometheus<br/>+ exporters"]
+        PR["Prometheus + exporters"]
         GR["Grafana"]
         LK["Loki"]
-        UK["Uptime Kuma"]
         AM["Alertmanager"]
+        UK["Uptime Kuma"]
     end
 
-    %% edge + identity
-    Net([Internet / LAN]) --> TR
-    TR --> APPS
-    KC -. SSO .-> OW & PT & LF & GR
+    %% ingress, DNS, SSO, secrets
+    Net --> TR --> APPS
+    Net -. DNS .-> AG
+    KC -. "OIDC / forward-auth" .-> APPS & GR & PR & AM
+    INF -. secrets .-> APPS
 
     %% AI request path
     OW --> LL --> UNS
     LL -. traces .-> LF
     OW -. images .-> CF
-    OW -. web search .-> SX
+    OW -. "web search" .-> SX & TAV
     OW -. RAG .-> QD
 
     %% data-layer dependencies (who persists where)
@@ -91,11 +100,17 @@ flowchart TB
     INF & NB & BR & SX & OW --> RD
     LF --> PG & CH & RD & MIN
     MLF --> MIN
+    TE -. "market data" .-> QDB
 
     %% monitoring spans the whole stack
-    PR -. scrape .-> APPS & DATA & LLMB
-    LK -. logs .-> APPS
-    UK -. probe .-> EDGE & DATA
+    PR -. scrape .-> DATA & APPS & LLMB & EDGE
+    APPS -. logs .-> LK
+    GR --> PR & LK & QDB
+    PR --> AM --> DISC
+    UK -. probe .-> APPS & DATA
+    UK --> DISC
+
+    classDef ext fill:#eeeeee,stroke:#999999,color:#333333;
 ```
 
 - **One reverse proxy, one cert.** Traefik issues a single Let's Encrypt **wildcard**
@@ -106,8 +121,9 @@ flowchart TB
   bring the whole lab up with one command or cycle a single layer.
 - **Segmented networks.** An external `proxy` edge network plus `data` / `ai` / `monitoring`
   segments; services join only what they need.
-- **Secure by construction.** Hardened middleware chain (HSTS, security headers, rate-limit,
-  compression), Docker secrets for the ACME DNS API, aligned credentials from a single `.env`.
+- **Pinned & secure by construction.** Every image pinned to an audited stable version,
+  hardened middleware chain (HSTS, security headers, rate-limit, compression), Docker secrets
+  for the ACME DNS API, and all credentials sourced from Infisical.
 
 ## Services
 
@@ -117,38 +133,39 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 
 | Service | URL | Purpose | Auth |
 |---------|-----|---------|------|
-| **Traefik** | `traefik.…/dashboard/` | Reverse proxy, wildcard TLS, routing | 🛡️ |
+| **Traefik** | `traefik.…/dashboard/` | Reverse proxy, wildcard TLS, routing | 🛡️ / 🧰 |
 | **Keycloak** | `keycloak.…` | Identity provider (SSO) | 🔒 (is the IdP) |
+| **Infisical** | `infisical.…` | Secrets — source of truth | 🔒 |
 | **Portainer** | `portainer.…` | Docker management UI | 🔑 OAuth |
-| **Infisical** | `infisical.…` | Secrets management | 🔒 |
 | **NetBox** | `netbox.…` | IPAM / DCIM | 🔒 |
 | **AdGuard** | `adguard.…` | Network DNS + ad-blocking | 🔒 |
+| **Postgres** | internal | Unified relational DB (per-service DBs) | — |
+| **Redis** | internal | Shared cache / queues (per-service DBs) | — |
 | **MinIO** | `minio.…` / `s3.…` | S3 object storage (console / API) | 🔒 |
-| **ClickHouse** | `clickhouse.…` | OLAP DB (Langfuse analytics backend) | 🔒 |
-| **Baserow** | `baserow.…` | No-code database | 🔒 |
+| **ClickHouse** | `clickhouse.…` | OLAP DB (Langfuse backend); native Prom metrics | 🔒 |
+| **QuestDB** | `questdb.…` | Time-series DB — market/trading data (PG-wire) | 🛡️ console · 🎟️ PG-wire |
+| **Neo4j** | `neo4j.…` | Graph database | 🔒 |
+| **Baserow** | `baserow.…` | No-code database + REST API | 🔒 |
 | **pgAdmin** | `pgadmin.…` | Postgres admin UI | 🔒 |
 | **Grafana** | `grafana.…` | Metrics dashboards | 🔑 OIDC |
-| **Prometheus** | `prometheus.…` | Metrics collection | 🛡️ |
-| **Alertmanager** | `alertmanager.…` | Alert routing | 🛡️ |
-| **Uptime Kuma** | `uptime.…` | Uptime / status monitoring (+ Discord alerts) | 🛡️ |
-| **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI), Tavily web search, Qdrant RAG | 🔑 OIDC |
+| **Prometheus** | `prometheus.…` | Metrics collection + alert rules | 🛡️ |
+| **Alertmanager** | `alertmanager.…` | Alert routing → Discord | 🛡️ |
+| **Uptime Kuma** | `uptime.…` | Uptime / status monitoring (→ Discord) | 🛡️ |
+| **Open WebUI** | `openwebui.…` | LLM chat (→ unsloth + ComfyUI), Tavily search, Qdrant RAG | 🔑 OIDC |
 | **LiteLLM** | `litellm.…` | LLM gateway → unsloth, auto-traces to Langfuse | 🎟️ master key |
-| **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |
 | **ComfyUI** | `comfyui.…` | Image generation (GPU) | 🛡️ |
-| **Jupyter** | `jupyter.…` | Notebooks | 🎟️ token |
+| **SearXNG** | `searxng.…` | Privacy meta-search (web-search fallback) | 🛡️ |
 | **Flowise** | `flowise.…` | LLM workflow builder | 🔒 (OIDC = paid) |
-| **Qdrant** | `qdrant.…` | Vector database (backs Open WebUI document/Knowledge RAG) | 🎟️ API key |
-| **Neo4j** | `neo4j.…` | Graph database | 🔒 |
-| **SearXNG** | `searxng.…` | Privacy meta-search (self-hosted web-search fallback) | 🛡️ |
-| **Langfuse** | `langfuse.…` | LLM observability/tracing | 🔑 OIDC |
+| **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |
+| **Langfuse** | `langfuse.…` | LLM observability / tracing | 🔑 OIDC |
 | **MLflow** | `mlflow.…` | ML experiment tracking + model registry | 🛡️ (UI) |
-| **Wyoming Piper/Whisper** | `tcp :10200/:10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 |
-| *Postgres · Redis* | internal | Unified DB / cache (no UI) | — |
+| **Qdrant** | `qdrant.…` | Vector DB (backs Open WebUI document/Knowledge RAG) | 🎟️ API key |
+| **Wyoming Piper/Whisper** | `tcp :10200 / :10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 LAN |
 
-**AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`)
-on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI** for
-image generation, → **Tavily** for web search, and → **Qdrant** for document/Knowledge RAG, with
-**Redis** as the websocket manager / cache.
+**AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`,
+256k ctx) on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI**
+for image generation, → **Tavily** for web search (→ embed → **Qdrant** retrieval), and **Qdrant**
+for document/Knowledge RAG, with **Redis** as the websocket manager / cache.
 
 ## Repository layout
 
@@ -157,10 +174,10 @@ docker/
 ├── compose.yml              # root — includes the four layer files
 ├── .env.example             # credential template (real .env is host-local, gitignored)
 ├── secrets/                 # EasyDNS API token/key (gitignored) — see secrets/README.md
-├── core/        compose.core.yml        + traefik/ keycloak/ … configs
-├── data/        compose.data.yml        + postgres/init, clickhouse/keeper, …
-├── monitoring/  compose.monitoring.yml  + prometheus/ grafana/ loki/ … configs
-└── ai/          compose.ai.yml          + searxng/ … configs
+├── core/        compose.core.yml        + traefik/ keycloak/ infisical/ netbox/ adguard/ …
+├── data/        compose.data.yml        + postgres/init, clickhouse/, questdb/, minio/ …
+├── monitoring/  compose.monitoring.yml  + prometheus/ grafana/ loki/ alertmanager/ …
+└── ai/          compose.ai.yml          + openwebui/ litellm/ comfyui/ langfuse/ searxng/ …
 host/                        # host-level (non-Docker) services
 ├── unsloth/                 # unsloth LLM systemd unit + override (256k context)
 └── wireguard/               # EdgeRouter WireGuard VPN — topology, peers, EdgeOS config, gotchas
@@ -194,36 +211,36 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [x] Open WebUI ↔ unsloth + ComfyUI integration
 - [x] EdgeRouter internal DNS for all service hostnames
 - [x] **Keycloak SSO** — `homelab` realm; native OIDC (Grafana, Open WebUI, Portainer,
-      Langfuse) + `traefik-forward-auth` gating the no-auth services (incl. Uptime Kuma)
-- [x] **Observability** — Uptime Kuma (29 monitors + Discord alerts), Promtail→Loki log
-      shipping (Docker SD), and provisioned Grafana dashboards: Jarvis Overview (host + GPU),
-      GPU (RTX 3090 via `nvidia-gpu-exporter`), Service Traffic (Traefik), Node Exporter Full
-- [x] **Metric alerting → Discord** — Prometheus rules + Alertmanager dispatch to the
-      Discord channel: GPU/CPU temperature, disk usage, host-memory pressure, container
-      OOM-kills / restart-loops, Postgres connection saturation, Redis memory
-      (see [docker/monitoring/alertmanager/](docker/monitoring/alertmanager/README.md))
-- [ ] VPN for external access (NetBird — WireGuard + Keycloak SSO)
+      Langfuse) + `traefik-forward-auth` gating the no-auth services (Prometheus, ComfyUI, …)
+- [x] **Observability** — Uptime Kuma (28 monitors + Discord), Promtail→Loki (Docker SD), and
+      provisioned Grafana dashboards (host/GPU, GPU, service traffic, containers, Postgres,
+      Redis, ClickHouse) + a QuestDB datasource. ClickHouse & QuestDB expose native Prometheus
+      metrics.
+- [x] **Metric alerting → Discord** — Prometheus rules + Alertmanager dispatch: GPU/CPU
+      temperature, disk usage, host-memory pressure, container OOM-kills / restart-loops,
+      Postgres connections, Redis memory (see [docker/monitoring/alertmanager/](docker/monitoring/alertmanager/README.md))
+- [x] **VPN** — WireGuard on the EdgeRouter (4 peers, split-tunnel to the home LANs, internal
+      DNS over the tunnel; EasyDNS DDNS for the dynamic WAN). See [host/wireguard/](host/wireguard/README.md)
 - [x] **Secrets in Infisical** — all secrets in the `homelab` project; deploys pull via
-      `pull-secrets.sh`; `.env` is a generated artifact (bootstrap set kept out-of-band)
+      `pull-secrets.sh`; `.env` is a generated artifact (bootstrap kept out-of-band)
 - [x] **Backups** — nightly `pg_dumpall` (all DBs incl. Infisical's encrypted store) →
-      local (rotated) + MinIO, via `backup.sh` cron. *(ClickHouse, MinIO object data, and
-      off-host replication still TODO.)*
+      local (rotated) + MinIO, via `backup.sh` cron. *(ClickHouse, MinIO object data, QuestDB,
+      and off-host replication still TODO.)*
 - [x] **Images pinned (pre-dev hardening)** — audited all ~40 images (CVE/EOL via live
-      registries) and pinned to stable/secure versions; mutable `:latest`/`:main` removed;
-      Watchtower retired; comfyui moved off the unmaintained ai-dock build to
-      `mmartial/comfyui-nvidia-docker`
+      registries) and pinned to stable/secure versions; mutable `:latest`/`:main` removed
+- [ ] Migrate `traefik-forward-auth` → **oauth2-proxy** (the current image is archived)
 - [ ] Hardening (rotate defaults, restrict remaining surfaces) + off-host backup replication
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 
 ## Known / deferred
 
-- **Firezone removed** — the 0.7 image is EOL; remote access is now WireGuard on the
-  EdgeRouter (see [host/wireguard/](host/wireguard/README.md)). cadvisor likewise removed
-  (replaced by Telegraf's Docker input).
-- **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin —
-  these keep local logins (can be forward-auth gated later). Traefik dashboard stays on
-  basic-auth as a break-glass.
-- `clickhouse-exporter` removed (unmaintained image) — pending ClickHouse-native metrics.
+- **Removed:** Firezone (0.7 EOL → WireGuard on the EdgeRouter), cadvisor (→ Telegraf's Docker
+  input), **Watchtower** (archived; auto-updates conflict with pinned images), and **Jupyter**
+  (dropped). comfyui moved off the unmaintained ai-dock build to `mmartial/comfyui-nvidia-docker`.
+- **`traefik-forward-auth`** (thomseddon) is archived/unmaintained — flagged for migration to
+  **oauth2-proxy** wired to Keycloak (the `oauth2-proxy` realm client already exists).
+- **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin — these
+  keep local logins (can be forward-auth gated later). Traefik dashboard keeps break-glass basic-auth.
 
 ## License
 
