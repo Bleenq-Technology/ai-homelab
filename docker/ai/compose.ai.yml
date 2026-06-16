@@ -41,10 +41,11 @@ services:
       WEB_SEARCH_ENGINE: "tavily"
       TAVILY_API_KEY: ${TAVILY_API_KEY}
       SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
-      # Inject fetched web content straight into the prompt instead of the
-      # embed -> vector-retrieve -> relevance-filter round-trip, which was
-      # dropping every source for the small local model (UI showed "no sources").
-      BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL: "true"
+      # Route web-search results through the embed -> Qdrant retrieve -> top-k
+      # path (NOT bypass): only the most relevant chunks go into the prompt, so a
+      # multi-search conversation stays token-light. The big unsloth context (256k)
+      # plus the grounding template below keep it from dropping/hallucinating.
+      BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL: "false"
       WEB_SEARCH_RESULT_COUNT: "4"
       # Grounding template for retrieved web-search context: answer ONLY from the
       # context; if it's empty/insufficient, say so instead of hallucinating.
@@ -174,6 +175,9 @@ services:
       # :8188 proxies straight to the ComfyUI API (Keycloak SSO still gates the
       # Traefik route; OpenWebUI reaches it internally on the `ai` network).
       WEB_ENABLE_AUTH: "false"
+      # Offload models from VRAM when idle (frees ~6.5 GB for the LLM between
+      # image generations; first gen after idle reloads, slightly slower).
+      COMFYUI_ARGS: "--disable-smart-memory"
     deploy:
       resources:
         reservations:
