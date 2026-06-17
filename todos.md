@@ -31,8 +31,9 @@ A few conventions that apply to every item below:
   on jarvis regenerates `.env`. (Writing to Infisical from jarvis has two gotchas — Claude Code
   has them noted; ask it.)
 - **Quality bar:** pin image versions (no `latest`), GPU containers follow the ComfyUI pattern,
-  test the thing actually works before committing, and write a clear commit message. One commit
-  per TODO below.
+  test the thing actually works before committing, **scan staged changes for secrets before every
+  commit** (see TODO 6 — we're heading toward open-sourcing this), and write a clear commit message.
+  One commit per TODO below.
 
 ---
 
@@ -125,8 +126,55 @@ TODO 2.
 **Done when:** the MCP server starts and can create a collection + store/search vectors in Qdrant
 using BGE-M3 embeddings served through LiteLLM; committed.
 
+## 5. Evaluate replacing LiteLLM with Kong AI Gateway (free CE)
+
+**Why.** LiteLLM had a cluster of **actively-exploited critical CVEs** in 2026 — RCE
+`CVE-2026-42271` (in CISA's KEV catalog), unauth SQLi `CVE-2026-42208` (CVSS 9.3, exploited within
+36h), a CVSS 9.9 low-priv→host-RCE chain, and auth-bypass `CVE-2026-49468`. We're currently pinned
+to a **patched** `litellm:v1.89.1` (above the fixed `v1.83.14-stable`), so this is **not an
+emergency** — it's a trust / attack-surface decision after the project's rough security year.
+
+**Goal.** Decide whether to replace LiteLLM with **Kong AI Gateway (free CE/OSS)** as the unified
+OpenAI-compatible LLM gateway (used by Open WebUI, the future bge-m3 embeddings in TODO 2, the
+trading app, and the Qdrant MCP in TODO 4). Kong's `ai-proxy` plugin gives the same multi-provider
+OpenAI-compatible routing on a mature OpenResty core.
+
+**Evaluate / guard-rails.**
+- Confirm the **CE edition** covers our needs: OpenAI-compatible `/v1/chat/completions` **and**
+  `/v1/embeddings`, multiple upstreams (unsloth on the host, cloud providers, the bge-m3 container),
+  per-route API keys. Advanced bits (semantic cache, prompt guard, advanced rate-limit) are
+  **Enterprise** — confirm we don't depend on them.
+- Weigh **operational cost**: Kong is heavier than LiteLLM. Prefer **DB-less declarative** mode for a
+  homelab (no extra Postgres dependency).
+- Also glance at **Apache APISIX** (AI plugins) and **Portkey** as alternatives before deciding.
+- A swap touches everything pointing at `http://litellm:4000` (Open WebUI, the MCPs, TODOs #2 & #4).
+
+**Done when:** a short written recommendation (swap or stay, with a CE-feature-fit verdict); if
+swapping, Kong CE deployed DB-less on the `ai`/`proxy` networks, the OpenAI endpoints re-pointed and
+verified, LiteLLM removed — committed.
+
+## 6. Secrets hygiene — pre-commit scanning + pre-open-source history scrub
+
+**Why.** We intend to **open-source this stack** (with write-ups). Two gaps: nothing automated stops
+a secret reaching git, and the git **had one since-rotated secret, now scrubbed.**
+Realm-seed client secrets were always placeholders, never real.
+
+**Goal.** Make "no secret ever reaches git" enforceable, and clean existing history before going public.
+- **Pre-commit scanning:** wire up **`infisical scan`** (it's gitleaks under the hood) —
+  `infisical scan install --pre-commit-hook` for a local git hook, and/or an `infisical scan` step in
+  CI. Catches secrets *before* the commit lands.
+- **History audit:** run `infisical scan` / `gitleaks detect` over the **full history**; for every hit,
+  **rotate** the secret and **scrub** history (`git filter-repo` or BFG) before the repo is public.
+- **Discipline (every commit, starting now):** manually scan staged changes for secrets — the same pass
+  we did on the realm seed (client secrets, SMTP creds, private keys, high-entropy tokens). Claude Code
+  should do this automatically before any commit.
+
+**Done when:** the pre-commit hook is installed + documented, a clean full-history scan report exists,
+and any historical secrets are rotated + scrubbed — committed.
+
 ---
 
 _Tip for Jacob: start with #1 (self-contained, very visual, great for getting the deploy loop in
-your hands), then #2 (unblocks #4). Tell Claude Code the goal and the guard-rails above; let it
-draft the compose + config; review it with these notes; deploy; verify the "Done when"; commit._
+your hands), then #2 (unblocks #4). #5 and #6 are security/hygiene tracks — #6 should land before we
+publish anything. Tell Claude Code the goal and the guard-rails above; let it draft the compose +
+config; review it with these notes; deploy; verify the "Done when"; commit (after a secret scan)._
