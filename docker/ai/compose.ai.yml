@@ -423,6 +423,15 @@ services:
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       AWS_DEFAULT_REGION: us-east-1
       TZ: ${TZ}
+      # MLflow 3.x adds a FastAPI Host-header allow-list (DNS-rebinding guard) that
+      # otherwise 403s any host but localhost/private-IPs — rejecting both the public
+      # name (mlflow.${DOMAIN}) and internal experiment-logging callers (http://mlflow:5000).
+      # Setting the env var REPLACES the built-in defaults (it doesn't extend them), so an
+      # explicit list would also drop the localhost/private-IP patterns the healthcheck and
+      # in-cluster clients rely on. The guard is redundant here: Traefik only routes
+      # mlflow.${DOMAIN} to this container and oauth2-proxy (Keycloak) gates all browser
+      # access, so we disable it with "*".
+      MLFLOW_SERVER_ALLOWED_HOSTS: "*"
     command: >
       mlflow server --host 0.0.0.0 --port 5000
       --backend-store-uri postgresql://mlflow:${MLFLOW_DB_PASSWORD}@postgres:5432/mlflow
