@@ -92,7 +92,8 @@ services:
       - "traefik.http.routers.keycloak.rule=Host(`keycloak.${DOMAIN}`)"
       - "traefik.http.routers.keycloak.entrypoints=websecure"
       - "traefik.http.routers.keycloak.tls=true"
-      - "traefik.http.routers.keycloak.middlewares=secure-chain@file"
+      # SAMEORIGIN (not DENY) so the admin console's own same-origin iframes can load.
+      - "traefik.http.routers.keycloak.middlewares=secure-chain-frameable@file"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
 
   # ---- Portainer — Docker management UI -----------------------------------
