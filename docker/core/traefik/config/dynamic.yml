@@ -40,6 +40,27 @@ http:
           Server: ""
           X-Powered-By: ""
 
+    # ---- Security headers, but SAME-ORIGIN framing allowed ----
+    # Identical to security-headers except X-Frame-Options: SAMEORIGIN instead of DENY.
+    # Keycloak's admin console + login themes embed their OWN same-origin iframes (the
+    # 3p-cookies cookie-probe, the login-status session iframe); DENY blocks ALL framing
+    # and hangs the console with "Timeout when waiting for 3rd party check iframe message".
+    # SAMEORIGIN still blocks cross-origin framing (clickjacking), so it's the only relaxation.
+    security-headers-frameable:
+      headers:
+        stsSeconds: 63072000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+        customFrameOptionsValue: "SAMEORIGIN"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "camera=(), microphone=(), geolocation=(), payment=()"
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+
     # ---- Rate limiting (per source IP) ----
     rate-limit:
       rateLimit:
@@ -93,6 +114,15 @@ http:
       chain:
         middlewares:
           - security-headers
+          - rate-limit
+          - compress
+
+    # ---- secure-chain but permits same-origin framing — for Keycloak only ----
+    # (see security-headers-frameable). Every other service keeps DENY-by-default secure-chain.
+    secure-chain-frameable:
+      chain:
+        middlewares:
+          - security-headers-frameable
           - rate-limit
           - compress
 
