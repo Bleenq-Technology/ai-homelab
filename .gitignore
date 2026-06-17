@@ -3,3 +3,9 @@ local-notes/
 
 # Defensive: never commit a real root .env (the tracked templates are docker/.env.example)
 /.env
+
+# Piper/Whisper voice & model blobs — large binaries that live on the jarvis host
+# disk only (bind-mounted into the containers). Provenance is documented in
+# docker/ai/wyoming-piper/README.md; the binaries themselves never go in git.
+docker/ai/*/data/*.onnx
+docker/ai/*/data/*.onnx.json
