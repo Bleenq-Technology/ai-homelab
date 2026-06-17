@@ -7,13 +7,14 @@ the OIDC clients; `master` is kept for Keycloak admin only.
 
 - **Native OIDC** (the app talks to Keycloak directly): Grafana, Open WebUI,
   Portainer, Langfuse. Each has its own confidential client + redirect URI.
-- **Forward-auth** (for apps with no/weak SSO): `traefik-forward-auth` is a Keycloak
-  client (`oauth2-proxy`) that Traefik calls via the `sso@file` / `secure-sso@file`
-  middleware. On no session it 307-redirects to Keycloak; one shared cookie on
-  `.${DOMAIN}` gives SSO across all gated apps. Currently gates Prometheus,
-  Alertmanager, SearXNG, ComfyUI. Add more by setting their router middleware to
-  `secure-sso@file` **and** adding `https://<host>.<domain>/_oauth` to the
-  `oauth2-proxy` client's redirect URIs.
+- **Forward-auth** (for apps with no/weak SSO): **oauth2-proxy** (Keycloak client
+  `oauth2-proxy`) runs at the central auth domain `auth.${DOMAIN}`. Traefik calls it via the
+  `sso@file` / `secure-sso@file` middleware (forwardAuth → `/oauth2/auth`; on no session an
+  `errors` middleware rewrites the 401 to a 302 to Keycloak). One shared cookie on `.${DOMAIN}`,
+  backed by **Redis sessions**, gives SSO across all gated apps — Prometheus, Alertmanager,
+  SearXNG, ComfyUI, MLflow, the QuestDB/Traefik consoles, etc. Add more by simply setting a
+  router's middleware to `secure-sso@file` — **no per-host redirect URI needed**, since every
+  app shares the single callback `https://auth.${DOMAIN}/oauth2/callback`.
 - The **Traefik dashboard** stays on basic-auth as a deliberate break-glass.
 - **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth
   plugin — these keep local logins (or can be forward-auth gated later).

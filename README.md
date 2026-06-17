@@ -211,7 +211,7 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [x] Open WebUI ↔ unsloth + ComfyUI integration
 - [x] EdgeRouter internal DNS for all service hostnames
 - [x] **Keycloak SSO** — `homelab` realm; native OIDC (Grafana, Open WebUI, Portainer,
-      Langfuse) + `traefik-forward-auth` gating the no-auth services (Prometheus, ComfyUI, …)
+      Langfuse) + **oauth2-proxy** forward-auth gating the no-auth services (Prometheus, ComfyUI, …)
 - [x] **Observability** — Uptime Kuma (28 monitors + Discord), Promtail→Loki (Docker SD), and
       provisioned Grafana dashboards (host/GPU, GPU, service traffic, containers, Postgres,
       Redis, ClickHouse) + a QuestDB datasource. ClickHouse & QuestDB expose native Prometheus
@@ -223,13 +223,15 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
       DNS over the tunnel; EasyDNS DDNS for the dynamic WAN). See [host/wireguard/](host/wireguard/README.md)
 - [x] **Secrets in Infisical** — all secrets in the `homelab` project; deploys pull via
       `pull-secrets.sh`; `.env` is a generated artifact (bootstrap kept out-of-band)
-- [x] **Backups** — nightly `pg_dumpall` (all DBs incl. Infisical's encrypted store) →
-      local (rotated) + MinIO, via `backup.sh` cron. *(ClickHouse, MinIO object data, QuestDB,
-      and off-host replication still TODO.)*
+- [x] **Backups** — nightly `backup.sh` cron snapshots every datastore, each online-consistent:
+      Postgres `pg_dumpall`, ClickHouse native `BACKUP`, QuestDB `CHECKPOINT`, MinIO object store
+      → local (rotated) + MinIO. *(Off-host replication still TODO — local + MinIO share one disk.)*
 - [x] **Images pinned (pre-dev hardening)** — audited all ~40 images (CVE/EOL via live
       registries) and pinned to stable/secure versions; mutable `:latest`/`:main` removed
-- [ ] Migrate `traefik-forward-auth` → **oauth2-proxy** (the current image is archived)
-- [ ] Hardening (rotate defaults, restrict remaining surfaces) + off-host backup replication
+- [x] Migrated `traefik-forward-auth` → **oauth2-proxy** (Keycloak OIDC, central auth domain
+      `auth.${DOMAIN}`, Redis-backed sessions) — the archived image is gone
+- [x] Hardening — strong creds verified; QuestDB PG-wire/ILP pulled off the LAN (internal-only)
+- [ ] Off-host backup replication (local + MinIO currently share jarvis's disk)
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 
 ## Known / deferred
@@ -237,8 +239,9 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - **Removed:** Firezone (0.7 EOL → WireGuard on the EdgeRouter), cadvisor (→ Telegraf's Docker
   input), **Watchtower** (archived; auto-updates conflict with pinned images), and **Jupyter**
   (dropped). comfyui moved off the unmaintained ai-dock build to `mmartial/comfyui-nvidia-docker`.
-- **`traefik-forward-auth`** (thomseddon) is archived/unmaintained — flagged for migration to
-  **oauth2-proxy** wired to Keycloak (the `oauth2-proxy` realm client already exists).
+- **Forward-auth is now oauth2-proxy** (Keycloak OIDC, `homelab` realm), replacing the archived
+  `thomseddon/traefik-forward-auth`. Central auth domain `auth.${DOMAIN}`, Redis-backed sessions,
+  a single `/oauth2/callback` redirect URI, and `--cookie-csrf-per-request` (see Known issues).
 - **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin — these
   keep local logins (can be forward-auth gated later). Traefik dashboard keeps break-glass basic-auth.
 

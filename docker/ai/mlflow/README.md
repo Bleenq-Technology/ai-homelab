@@ -12,8 +12,11 @@
   — the server **proxies artifacts**, so clients do NOT need S3 credentials. The server reaches MinIO
   with `MLFLOW_S3_ENDPOINT_URL=http://minio:9000` + `AWS_ACCESS_KEY_ID/SECRET` (MinIO root creds).
 - **Command:** `mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://… --artifacts-destination s3://mlflow/ --serve-artifacts`.
-- **UI** routed at `mlflow.${DOMAIN}`, gated by `secure-sso@file`. `mlflow.pdx.sanctioned.tech/_oauth`
-  is registered on the `oauth2-proxy` Keycloak client.
+- **UI** routed at `mlflow.${DOMAIN}`, gated by `secure-sso@file` (oauth2-proxy / Keycloak) — no
+  per-host redirect URI needed; the shared `auth.${DOMAIN}/oauth2/callback` covers it.
+- **Host-header guard:** MLflow 3.x rejects unknown `Host` headers with `403` (DNS-rebinding
+  protection); `MLFLOW_SERVER_ALLOWED_HOSTS=*` is set so both the public host and internal
+  `http://mlflow:5000` callers work — safe here behind Traefik host-routing + SSO + private nets.
 - **DNS:** add `mlflow.pdx.sanctioned.tech → 192.168.2.10` on the EdgeRouter (static-host-mapping).
 
 ## Usage
