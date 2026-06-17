@@ -388,10 +388,13 @@ services:
     image: ghcr.io/berriai/litellm:v1.89.1
     container_name: litellm
     restart: unless-stopped
-    networks: [proxy, ai]
+    networks: [proxy, ai, data]   # data: Postgres for virtual-key store
     environment:
       UNSLOTH_API_KEY: ${UNSLOTH_API_KEY}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      # Postgres-backed key store — enables per-app virtual keys (/key/generate).
+      # LiteLLM runs its Prisma migrations against this DB on startup.
+      DATABASE_URL: postgresql://litellm:${LITELLM_DB_PASSWORD}@postgres:5432/litellm
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
       LANGFUSE_HOST: http://langfuse-web:3000
