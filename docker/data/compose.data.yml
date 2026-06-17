@@ -93,9 +93,11 @@ services:
       nofile:
         soft: 1048576
         hard: 1048576
-    ports:
-      - "8812:8812"   # Postgres wire (SQL queries) — password-auth
-      - "9009:9009"   # InfluxDB Line Protocol /TCP (live/bulk ingest)
+    # No host-published ports by design. 8812 (PG-wire) and 9009 (ILP) are reachable
+    # ONLY on the internal Docker network (questdb:8812 / questdb:9009) — the on-jarvis
+    # trading engine and Grafana connect that way. ILP has no auth in QuestDB OSS, so
+    # keeping it off the LAN is the security boundary. Console/REST (:9000) is exposed
+    # solely via Traefik + Keycloak SSO (labels below).
     volumes:
       - questdb_data:/var/lib/questdb
     labels:
