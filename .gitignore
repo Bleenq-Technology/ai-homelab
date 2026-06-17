@@ -1,0 +1,5 @@
+# Local-only working notes / runbooks / scratch — intentionally kept OUT of git
+local-notes/
+
+# Defensive: never commit a real root .env (the tracked templates are docker/.env.example)
+/.env
