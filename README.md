@@ -164,8 +164,8 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 
 **AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`,
 256k ctx) on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI**
-for image generation, → **Tavily** for web search (→ embed → **Qdrant** retrieval), and **Qdrant**
-for document/Knowledge RAG, with **Redis** as the websocket manager / cache.
+for image generation, → **Tavily** for web search (full results injected into the 256k context),
+and **Qdrant** for document/Knowledge RAG, with **Redis** as the websocket manager / cache.
 
 ## Repository layout
 
