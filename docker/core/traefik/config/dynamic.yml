@@ -3,6 +3,23 @@
 # Attach to any service with a single label:  traefik.http.routers.<r>.middlewares=secure-chain@file
 # ============================================================================
 http:
+  routers:
+    # oauth2-proxy serves the central auth domain AND the /oauth2/* paths on every
+    # host (high priority so /oauth2/ wins over a service's own host router). The
+    # wildcard *.pdx cert covers auth.pdx automatically.
+    oauth2-proxy:
+      rule: "Host(`auth.pdx.sanctioned.tech`) || PathPrefix(`/oauth2/`)"
+      entryPoints: ["websecure"]
+      service: oauth2-proxy
+      priority: 1000
+      tls: {}
+
+  services:
+    oauth2-proxy:
+      loadBalancer:
+        servers:
+          - url: "http://oauth2-proxy:4180"
+
   middlewares:
 
     # ---- Security headers (incl. HSTS) ----
@@ -34,16 +51,42 @@ http:
     compress:
       compress: {}
 
-    # ---- Keycloak SSO via traefik-forward-auth ----
-    # On no/expired session, TFA returns a 307 to Keycloak (relayed to the
-    # browser); it also handles the /_oauth callback. Attach as `sso@file`, or
-    # use `secure-sso@file` to combine with the hardening chain.
-    sso:
+    # ---- oauth2-proxy SSO (the secure-sso/sso chains below switch to these) ----
+    # forwardAuth -> /oauth2/auth returns 401 when unauthenticated; the `errors`
+    # middleware rewrites that 401 into a 302 to the Keycloak login (carrying the
+    # original URL in rd=). Both must be chained, in this order.
+    sso-auth:
       forwardAuth:
-        address: "http://traefik-forward-auth:4181"
+        address: "http://oauth2-proxy:4180/oauth2/auth"
         trustForwardHeader: true
         authResponseHeaders:
-          - X-Forwarded-User
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+    sso-errors:
+      errors:
+        # ONLY 401 — that's the single status /oauth2/auth emits when unauthenticated.
+        # Do NOT widen to 401-403: a gated app's own 403/402 (e.g. MLflow's host-header
+        # guard) would otherwise be hijacked and disguised as the Keycloak login redirect.
+        status:
+          - "401"
+        service: oauth2-proxy
+        query: "/oauth2/sign_in?rd={url}"
+        # /oauth2/auth answers 401 when unauthenticated; Traefik would relay that 401
+        # as-is, so rewrite it to 302 to make the browser follow the Location to the
+        # Keycloak login. (403 is intentionally NOT rewritten — that's a real authz
+        # denial and should surface, not loop back to login.)
+        statusRewrites:
+          "401": 302
+
+    # ---- Keycloak SSO gate (oauth2-proxy) ----
+    # auth + 401->login redirect. Attach as `sso@file`, or `secure-sso@file` to
+    # combine with the hardening chain. (Was traefik-forward-auth; see dynamic.yml.tfa-bak.)
+    sso:
+      chain:
+        middlewares:
+          - sso-errors
+          - sso-auth
 
     # ---- Reusable chain: attach this ONE name to most services ----
     secure-chain:
@@ -57,7 +100,8 @@ http:
     secure-sso:
       chain:
         middlewares:
-          - sso
+          - sso-errors
+          - sso-auth
           - security-headers
           - rate-limit
           - compress
