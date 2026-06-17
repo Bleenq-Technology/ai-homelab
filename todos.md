@@ -5,6 +5,10 @@ Backlog of new work for the `jarvis` homelab stack. Each item is sized to be pic
 written as goals + guard-rails, not recipes — let Claude Code propose the concrete config,
 review it together, deploy, verify, then commit.
 
+> **Cross-project intake:** sibling projects (e.g. `trading-engine`) file items here when they hit a
+> capability that belongs at the **platform** layer rather than in their own repo. If you're an infra
+> session, this is the queue — including entries added by other projects (they'll say so + give the rationale).
+
 ---
 
 ## How we work here (read this first)
