@@ -210,7 +210,7 @@ services:
     container_name: wyoming-piper
     restart: unless-stopped
     networks: [ai]
-    command: ["--voice", "en_US-lessac-medium"]
+    command: ["--voice", "en_US-amy-medium"]
     ports:
       - "10200:10200"
     volumes:

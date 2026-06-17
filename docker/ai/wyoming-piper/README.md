@@ -7,11 +7,21 @@
 **Networks / data:** ai; bind mount `./wyoming-piper/data` -> `/data`
 
 ## Setup as deployed
-- Command: `--voice en_US-lessac-medium`.
+- Command: `--voice en_US-amy-medium` (the **default** voice; clients may request any other
+  installed voice per-utterance).
 - Published as raw TCP `10200:10200` so Wyoming clients (e.g. Home Assistant) can connect
   directly; it speaks the Wyoming TCP protocol, not HTTP, so it is **not routed through Traefik**.
 - GPU access via the compose NVIDIA device reservation.
 - Voice/model data persists under `./wyoming-piper/data`.
+
+## Voice discovery (client enumeration)
+A Wyoming client enumerates voices via the **Describe → Info** handshake: connect to
+`tcp://<host>:10200`, send a `Describe` event, and the server replies with an `Info` event
+whose `tts[0].voices` lists every available voice (Home Assistant uses this to populate its
+voice dropdown). The server advertises the **full ~150-voice built-in catalog plus any custom
+voices** found in `/data` (verified 2026-06-17: 151 voices advertised). All catalog voices are
+reported `installed=True` and download on first use, so the dropdown shows far more than what's
+physically in `/data`.
 
 ## Custom / extra voices
 
@@ -46,7 +56,8 @@ ssh sanctioned@jarvis 'D=/opt/homelab/ai/wyoming-piper/data; \
 ### Installed voices & provenance (binaries not in git)
 | Voice (data-dir name)      | Source |
 |----------------------------|--------|
-| `en_US-lessac-medium`      | Official, auto-downloaded by piper from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). |
+| `en_US-amy-medium` **(default)** | Official, auto-downloaded from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). Set as the default voice 2026-06-17 (natural neutral female). |
+| `en_US-lessac-medium`      | Official, auto-downloaded by piper from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). Previous default. |
 | `en_US-glados-high`        | GLaDOS (Portal). Sourced from [AIHeaven/piper_unofficial_voices](https://huggingface.co/AIHeaven/piper_unofficial_voices) (`en_us-glados-high`); renamed to the `en_US-` scheme. Added 2026-06-17. |
 
 ### Pending / backlog
