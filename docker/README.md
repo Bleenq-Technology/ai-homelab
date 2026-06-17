@@ -78,12 +78,12 @@ docker compose -f docker/monitoring/compose.monitoring.yml restart grafana
 
 - **GPU**: `comfyui`, `wyoming-piper`, `wyoming-faster-whisper` request the NVIDIA
   runtime — install `nvidia-container-toolkit` on jarvis.
-- **ComfyUI image** is a community build (`ghcr.io/ai-dock/comfyui`) — confirm or
-  swap for your preferred one.
+- **ComfyUI image** is the maintained community build `mmartial/comfyui-nvidia-docker`
+  (pinned to a dated tag); replaced the unmaintained `ghcr.io/ai-dock/comfyui`.
 - **Wyoming** services speak the Wyoming TCP protocol (for Home Assistant), so
   they are published as raw TCP ports, not routed through Traefik.
-- **SSO**: Keycloak is deployed; wiring Grafana/n8n/Firezone/dashboard OIDC clients
-  is a follow-up pass (replace the dashboard `basicauth` with a Keycloak
-  forward-auth middleware).
-- **Secrets backend**: Infisical is deployed but not yet the source of truth —
-  the plan is to migrate `.env` values into it later.
+- **SSO**: fully wired — native Keycloak OIDC (Grafana, Open WebUI, Langfuse, …) plus
+  **oauth2-proxy** forward-auth (`secure-sso@file`) for the no-native-SSO apps; the Traefik
+  dashboard keeps a deliberate break-glass basic-auth. (Firezone was removed → EdgeRouter WireGuard.)
+- **Secrets backend**: Infisical **is** the source of truth — every secret lives in the `homelab`
+  project; `pull-secrets.sh` regenerates `.env` on deploy (a generated artifact).

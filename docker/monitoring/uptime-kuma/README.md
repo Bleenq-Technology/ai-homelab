@@ -15,7 +15,8 @@ Kuma's own login is disabled (`disableAuth`) so there's no double prompt.
   - Built-in login is turned off via the **`disableAuth`** setting, so Keycloak is the only gate
     (no double prompt). `disableAuth` lives in the `uptime_kuma_data` volume (runtime setting, not
     in compose) — re-enable + re-disable from **Settings → Security** if rebuilding from scratch.
-  - `https://uptime.${DOMAIN}/_oauth` is registered on the Keycloak `oauth2-proxy` client.
+  - SSO uses the shared `sso@file` chain (oauth2-proxy) — no per-host redirect URI; the single
+    `auth.${DOMAIN}/oauth2/callback` on the `oauth2-proxy` client covers every gated app.
   - **Trade-off:** forward-auth only protects the **public route**; with `disableAuth` on, anything
     that can reach the container directly on the internal Docker networks gets an unauthenticated
     dashboard. Standard homelab pattern (internal network trusted), but not the same as native SSO.
