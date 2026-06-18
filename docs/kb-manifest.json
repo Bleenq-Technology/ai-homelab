@@ -1,0 +1,44 @@
+{
+  "_comment": "Source-of-truth registry for shared Jarvis KBs (see docs/kb-standards.md §6). Drives BOTH n8n ingestion and the chat agent's list_kbs/search_kb tools. Add a KB = add an entry here. All KBs embed with bge-m3 (1024-dim, Cosine) via LiteLLM.",
+  "embedder": "bge-m3",
+  "dim": 1024,
+  "distance": "Cosine",
+  "chat_model": "unsloth/Qwen3.5-4B-GGUF",
+  "kbs": [
+    {
+      "name": "kb_homelab_docs",
+      "enabled": true,
+      "collection": "kb_homelab_docs",
+      "description": "Homelab infrastructure docs — the Docker stack services, deployment on the jarvis server, networking/Traefik/SSO, monitoring/alerting, and the AI stack (LiteLLM, Qdrant, n8n, OpenWebUI, ComfyUI). Use for questions about how the homelab is built, configured, or operated.",
+      "source": { "type": "github", "repo": "your-org/ai-homelab-infra", "branch": "main", "include": ["*.md"] }
+    },
+    {
+      "name": "kb_example_app_docs",
+      "enabled": true,
+      "collection": "kb_example_app_docs",
+      "description": "Markets engine documentation and design — system architecture, per-app and library docs, migration notes, and platform-services integration for the markets system. Use for questions about the markets engine's design, components, or how it uses the Jarvis platform.",
+      "source": { "type": "github", "repo": "your-org/example-app", "branch": "main", "include": ["*.md"] }
+    },
+    {
+      "name": "kb_design_docs",
+      "enabled": true,
+      "collection": "kb_design_docs",
+      "description": "Product and business design documentation — architecture, requirements, terminology/glossary, business and marketing material, and patents. Use for questions about product vision, requirements, business strategy, or defined terms.",
+      "source": { "type": "github", "repo": "your-org/design-documentation", "branch": "main", "include": ["*.md"] }
+    },
+    {
+      "name": "kb_assistant-app_docs",
+      "enabled": false,
+      "collection": "kb_assistant-app_docs",
+      "description": "Assistant app documentation (the docs/ tree of the assistant-app repo). Disabled by default — Assistant is an application, not a primary doc source; enable if its design docs should be shared-searchable.",
+      "source": { "type": "github", "repo": "your-org/assistant-app", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
+    },
+    {
+      "name": "kb_mddocsviewer_docs",
+      "enabled": false,
+      "collection": "kb_mddocsviewer_docs",
+      "description": "md-docs-viewer app docs. Disabled by default — it's a Next.js viewer app, not a knowledge source; enable only if its docs/ are real reference material.",
+      "source": { "type": "github", "repo": "your-org/md-docs-viewer", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
+    }
+  ]
+}
