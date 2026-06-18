@@ -1,10 +1,13 @@
 # n8n
-**Purpose:** Workflow automation.
+**Purpose:** Workflow automation — our **primary** automation + AI/RAG orchestration engine (Flowise is deprecated).
 **URL:** https://n8n.pdx.sanctioned.tech
-**Auth:** local login (n8n owner account)
-**Image:** n8nio/n8n:1.74.1
+**Auth:** local login (n8n owner account); REST API via `X-N8N-API-KEY` header (route not SSO-gated)
+**Image:** n8nio/n8n:2.27.0
 **GPU:** no
 **Networks / data:** proxy, ai, data; bind mount `./n8n/data` -> `/home/node/.n8n`
+
+> **Driving n8n from Claude Code:** see [`n8n-mcp-setup.md`](n8n-mcp-setup.md) — how to get an API key
+> (mint your own or pull the shared `N8N_API_KEY` from Infisical) and add the `n8n-mcp` server.
 
 ## Setup as deployed
 - Reverse-proxy / URL config:
