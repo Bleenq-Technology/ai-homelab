@@ -25,6 +25,10 @@ physically in `/data`.
 
 ## Custom / extra voices
 
+> **Community voice catalog:** [`piper-voice-catalog.html`](piper-voice-catalog.html) — a researched
+> list of third-party Piper voices (HAL-9000, GLaDOS, Wheatley, Kronk, the real **`jgkawell/jarvis`**
+> voice, etc.) with HuggingFace download links. Open it in a browser to browse candidates to install.
+
 Voices are **not** committed to git (large ONNX binaries). They live on the jarvis
 host under `/opt/homelab/ai/wyoming-piper/data/` (the `./wyoming-piper/data` bind mount),
 alongside the auto-downloaded default `en_US-lessac-medium`.
