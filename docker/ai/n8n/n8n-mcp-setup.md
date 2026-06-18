@@ -53,6 +53,18 @@ Notes:
 - Check it's live: `claude mcp list` → `n8n-mcp … ✔ Connected`.
 - Smoke test: ask Claude *"list available n8n trigger nodes"* or *"list n8n workflows"*.
 
+> **Reliability tip — if `claude mcp list` says Connected but the tools never appear in the assistant:**
+> the **cold `npx` first run** (it downloads + builds a node DB) can overrun the session's MCP-init
+> window, leaving it "connected" with zero tools. Fix: install it as a real binary and point the config
+> at that instead of `npx`:
+> ```bash
+> npm install -g n8n-mcp
+> claude mcp remove n8n-mcp
+> claude mcp add n8n-mcp -e MCP_MODE=stdio -e LOG_LEVEL=error -e DISABLE_CONSOLE_OUTPUT=true \
+>   -e N8N_API_URL=https://n8n.pdx.sanctioned.tech -e N8N_API_KEY=<your-key> -- n8n-mcp
+> ```
+> The installed binary starts instantly, so the tools enumerate on the next reconnect.
+
 ## Security / housekeeping
 - Keys are full-access and **don't expire** unless you set an expiry at creation — rotate/revoke in
   **Settings → n8n API** when a dev leaves or a key leaks.
