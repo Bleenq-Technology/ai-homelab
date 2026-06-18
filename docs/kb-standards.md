@@ -69,6 +69,12 @@ KBs are useless if agents can't find them. The **shared access layer** is one MC
 - `list_kbs()` → the `kb_*` collections + descriptions (from the **registry**, §6)
 - `search_kb(name, query, k)` → embeds the query with `bge-m3`, returns top-k with payload/citations
 
+> **Implemented today as HTTP (2026-06-18), pending the MCP:** the same two operations are live n8n
+> webhooks — `GET /webhook/kb-list` and `POST /webhook/kb-search {collection, query, topK}` — that any
+> app (Apollo, trading-engine, agents) calls. Embedding is server-side `bge-m3`, so callers send plain
+> text. **Contract + examples: [`kb-access-layer.md`](kb-access-layer.md).** The Qdrant MCP just
+> re-exposes these over MCP later.
+
 Every MCP-capable agent (n8n, Apollo, OpenWebUI tool servers, future Flowise/agents) gets the **same
 list + search** instead of each siloing its own RAG. **Caveat:** OpenWebUI's built-in *Knowledge*
 feature manages its own `open-webui_*` collections and won't natively see a `kb_*` collection — to

@@ -182,6 +182,72 @@ def build_chat(manifest):
             "settings": {"executionOrder": "v1"}}
 
 
+def build_search(manifest):
+    """Reusable shared retrieval endpoint (§5 access layer): POST /webhook/kb-search
+    {collection, query, topK?} -> embed(bge-m3) -> Qdrant search -> {results, collection, query}.
+    Any app (Apollo, trading-engine, agents) can call this; no per-KB nodes."""
+    WH = "KB Search Webhook"
+    nodes = [
+        {"id": "s_wh", "name": WH, "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
+         "position": [-320, 0], "webhookId": "kb-search",
+         "parameters": {"httpMethod": "POST", "path": "kb-search", "responseMode": "lastNode", "options": {}}},
+        {"id": "s_emb", "name": "Embed Query", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.4,
+         "position": [-80, 0], "parameters": {
+             "method": "POST", "url": "http://litellm:4000/v1/embeddings",
+             "authentication": "predefinedCredentialType", "nodeCredentialType": "openAiApi",
+             "sendBody": True, "contentType": "json", "specifyBody": "json",
+             "jsonBody": "={{ { \"model\": \"" + manifest["embedder"] + "\", \"input\": $json.body.query } }}",
+             "options": {}},
+         "credentials": {"openAiApi": OAI_CRED}},
+        {"id": "s_qd", "name": "Qdrant Search", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.4,
+         "position": [160, 0], "parameters": {
+             "method": "POST",
+             "url": "=http://qdrant:6333/collections/{{ $('" + WH + "').item.json.body.collection }}/points/search",
+             "authentication": "predefinedCredentialType", "nodeCredentialType": "qdrantApi",
+             "sendBody": True, "contentType": "json", "specifyBody": "json",
+             "jsonBody": "={{ { \"vector\": $json.data[0].embedding, \"limit\": ($('" + WH + "').item.json.body.topK || 6), \"with_payload\": true } }}",
+             "options": {}},
+         "credentials": {"qdrantApi": QDR_CRED}},
+        {"id": "s_shape", "name": "Shape Response", "type": "n8n-nodes-base.set", "typeVersion": 3.4,
+         "position": [400, 0], "parameters": {
+             "mode": "manual",
+             "assignments": {"assignments": [
+                 {"id": "r1", "name": "results", "value": "={{ $json.result }}", "type": "array"},
+                 {"id": "r2", "name": "collection", "value": "={{ $('" + WH + "').item.json.body.collection }}", "type": "string"},
+                 {"id": "r3", "name": "query", "value": "={{ $('" + WH + "').item.json.body.query }}", "type": "string"},
+             ]},
+             "includeOtherFields": False, "options": {}}},
+    ]
+    conns = {
+        WH: {"main": [[{"node": "Embed Query", "type": "main", "index": 0}]]},
+        "Embed Query": {"main": [[{"node": "Qdrant Search", "type": "main", "index": 0}]]},
+        "Qdrant Search": {"main": [[{"node": "Shape Response", "type": "main", "index": 0}]]},
+    }
+    return {"name": "kb-search", "nodes": nodes, "connections": conns, "settings": {"executionOrder": "v1"}}
+
+
+def build_list():
+    """Convenience registry endpoint: GET /webhook/kb-list -> the live kb-manifest.json
+    (fetched from the repo via the GitHub API). Consumers use entries where enabled==true."""
+    nodes = [
+        {"id": "l_wh", "name": "KB List Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
+         "position": [-200, 0], "webhookId": "kb-list",
+         "parameters": {"httpMethod": "GET", "path": "kb-list", "responseMode": "lastNode", "options": {}}},
+        {"id": "l_get", "name": "Fetch Manifest", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.4,
+         "position": [40, 0], "parameters": {
+             "method": "GET",
+             "url": "https://api.github.com/repos/Bleenq-Technology/ai-homelab-infra/contents/docs/kb-manifest.json",
+             "authentication": "predefinedCredentialType", "nodeCredentialType": "githubApi",
+             "sendHeaders": True, "specifyHeaders": "keypair",
+             "headerParameters": {"parameters": [
+                 {"name": "Accept", "value": "application/vnd.github.raw"}]},
+             "options": {"response": {"response": {"responseFormat": "json"}}}},
+         "credentials": {"githubApi": GH_CRED}},
+    ]
+    conns = {"KB List Webhook": {"main": [[{"node": "Fetch Manifest", "type": "main", "index": 0}]]}}
+    return {"name": "kb-list", "nodes": nodes, "connections": conns, "settings": {"executionOrder": "v1"}}
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser()
@@ -201,6 +267,11 @@ def main():
     pc = os.path.join(args.out, "kb-chat.json")
     json.dump(chat, open(pc, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
     print(f"wrote {pc}: {len(chat['nodes'])} nodes, {len(enabled)} KB tools")
+
+    for name, wf in (("kb-search", build_search(manifest)), ("kb-list", build_list())):
+        p = os.path.join(args.out, name + ".json")
+        json.dump(wf, open(p, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+        print(f"wrote {p}: {len(wf['nodes'])} nodes")
 
 if __name__ == "__main__":
     main()

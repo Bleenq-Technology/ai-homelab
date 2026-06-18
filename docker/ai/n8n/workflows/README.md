@@ -18,6 +18,10 @@ only credential *id+name* references — **no secrets**.
 |------|---------|
 | `kb-ingest.json` | **Schedule (daily 04:00) + Manual** → one *clear collection → Qdrant insert* chain per enabled KB, each fed by a **GitHub Document Loader** (markdown-only via `ignorePaths`) + Recursive Char Text Splitter + **bge-m3 Embeddings**. Clears + rebuilds every collection each run. |
 | `kb-chat.json` | **Chat Trigger** (public hosted chat, path `bleenq-kb-chat`) → **AI Agent** with **one Qdrant retrieve-as-tool per KB** + **OpenAI Chat Model** (`unsloth/Qwen3.5-4B-GGUF` via LiteLLM) + Window Buffer Memory. The KB catalog is baked into the agent's system prompt, so it can **enumerate the KBs** and **route** each question to the right collection(s) (and synthesise across them). |
+| `kb-search.json` | **Shared access layer** (kb-standards §5): `POST /webhook/kb-search {collection, query, topK}` → embed (`bge-m3`) → Qdrant search → `{results, collection, query}`. Reusable by any app/agent. |
+| `kb-list.json` | `GET /webhook/kb-list` → the live `kb-manifest.json` registry. |
+
+> **Access-layer contract + examples:** [`docs/kb-access-layer.md`](../../../../docs/kb-access-layer.md).
 
 **Routing is the agent's job:** each KB is a retrieval tool whose description comes from the manifest;
 the LLM picks the relevant tool(s). Verified — a trading question calls only `Search kb_trading_docs`,

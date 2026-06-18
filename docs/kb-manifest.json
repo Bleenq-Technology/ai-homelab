@@ -28,9 +28,9 @@
     },
     {
       "name": "kb_apollo_docs",
-      "enabled": false,
+      "enabled": true,
       "collection": "kb_apollo_docs",
-      "description": "Apollo app documentation (the docs/ tree of the apollo repo). Disabled by default — Apollo is an application, not a primary doc source; enable if its design docs should be shared-searchable.",
+      "description": "Apollo app documentation — design, architecture, and usage docs for the Apollo application (README, CLAUDE.md, and the docs/ tree of the apollo repo). Use for questions about how Apollo works, its components, or its memory/KB conventions.",
       "source": { "type": "github", "repo": "Bleenq-Technology/apollo", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
     },
     {

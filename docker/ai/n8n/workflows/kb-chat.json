@@ -30,7 +30,7 @@
       "parameters": {
         "promptType": "auto",
         "options": {
-          "systemMessage": "You are the Bleenq Knowledge assistant. You answer from a library of knowledge bases (KBs), each backed by a retrieval tool. Available knowledge bases:\n- kb_homelab_docs: Homelab infrastructure docs — the Docker stack services, deployment on the jarvis server, networking/Traefik/SSO, monitoring/alerting, and the AI stack (LiteLLM, Qdrant, n8n, OpenWebUI, ComfyUI). Use for questions about how the homelab is built, configured, or operated.\n- kb_trading_docs: Trading engine documentation and design — system architecture, per-app and library docs, migration notes, and platform-services integration for the trading system. Use for questions about the trading engine's design, components, or how it uses the Jarvis platform.\n- kb_design_docs: Product and business design documentation — architecture, requirements, terminology/glossary, business and marketing material, and patents. Use for questions about product vision, requirements, business strategy, or defined terms.\n\nRules:\n- For every question, call the most relevant KB tool(s) to retrieve context BEFORE answering. You may query multiple KBs and synthesise across them.\n- If the user asks what knowledge bases exist (or which you can search), list the KBs above with their descriptions.\n- Ground answers in retrieved content and cite the KB/doc where possible. If the KBs do not contain the answer, say so plainly rather than guessing."
+          "systemMessage": "You are the Bleenq Knowledge assistant. You answer from a library of knowledge bases (KBs), each backed by a retrieval tool. Available knowledge bases:\n- kb_homelab_docs: Homelab infrastructure docs — the Docker stack services, deployment on the jarvis server, networking/Traefik/SSO, monitoring/alerting, and the AI stack (LiteLLM, Qdrant, n8n, OpenWebUI, ComfyUI). Use for questions about how the homelab is built, configured, or operated.\n- kb_trading_docs: Trading engine documentation and design — system architecture, per-app and library docs, migration notes, and platform-services integration for the trading system. Use for questions about the trading engine's design, components, or how it uses the Jarvis platform.\n- kb_design_docs: Product and business design documentation — architecture, requirements, terminology/glossary, business and marketing material, and patents. Use for questions about product vision, requirements, business strategy, or defined terms.\n- kb_apollo_docs: Apollo app documentation — design, architecture, and usage docs for the Apollo application (README, CLAUDE.md, and the docs/ tree of the apollo repo). Use for questions about how Apollo works, its components, or its memory/KB conventions.\n\nRules:\n- For every question, call the most relevant KB tool(s) to retrieve context BEFORE answering. You may query multiple KBs and synthesise across them.\n- If the user asks what knowledge bases exist (or which you can search), list the KBs above with their descriptions.\n- Ground answers in retrieved content and cite the KB/doc where possible. If the KBs do not contain the answer, say so plainly rather than guessing."
         }
       }
     },
@@ -221,6 +221,55 @@
           "name": "LiteLLM (OpenAI-compat)"
         }
       }
+    },
+    {
+      "id": "tool_3",
+      "name": "Search kb_apollo_docs",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        960,
+        50
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "kb_apollo_docs",
+        "toolDescription": "Apollo app documentation — design, architecture, and usage docs for the Apollo application (README, CLAUDE.md, and the docs/ tree of the apollo repo). Use for questions about how Apollo works, its components, or its memory/KB conventions.",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "kb_apollo_docs",
+          "cachedResultName": "kb_apollo_docs"
+        },
+        "topK": 6,
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "cemb_3",
+      "name": "Embed kb_apollo_docs",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1180,
+        230
+      ],
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
     }
   ],
   "connections": {
@@ -317,6 +366,28 @@
         [
           {
             "node": "Search kb_design_docs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search kb_apollo_docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed kb_apollo_docs": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Search kb_apollo_docs",
             "type": "ai_embedding",
             "index": 0
           }

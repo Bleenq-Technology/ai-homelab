@@ -1,0 +1,77 @@
+{
+  "name": "kb-list",
+  "nodes": [
+    {
+      "id": "l_wh",
+      "name": "KB List Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -200,
+        0
+      ],
+      "webhookId": "kb-list",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "kb-list",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "l_get",
+      "name": "Fetch Manifest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        40,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/Bleenq-Technology/ai-homelab-infra/contents/docs/kb-manifest.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.raw"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "er4zkVl3U64gSEe2",
+          "name": "KB GitHub (ai-homelab-infra RO)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "KB List Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Manifest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

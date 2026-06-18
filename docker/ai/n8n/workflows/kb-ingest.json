@@ -378,6 +378,121 @@
           "name": "LiteLLM (OpenAI-compat)"
         }
       }
+    },
+    {
+      "id": "clr_3",
+      "name": "Clear kb_apollo_docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        1560
+      ],
+      "parameters": {
+        "method": "DELETE",
+        "url": "http://qdrant:6333/collections/kb_apollo_docs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "ins_3",
+      "name": "Insert kb_apollo_docs",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        1560
+      ],
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "kb_apollo_docs",
+          "cachedResultName": "kb_apollo_docs"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "ld_3",
+      "name": "Load kb_apollo_docs",
+      "type": "@n8n/n8n-nodes-langchain.documentGithubLoader",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        1740
+      ],
+      "parameters": {
+        "repository": "https://github.com/Bleenq-Technology/apollo",
+        "branch": "main",
+        "textSplittingMode": "custom",
+        "additionalOptions": {
+          "recursive": true,
+          "ignorePaths": "*.py,**/*.py,*.ts,**/*.ts,*.tsx,**/*.tsx,*.js,**/*.js,*.jsx,**/*.jsx,*.mjs,**/*.mjs,*.cjs,**/*.cjs,*.json,**/*.json,*.yml,**/*.yml,*.yaml,**/*.yaml,*.toml,**/*.toml,*.ini,**/*.ini,*.cfg,**/*.cfg,*.conf,**/*.conf,*.sh,**/*.sh,*.bash,**/*.bash,*.bat,**/*.bat,*.ps1,**/*.ps1,*.xml,**/*.xml,*.html,**/*.html,*.htm,**/*.htm,*.css,**/*.css,*.scss,**/*.scss,*.sass,**/*.sass,*.less,**/*.less,*.svg,**/*.svg,*.png,**/*.png,*.jpg,**/*.jpg,*.jpeg,**/*.jpeg,*.gif,**/*.gif,*.ico,**/*.ico,*.webp,**/*.webp,*.pdf,**/*.pdf,*.txt,**/*.txt,*.csv,**/*.csv,*.tsv,**/*.tsv,*.lock,**/*.lock,*.example,**/*.example,*.env,**/*.env,*.service,**/*.service,*.gitignore,**/*.gitignore,*.gitattributes,**/*.gitattributes,*.gitkeep,**/*.gitkeep,*.dockerignore,**/*.dockerignore,*.map,**/*.map,*.woff,**/*.woff,*.woff2,**/*.woff2,*.ttf,**/*.ttf,*.eot,**/*.eot,Dockerfile,**/Dockerfile,LICENSE,**/LICENSE,Makefile,**/Makefile"
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "er4zkVl3U64gSEe2",
+          "name": "KB GitHub (ai-homelab-infra RO)"
+        }
+      }
+    },
+    {
+      "id": "sp_3",
+      "name": "Split kb_apollo_docs",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        300,
+        1920
+      ],
+      "parameters": {
+        "chunkSize": 1400,
+        "chunkOverlap": 200,
+        "options": {}
+      }
+    },
+    {
+      "id": "em_3",
+      "name": "Embed kb_apollo_docs",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        1740
+      ],
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
     }
   ],
   "connections": {
@@ -396,6 +511,11 @@
           },
           {
             "node": "Clear kb_design_docs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clear kb_apollo_docs",
             "type": "main",
             "index": 0
           }
@@ -417,6 +537,11 @@
           },
           {
             "node": "Clear kb_design_docs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clear kb_apollo_docs",
             "type": "main",
             "index": 0
           }
@@ -549,6 +674,50 @@
         [
           {
             "node": "Insert kb_design_docs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear kb_apollo_docs": {
+      "main": [
+        [
+          {
+            "node": "Insert kb_apollo_docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load kb_apollo_docs": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert kb_apollo_docs",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split kb_apollo_docs": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Load kb_apollo_docs",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed kb_apollo_docs": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert kb_apollo_docs",
             "type": "ai_embedding",
             "index": 0
           }
