@@ -112,6 +112,15 @@ services:
       QDRANT_URI: "http://qdrant:6333"
       QDRANT_API_KEY: ${QDRANT_API_KEY}
       QDRANT_COLLECTION_PREFIX: "open-webui"
+      # ---- RAG embeddings: BGE-M3 (1024-dim) via the LiteLLM gateway ----------
+      # GPU-served + Langfuse-traced, replacing the in-container CPU MiniLM (384-dim).
+      # Document/Knowledge collections embed at 1024 (Cosine). The pre-existing
+      # 384-dim `open-webui_web-search` collection was dropped on cutover so OW
+      # recreates collections at the new dimension (dimensions can't be mixed).
+      RAG_EMBEDDING_ENGINE: "openai"
+      RAG_OPENAI_API_BASE_URL: "http://litellm:4000/v1"
+      RAG_OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      RAG_EMBEDDING_MODEL: "bge-m3"
       # ---- Redis: websocket manager + app cache (shared instance, DB 7) ----
       # (DB 1=infisical, 2-3=netbox, 4=baserow, 5=langfuse, 6=searxng, 7=open-webui)
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/7"
