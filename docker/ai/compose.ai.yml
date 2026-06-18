@@ -153,6 +153,15 @@ services:
       N8N_PROXY_HOPS: "1"
       # Task runners are the standard code-execution path in n8n 2.x
       N8N_RUNNERS_ENABLED: "true"
+      # ---- KB-ingestion flows (Code nodes) ----------------------------------
+      # Allow the crypto builtin (deterministic hashing for dedup) + $env access
+      # in Code nodes, and expose the creds those flows need via $env — kept OUT
+      # of the workflow JSON so exported workflows are secret-free + git-committable.
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      GITHUB_PAT: ${GITHUB_PAT}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
       # Postgres backend (shared instance) — gets workflows/credentials into the
       # nightly pg_dumpall and supports concurrency/queue-mode, unlike SQLite.
       DB_TYPE: postgresdb
