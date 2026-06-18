@@ -28,9 +28,9 @@
     },
     {
       "name": "kb_assistant-app_docs",
-      "enabled": false,
+      "enabled": true,
       "collection": "kb_assistant-app_docs",
-      "description": "Assistant app documentation (the docs/ tree of the assistant-app repo). Disabled by default — Assistant is an application, not a primary doc source; enable if its design docs should be shared-searchable.",
+      "description": "Assistant app documentation — design, architecture, and usage docs for the Assistant application (README, CLAUDE.md, and the docs/ tree of the assistant-app repo). Use for questions about how Assistant works, its components, or its memory/KB conventions.",
       "source": { "type": "github", "repo": "your-org/assistant-app", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
     },
     {

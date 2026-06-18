@@ -1,0 +1,151 @@
+{
+  "name": "kb-search",
+  "nodes": [
+    {
+      "id": "s_wh",
+      "name": "KB Search Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -320,
+        0
+      ],
+      "webhookId": "kb-search",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kb-search",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "s_emb",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -80,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://litellm:4000/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"bge-m3\", \"input\": $json.body.query } }}",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
+    },
+    {
+      "id": "s_qd",
+      "name": "Qdrant Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=http://qdrant:6333/collections/{{ $('KB Search Webhook').item.json.body.collection }}/points/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"vector\": $json.data[0].embedding, \"limit\": ($('KB Search Webhook').item.json.body.topK || 6), \"with_payload\": true } }}",
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "s_shape",
+      "name": "Shape Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "results",
+              "value": "={{ $json.result }}",
+              "type": "array"
+            },
+            {
+              "id": "r2",
+              "name": "collection",
+              "value": "={{ $('KB Search Webhook').item.json.body.collection }}",
+              "type": "string"
+            },
+            {
+              "id": "r3",
+              "name": "query",
+              "value": "={{ $('KB Search Webhook').item.json.body.query }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "KB Search Webhook": {
+      "main": [
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Search": {
+      "main": [
+        [
+          {
+            "node": "Shape Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
