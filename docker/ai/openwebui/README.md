@@ -72,13 +72,14 @@ curl -s -X POST https://openwebui.pdx.sanctioned.tech/api/v1/models/create \
 Repo-tracked OpenWebUI **Pipe functions** live in [`functions/`](functions/) — each is the
 source-of-truth copy of a function that otherwise only exists in Open WebUI's DB.
 
-- **`functions/n8n_kb_homelab_docs.py`** — registers a model **"KB: Homelab Docs"** that routes the
-  chat to the n8n [`kb_homelab_docs-chat`](../n8n/workflows/) workflow (AI Agent + Qdrant retrieval
-  over the `kb_homelab_docs` KB). It POSTs each message to the n8n Chat Trigger webhook internally
-  (`http://n8n:5678/webhook/kb-homelab-docs-chat/chat`) and returns the agent's KB-grounded answer;
-  the Open WebUI chat id is passed as the n8n `sessionId` for per-conversation memory. This is the
-  **bridge that gives Open WebUI a shared `kb_*` collection** (its built-in Knowledge UI only sees
-  its own `open-webui_*` collections — see `docs/kb-standards.md` §5).
+- **`functions/n8n_bleenq_kb.py`** — registers a model **"KB: Bleenq Knowledge"** that routes the chat
+  to the n8n [`kb-chat`](../n8n/workflows/) workflow (AI Agent over the **whole KB library** — homelab,
+  trading, design, …; it enumerates the KBs and retrieves from the relevant collection(s)). It POSTs
+  each message to the n8n Chat Trigger webhook internally
+  (`http://n8n:5678/webhook/bleenq-kb-chat/chat`) and returns the KB-grounded answer; the Open WebUI
+  chat id is passed as the n8n `sessionId` for per-conversation memory. This is the **bridge that gives
+  Open WebUI the shared `kb_*` collections** (its built-in Knowledge UI only sees its own
+  `open-webui_*` collections — see `docs/kb-standards.md` §5).
 - **Install** is manual (functions live in the DB, not on disk): Admin Panel → Functions → `+` →
   paste the `.py` → Save → Enable. See [`functions/README.md`](functions/README.md).
 

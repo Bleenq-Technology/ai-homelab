@@ -1,0 +1,330 @@
+{
+  "name": "kb-chat",
+  "nodes": [
+    {
+      "id": "c_trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -320,
+        0
+      ],
+      "webhookId": "bleenq-kb-chat",
+      "parameters": {
+        "public": true,
+        "options": {
+          "responseMode": "lastNode"
+        }
+      }
+    },
+    {
+      "id": "c_agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -40,
+        0
+      ],
+      "parameters": {
+        "promptType": "auto",
+        "options": {
+          "systemMessage": "You are the Bleenq Knowledge assistant. You answer from a library of knowledge bases (KBs), each backed by a retrieval tool. Available knowledge bases:\n- kb_homelab_docs: Homelab infrastructure docs — the Docker stack services, deployment on the jarvis server, networking/Traefik/SSO, monitoring/alerting, and the AI stack (LiteLLM, Qdrant, n8n, OpenWebUI, ComfyUI). Use for questions about how the homelab is built, configured, or operated.\n- kb_trading_docs: Trading engine documentation and design — system architecture, per-app and library docs, migration notes, and platform-services integration for the trading system. Use for questions about the trading engine's design, components, or how it uses the Jarvis platform.\n- kb_design_docs: Product and business design documentation — architecture, requirements, terminology/glossary, business and marketing material, and patents. Use for questions about product vision, requirements, business strategy, or defined terms.\n\nRules:\n- For every question, call the most relevant KB tool(s) to retrieve context BEFORE answering. You may query multiple KBs and synthesise across them.\n- If the user asks what knowledge bases exist (or which you can search), list the KBs above with their descriptions.\n- Ground answers in retrieved content and cite the KB/doc where possible. If the KBs do not contain the answer, say so plainly rather than guessing."
+        }
+      }
+    },
+    {
+      "id": "c_llm",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -140,
+        220
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "unsloth/Qwen3.5-4B-GGUF",
+          "cachedResultName": "unsloth/Qwen3.5-4B-GGUF"
+        },
+        "options": {
+          "responseFormat": "text"
+        },
+        "responsesApiEnabled": false
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
+    },
+    {
+      "id": "c_mem",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        60,
+        220
+      ],
+      "parameters": {
+        "contextWindowLength": 10
+      }
+    },
+    {
+      "id": "tool_0",
+      "name": "Search kb_homelab_docs",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        -40
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "kb_homelab_docs",
+        "toolDescription": "Homelab infrastructure docs — the Docker stack services, deployment on the jarvis server, networking/Traefik/SSO, monitoring/alerting, and the AI stack (LiteLLM, Qdrant, n8n, OpenWebUI, ComfyUI). Use for questions about how the homelab is built, configured, or operated.",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "kb_homelab_docs",
+          "cachedResultName": "kb_homelab_docs"
+        },
+        "topK": 6,
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "cemb_0",
+      "name": "Embed kb_homelab_docs",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        460,
+        140
+      ],
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
+    },
+    {
+      "id": "tool_1",
+      "name": "Search kb_trading_docs",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        -10
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "kb_trading_docs",
+        "toolDescription": "Trading engine documentation and design — system architecture, per-app and library docs, migration notes, and platform-services integration for the trading system. Use for questions about the trading engine's design, components, or how it uses the Jarvis platform.",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "kb_trading_docs",
+          "cachedResultName": "kb_trading_docs"
+        },
+        "topK": 6,
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "cemb_1",
+      "name": "Embed kb_trading_docs",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        700,
+        170
+      ],
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
+    },
+    {
+      "id": "tool_2",
+      "name": "Search kb_design_docs",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        20
+      ],
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "kb_design_docs",
+        "toolDescription": "Product and business design documentation — architecture, requirements, terminology/glossary, business and marketing material, and patents. Use for questions about product vision, requirements, business strategy, or defined terms.",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "kb_design_docs",
+          "cachedResultName": "kb_design_docs"
+        },
+        "topK": 6,
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "cemb_2",
+      "name": "Embed kb_design_docs",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        940,
+        200
+      ],
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search kb_homelab_docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed kb_homelab_docs": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Search kb_homelab_docs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search kb_trading_docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed kb_trading_docs": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Search kb_trading_docs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search kb_design_docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed kb_design_docs": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Search kb_design_docs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
