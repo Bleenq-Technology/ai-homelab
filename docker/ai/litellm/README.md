@@ -6,7 +6,10 @@
 **Networks / data:** `proxy` + `ai` + `data` (Postgres for the virtual-key store); config at [`config.yaml`](config.yaml)
 
 ## Setup as deployed
-- **Upstream:** unsloth at `http://192.168.2.10:8888/v1` (key `UNSLOTH_API_KEY`); model alias `unsloth/Qwen3.5-4B-GGUF`.
+- **Upstreams / models:**
+  - `unsloth/Qwen3.5-4B-GGUF` (chat) → unsloth host at `http://192.168.2.10:8888/v1` (key `UNSLOTH_API_KEY`).
+  - `bge-m3` (1024-dim embeddings) → the `bge-m3` llama.cpp container at `http://bge-m3:8080/v1`
+    (ai-net internal, no auth — see [`../bge-m3/README.md`](../bge-m3/README.md)).
 - **Langfuse logging:** `success_callback`/`failure_callback: ["langfuse"]`; `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY`
   + `LANGFUSE_HOST=http://langfuse-web:3000` (internal). Verified: calls appear as `litellm-acompletion` traces.
 - **Master key:** `LITELLM_MASTER_KEY` — clients send `Authorization: Bearer <key>`.

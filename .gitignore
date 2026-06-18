@@ -9,3 +9,7 @@ local-notes/
 # docker/ai/wyoming-piper/README.md; the binaries themselves never go in git.
 docker/ai/*/data/*.onnx
 docker/ai/*/data/*.onnx.json
+
+# Model weights (GGUF) — large binaries that live on the jarvis host, downloaded
+# into the bind-mounted models dir; never committed.
+docker/ai/*/models/*.gguf

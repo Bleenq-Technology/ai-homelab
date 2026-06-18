@@ -202,6 +202,28 @@ services:
       - "traefik.http.routers.comfyui.middlewares=sso@file,secure-chain-stream@file"
       - "traefik.http.services.comfyui.loadbalancer.server.port=8188"
 
+  # ---- BGE-M3 embeddings — llama.cpp server (GPU), OpenAI-compatible -------
+  # Serves 1024-dim BGE-M3 embeddings to the whole lab via LiteLLM. ai-net
+  # internal only (no Traefik route). Notes: BGE-M3 is a non-causal encoder, so
+  # the batch must span the full context (-b/-ub == -c) or llama.cpp errors; and
+  # dense embedding uses CLS pooling (not mean). Image pinned by digest
+  # (server-cuda build b9692). Model .gguf lives on the host (gitignored).
+  bge-m3:
+    image: ghcr.io/ggml-org/llama.cpp@sha256:8d9129ac859493c23e0db914c6940a729a33d6fe42d9e5ec9ee8a5c667f10e7a
+    container_name: bge-m3
+    restart: unless-stopped
+    networks: [ai]
+    command: ["-m", "/models/bge-m3-Q8_0.gguf", "--embeddings", "--pooling", "cls", "-c", "8192", "-b", "8192", "-ub", "8192", "-ngl", "99", "--host", "0.0.0.0", "--port", "8080"]
+    volumes:
+      - ./bge-m3/models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
   # ---- Wyoming Piper — TTS (Wyoming protocol, TCP — not HTTP) --------------
   # Consumed by Home Assistant etc. over the Wyoming TCP protocol, so it is
   # published as a raw TCP port rather than routed through Traefik.

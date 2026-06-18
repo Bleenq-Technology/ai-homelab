@@ -8,6 +8,12 @@ model_list:
       api_base: http://192.168.2.10:8888/v1      # unsloth runs on the host
       api_key: os.environ/UNSLOTH_API_KEY
 
+  - model_name: bge-m3                           # 1024-dim embeddings (BGE-M3)
+    litellm_params:
+      model: openai/bge-m3                       # llama.cpp server, OpenAI-compatible
+      api_base: http://bge-m3:8080/v1            # internal ai-net container
+      api_key: "sk-noauth"                       # llama.cpp on ai-net has no auth; value unused
+
 litellm_settings:
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]

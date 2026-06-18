@@ -67,7 +67,12 @@ status, leaks nothing sensitive, DNS resolves, and it's committed.
 
 ---
 
-## 2. Embedding model container (bge-m3, GPU) wired into LiteLLM
+## 2. Embedding model container (bge-m3, GPU) wired into LiteLLM  ✅ DONE (2026-06-18)
+
+> Done: `bge-m3` llama.cpp `server-cuda` container (digest-pinned) on the `ai` net, model
+> `bge-m3-Q8_0.gguf`, `--pooling cls`, batch==context. Wired into LiteLLM as `bge-m3`; verified
+> 1024-dim vectors direct and via the gateway. See [`docker/ai/bge-m3/README.md`](docker/ai/bge-m3/README.md).
+> **Unblocks #4.**
 
 **Goal.** A small GPU-accelerated container serving the **BGE-M3** embedding model
 (1024-dimensional) over an OpenAI-compatible API, registered in **LiteLLM** so every app gets
