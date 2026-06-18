@@ -275,7 +275,9 @@ services:
 
   # Jupyter removed (dropped for now).
 
-  # ---- Flowise — LLM workflow builder -------------------------------------
+  # ---- Flowise — LLM workflow builder (DEPRECATED/parked — prefer n8n) -----
+  # See flowise/README.md: superseded by n8n for automation + AI/RAG; kept only
+  # for quick visual prototyping. Candidate for removal.
   flowise:
     image: flowiseai/flowise:3.1.2
     container_name: flowise
