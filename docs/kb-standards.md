@@ -74,6 +74,12 @@ list + search** instead of each siloing its own RAG. **Caveat:** OpenWebUI's bui
 feature manages its own `open-webui_*` collections and won't natively see a `kb_*` collection — to
 give OpenWebUI shared KBs, wire it to the MCP tool rather than its Knowledge UI.
 
+> **Interim bridge (live 2026-06-18, before the Qdrant MCP):** OpenWebUI reaches `kb_homelab_docs`
+> today via an **OpenWebUI Pipe function** ("KB: Homelab Docs") that calls the n8n
+> `kb_homelab_docs-chat` agent workflow — see `docker/ai/openwebui/functions/`. The n8n agent does
+> the `bge-m3`+Qdrant retrieval, so OpenWebUI gets shared-KB answers without its Knowledge UI. The
+> Qdrant MCP (§5/todos #4) generalises this to all agents.
+
 ## 6. KB registry (source of truth for "what's searchable")
 
 A small table mapping: `name → description → collection → embedder → owner → visibility`. Agents read
@@ -90,6 +96,11 @@ multi-hop queries. Add **only where vector RAG isn't enough**; expose through th
 
 - **Git-native** (cleanest): for KBs whose source already lives in a repo (`kb_homelab_docs`,
   `kb_trading_code`) — n8n `git pull` → glob files → chunk → embed → upsert. No drop zone needed.
+  **Implemented for `kb_homelab_docs`** (native n8n nodes, not a Code node): GitHub Document Loader
+  (markdown-only via `ignorePaths`) → Recursive Char Text Splitter → `bge-m3` Embeddings → Qdrant
+  insert, on a daily 04:00 + manual schedule. See `docker/ai/n8n/workflows/`. **Caveat:** the native
+  vector-store insert appends with random point ids (no §4 hash dedup yet), so the flow **clears +
+  rebuilds** the collection each run instead — fine for a small repo; revisit if the source grows.
 - **Human drop zone:** **MinIO** (already deployed) — drop files via the `minio.pdx` web console or
   S3 API; MinIO **bucket-notification events → n8n webhook** (event-driven, no polling). One
   bucket/prefix per KB; move processed objects to a `processed/` prefix or rely on §4 hash-dedup.
