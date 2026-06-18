@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piper TTS — Community Voice Catalog</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:         #0d1117;
+    --surface:    #161b22;
+    --border:     #21262d;
+    --accent:     #58a6ff;
+    --accent2:    #3fb950;
+    --warn:       #d29922;
+    --danger:     #f85149;
+    --muted:      #8b949e;
+    --text:       #e6edf3;
+    --subtext:    #b1bac4;
+    --tag-bg:     #1f2937;
+    --tag-text:   #93c5fd;
+    --radius:     6px;
+    --mono:       'JetBrains Mono', monospace;
+    --sans:       'Inter', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 0 0 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 36px 40px 28px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -.5px;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  header .meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 12px;
+    color: var(--subtext);
+  }
+  .badge .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-green  { background: var(--accent2); }
+  .dot-yellow { background: var(--warn); }
+  .dot-red    { background: var(--danger); }
+
+  /* ── Filter bar ── */
+  .controls {
+    padding: 18px 40px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .controls input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 7px 14px;
+    width: 260px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .controls input:focus { border-color: var(--accent); }
+  .controls input::placeholder { color: var(--muted); }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--subtext);
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 6px 14px;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+
+  /* ── Main ── */
+  main { padding: 32px 40px; max-width: 1400px; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .card:hover {
+    border-color: #30363d;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .card-icon {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: var(--tag-bg);
+  }
+  .card-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .card-source {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .status-pill {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .status-verified   { background: rgba(63,185,80,.15);  color: var(--accent2); border: 1px solid rgba(63,185,80,.3); }
+  .status-unverified { background: rgba(210,153,34,.12); color: var(--warn);    border: 1px solid rgba(210,153,34,.3); }
+  .status-partial    { background: rgba(88,166,255,.12); color: var(--accent);  border: 1px solid rgba(88,166,255,.3); }
+
+  /* ── Voice chips ── */
+  .voices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .voice-chip {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 9px;
+    font-size: 11px;
+    color: var(--tag-text);
+    font-family: var(--mono);
+  }
+
+  /* ── File table ── */
+  .file-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+  .file-table th {
+    color: var(--muted);
+    text-align: left;
+    padding: 4px 8px 4px 0;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .file-table td {
+    padding: 5px 8px 5px 0;
+    color: var(--subtext);
+    border-bottom: 1px solid rgba(33,38,45,.6);
+    vertical-align: top;
+  }
+  .file-table td.filename {
+    color: var(--accent);
+    word-break: break-all;
+  }
+  .file-table td.size { color: var(--muted); white-space: nowrap; }
+
+  .quality-high   { color: var(--accent2); }
+  .quality-medium { color: var(--warn); }
+
+  /* ── Card footer ── */
+  .card-footer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .repo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 4px 11px;
+    text-decoration: none;
+    font-family: var(--mono);
+    transition: background .15s, border-color .15s;
+  }
+  .repo-link:hover { background: rgba(88,166,255,.1); border-color: var(--accent); }
+
+  .note {
+    background: rgba(210,153,34,.08);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 4px 4px 0;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--subtext);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .note strong { color: var(--warn); }
+
+  /* ── Totals bar ── */
+  .totals {
+    display: flex;
+    gap: 24px;
+    padding: 16px 40px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .totals span strong { color: var(--text); }
+
+  /* ── Hidden ── */
+  .card.hidden { display: none; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>// piper-tts &gt; community voice catalog</h1>
+  <p>English-language third-party voices for Wyoming Piper / Home Assistant — sourced from the HA Community thread.</p>
+  <div class="meta">
+    <span class="badge"><span class="dot dot-green"></span>Verified — files confirmed present (onnx + json)</span>
+    <span class="badge"><span class="dot dot-yellow"></span>Unverified — listed in thread but unchecked</span>
+    <span class="badge"><span class="dot dot-red"></span>Notes — known issues or caveats</span>
+  </div>
+</header>
+
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="🔍  Filter by voice name, character, source…" oninput="filterCards()">
+  <button class="filter-btn active" data-filter="all"    onclick="setFilter('all',this)">All</button>
+  <button class="filter-btn"        data-filter="github" onclick="setFilter('github',this)">GitHub</button>
+  <button class="filter-btn"        data-filter="hf"     onclick="setFilter('hf',this)">HuggingFace</button>
+  <button class="filter-btn"        data-filter="other"  onclick="setFilter('other',this)">Other</button>
+</div>
+
+<main>
+
+<!-- ════════════════════════════════════════════════
+     SECTION: GitHub Repos
+═════════════════════════════════════════════════ -->
+<div class="section-label">GitHub Repositories</div>
+<div class="grid" id="cardGrid">
+
+  <!-- 1 dividebysandwich -->
+  <div class="card" data-source="github" data-tags="hal9000 picard data commander star trek denoised">
+    <div class="card-header">
+      <div class="card-icon">🤖</div>
+      <div>
+        <div class="card-title">dividebysandwich / piper-voice-models</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">HAL 9000 (denoised)</span>
+      <span class="voice-chip">HAL 9000 (raw)</span>
+      <span class="voice-chip">Capt. Picard</span>
+      <span class="voice-chip">Cmdr. Data</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>HAL 9000 Denoised</td>
+          <td class="filename">HAL9000-denoised/&lt;model&gt;.onnx</td>
+          <td class="filename">&lt;model&gt;.onnx.json</td>
+          <td><span class="quality-medium">medium</span></td>
+        </tr>
+        <tr>
+          <td>HAL 9000 Raw</td>
+          <td class="filename">HAL9000-no-denoise/&lt;model&gt;.onnx</td>
+          <td class="filename">&lt;model&gt;.onnx.json</td>
+          <td><span class="quality-medium">medium</span></td>
+        </tr>
+        <tr>
+          <td>Capt. Picard</td>
+          <td class="filename">Picard/&lt;model&gt;.onnx</td>
+          <td class="filename">&lt;model&gt;.onnx.json</td>
+          <td><span class="quality-medium">medium</span></td>
+        </tr>
+        <tr>
+          <td>Cmdr. Data</td>
+          <td class="filename">Data/&lt;model&gt;.onnx</td>
+          <td class="filename">&lt;model&gt;.onnx.json</td>
+          <td><span class="quality-medium">medium</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Install:</strong> Copy both files to <code>/var/lib/wyoming-piper/data</code> (or your Piper data dir). Restart Piper + HA.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/dividebysandwich/piper-voice-models" target="_blank">↗ github.com/dividebysandwich/piper-voice-models</a>
+    </div>
+  </div>
+
+  <!-- 2 simoniz0r -->
+  <div class="card" data-source="github" data-tags="bobby carl eminem patrick textymcspeechy">
+    <div class="card-header">
+      <div class="card-icon">🎤</div>
+      <div>
+        <div class="card-title">simoniz0r / piper-voice-models</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Bobby</span>
+      <span class="voice-chip">Carl</span>
+      <span class="voice-chip">Eminem</span>
+      <span class="voice-chip">Patrick</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Bobby</td><td class="filename">bobby.onnx</td><td class="filename">bobby.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+        <tr><td>Carl</td><td class="filename">carl.onnx</td><td class="filename">carl.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+        <tr><td>Eminem</td><td class="filename">eminem.onnx</td><td class="filename">eminem.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+        <tr><td>Patrick</td><td class="filename">patrick.onnx</td><td class="filename">patrick.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Trained with TextyMcSpeechy. Exact filenames should be confirmed in-repo — naming conventions may vary.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/simoniz0r/piper-voice-models" target="_blank">↗ github.com/simoniz0r/piper-voice-models</a>
+    </div>
+  </div>
+
+  <!-- 3 DJMalachite BT7274 -->
+  <div class="card" data-source="github" data-tags="bt7274 titanfall mech robot pilot">
+    <div class="card-header">
+      <div class="card-icon">🦾</div>
+      <div>
+        <div class="card-title">DJMalachite / PiperVoiceModels</div>
+        <div class="card-source">github.com — Titanfall2/BT7274</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">BT-7274 (Titanfall 2)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>BT-7274</td><td class="filename">Titanfall2/BT7274/BT7274.onnx</td><td class="filename">BT7274.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Community post suggests setting <code>"dataset": "BT7274"</code> in the JSON to match the filename for HA compatibility.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/DJMalachite/PiperVoiceModels/tree/main/Titanfall2/BT7274" target="_blank">↗ github.com/DJMalachite/PiperVoiceModels</a>
+    </div>
+  </div>
+
+  <!-- 4 hopkira K9 -->
+  <div class="card" data-source="github" data-tags="k9 doctor who robot dog british">
+    <div class="card-header">
+      <div class="card-icon">🐕</div>
+      <div>
+        <div class="card-title">hopkira / k9_piper_voice</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">K9 (Doctor Who)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>K9</td><td class="filename">(see repo)</td><td class="filename">(see repo)</td><td><span class="quality-medium">unknown</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Unverified — files not confirmed by the HA community poster. Confirm .onnx + .onnx.json both exist before use.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/hopkira/k9_piper_voice" target="_blank">↗ github.com/hopkira/k9_piper_voice</a>
+    </div>
+  </div>
+
+  <!-- 5 robit-man Overwatch -->
+  <div class="card" data-source="github" data-tags="overwatch dispatch combine female synthetic">
+    <div class="card-header">
+      <div class="card-icon">🎯</div>
+      <div>
+        <div class="card-title">robit-man / combine_overwatch_onnx</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Overwatch Dispatch (Combine)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Overwatch Dispatch</td><td class="filename">overwatch.onnx</td><td class="filename">overwatch.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Trained on synthetic data (fair use). Both .onnx and .onnx.json are present at repo root.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/robit-man/combine_overwatch_onnx" target="_blank">↗ github.com/robit-man/combine_overwatch_onnx</a>
+    </div>
+  </div>
+
+  <!-- 6 sparky-vision fedcomp -->
+  <div class="card" data-source="github" data-tags="star trek federation computer majel barrett female">
+    <div class="card-header">
+      <div class="card-icon">🖖</div>
+      <div>
+        <div class="card-title">sparky-vision / fedcomp</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-partial">Needs Fix</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Federation Computer (Star Trek)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Fed. Computer</td><td class="filename">en_US-fedcomp-medium.onnx</td><td class="filename">en_US-fedcomp-medium.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Fix required:</strong> Edit the JSON and change <code>"dataset"</code> from <code>"en_US-fedcomp_2429"</code> to <code>"en_US-fedcomp-medium"</code> to match the filename. Optional: set <code>"length_scale": 1.1</code> to slow pacing slightly.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/sparky-vision/fedcomp" target="_blank">↗ github.com/sparky-vision/fedcomp</a>
+    </div>
+  </div>
+
+  <!-- 7 TARS-AI TARS -->
+  <div class="card" data-source="github" data-tags="tars interstellar robot ai film">
+    <div class="card-header">
+      <div class="card-icon">📐</div>
+      <div>
+        <div class="card-title">TARS-AI-Community / TARS-AI</div>
+        <div class="card-source">github.com — src/character/TARS/voice (branch: V2)</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">TARS (Interstellar)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>TARS</td><td class="filename">(see repo /voice dir)</td><td class="filename">(see repo)</td><td><span class="quality-medium">unknown</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Part of a larger project repo; navigate to <code>src/character/TARS/voice</code> on the V2 branch. Confirm both files present before use.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/TARS-AI-Community/TARS-AI/tree/V2/src/character/TARS/voice" target="_blank">↗ github.com/TARS-AI-Community/TARS-AI (V2)</a>
+    </div>
+  </div>
+
+  <!-- 8 SubatomicSeagull BeefStew -->
+  <div class="card" data-source="github" data-tags="beefstew custom discord bot">
+    <div class="card-header">
+      <div class="card-icon">🍖</div>
+      <div>
+        <div class="card-title">SubatomicSeagull / BeefStew</div>
+        <div class="card-source">github.com — src/data/tts_voices</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">(unnamed custom voices)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Custom</td><td class="filename">src/data/tts_voices/*.onnx</td><td class="filename">*.onnx.json</td><td><span class="quality-medium">unknown</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Voices are bundled inside a Discord bot project. Navigate to <code>src/data/tts_voices</code> at the specific commit hash in the HA thread link. Character/content unclear — inspect before use.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/SubatomicSeagull/BeefStew/tree/5bb2191bf64af7da19b1da7994dc355200fb29f1/src/data/tts_voices" target="_blank">↗ github.com/SubatomicSeagull/BeefStew</a>
+    </div>
+  </div>
+
+  <!-- 9 1liminal1 BMO -->
+  <div class="card" data-source="github" data-tags="bmo adventure time cartoon robot child">
+    <div class="card-header">
+      <div class="card-icon">🎮</div>
+      <div>
+        <div class="card-title">1liminal1 / xiaozhi-esphome</div>
+        <div class="card-source">github.com — piper-voices/</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">BMO (Adventure Time)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>BMO</td><td class="filename">piper-voices/*.onnx</td><td class="filename">*.onnx.json</td><td><span class="quality-medium">unknown</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Bundled inside an ESPHome integration project. Confirm files exist at <code>piper-voices/</code> in the repo root.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/1liminal1/xiaozhi-esphome/tree/main/piper-voices" target="_blank">↗ github.com/1liminal1/xiaozhi-esphome</a>
+    </div>
+  </div>
+
+  <!-- 10 stoney66 MST3K -->
+  <div class="card" data-source="github" data-tags="mst3k mystery science theater tom servo crow joel adventure time jake">
+    <div class="card-header">
+      <div class="card-icon">🛸</div>
+      <div>
+        <div class="card-title">stoney66 / piper-voices</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Tom Servo (MST3K)</span>
+      <span class="voice-chip">Crow T. Robot (MST3K)</span>
+      <span class="voice-chip">Joel (MST3K)</span>
+      <span class="voice-chip">Jake the Dog</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Tom Servo</td><td class="filename">Tom-Servo-MST3K.onnx</td><td class="filename">Tom-Servo-MST3K.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+        <tr><td>Crow T. Robot</td><td class="filename">Crow-MST3K.onnx</td><td class="filename">Crow-MST3K.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+        <tr><td>Joel</td><td class="filename">Joel-MST3K.onnx</td><td class="filename">Joel-MST3K.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+        <tr><td>Jake the Dog</td><td class="filename">Jake-the-dog.onnx</td><td class="filename">Jake-the-dog.onnx.json</td><td><span class="quality-medium">medium</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Author's note:</strong> Tom Servo sounds best; Joel and Crow described as "kinda meh." Trained using TextyMcSpeechy from MST3K episode audio.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/stoney66/piper-voices" target="_blank">↗ github.com/stoney66/piper-voices</a>
+    </div>
+  </div>
+
+  <!-- 11 programmingPug custom English -->
+  <div class="card" data-source="github" data-tags="cathy cynda james custom female male english us">
+    <div class="card-header">
+      <div class="card-icon">🔊</div>
+      <div>
+        <div class="card-title">programmingPug / AIVoices_HA</div>
+        <div class="card-source">github.com</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Cathy (en-US female)</span>
+      <span class="voice-chip">Cynda (en-US female)</span>
+      <span class="voice-chip">James (en-US male)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Quality</th></tr></thead>
+      <tbody>
+        <tr><td>Cathy</td><td class="filename">en_us-cathy-medium.onnx</td><td class="filename">en_us-cathy-medium.onnx.json</td><td><span class="quality-medium">medium · 22050 Hz</span></td></tr>
+        <tr><td>Cynda</td><td class="filename">en_us-cynda-medium.onnx</td><td class="filename">en_us-cynda-medium.onnx.json</td><td><span class="quality-medium">medium · 22050 Hz</span></td></tr>
+        <tr><td>James</td><td class="filename">en_us-james-medium.onnx</td><td class="filename">en_us-james-medium.onnx.json</td><td><span class="quality-medium">medium · 22050 Hz</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>HA-ready:</strong> Files are already named to Piper convention. Copy both files per voice to <code>/share/piper/</code>. More voices planned.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://github.com/programmingPug/AIVoices_HA" target="_blank">↗ github.com/programmingPug/AIVoices_HA</a>
+    </div>
+  </div>
+
+</div><!-- /grid -->
+
+
+<!-- ════════════════════════════════════════════════
+     SECTION: HuggingFace Repos
+═════════════════════════════════════════════════ -->
+<div class="section-label">HuggingFace Repositories</div>
+<div class="grid">
+
+  <!-- 12 campwill HAL-9000 -->
+  <div class="card" data-source="hf" data-tags="hal9000 2001 space odyssey robot ai kubrick">
+    <div class="card-header">
+      <div class="card-icon">👁️</div>
+      <div>
+        <div class="card-title">campwill / HAL-9000-Piper-TTS</div>
+        <div class="card-source">huggingface.co</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">HAL 9000</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>HAL 9000</td><td class="filename">hal.onnx</td><td class="filename">hal.onnx.json</td><td class="size">63.5 MB</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>License:</strong> Apache 2.0. Sample WAV included for preview. Direct download available.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/campwill/HAL-9000-Piper-TTS/tree/main" target="_blank">↗ huggingface.co/campwill/HAL-9000-Piper-TTS</a>
+    </div>
+  </div>
+
+  <!-- 13 csukuangfj GLaDOS -->
+  <div class="card" data-source="hf" data-tags="glados portal aperture science ai female villain">
+    <div class="card-header">
+      <div class="card-icon">🍰</div>
+      <div>
+        <div class="card-title">csukuangfj / vits-piper-en_US-glados-high</div>
+        <div class="card-source">huggingface.co</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">GLaDOS (Portal)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>GLaDOS</td><td class="filename">en_US-glados-high.onnx</td><td class="filename">en_US-glados-high.onnx.json</td><td class="size"><span class="quality-high">114 MB (high)</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Quality:</strong> High quality model (~114 MB). Files follow standard Piper naming convention. <code>espeak-ng-data</code> folder also included.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/csukuangfj/vits-piper-en_US-glados-high/tree/main" target="_blank">↗ huggingface.co/csukuangfj/vits-piper-en_US-glados-high</a>
+    </div>
+  </div>
+
+  <!-- 14 BibEBobberson Trump / Carlin -->
+  <div class="card" data-source="hf" data-tags="trump donald carlin george comedian politician">
+    <div class="card-header">
+      <div class="card-icon">🎙️</div>
+      <div>
+        <div class="card-title">BibEBobberson / Piper</div>
+        <div class="card-source">huggingface.co — tar.gz archives</div>
+      </div>
+      <span class="status-pill status-partial">Extract Required</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Donald Trump</span>
+      <span class="voice-chip">George Carlin</span>
+      <span class="voice-chip">Homer (broken)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>Archive</th><th>Size</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Donald Trump</td><td class="filename">Donald Trump.tar.gz</td><td class="size"><span class="quality-high">106 MB</span></td><td>✅ Working</td></tr>
+        <tr><td>George Carlin</td><td class="filename">George-Carlin.tar.gz</td><td class="size"><span class="quality-high">106 MB</span></td><td>✅ Working</td></tr>
+        <tr><td>Homer Simpson</td><td class="filename">Homer.zip</td><td class="size">223 MB</td><td>❌ Reported broken</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Download the .tar.gz archives (not Homer.zip). Extract to get .onnx + .onnx.json pair. Homer reportedly does not work. License: openrail.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/BibEBobberson/Piper/tree/main" target="_blank">↗ huggingface.co/BibEBobberson/Piper</a>
+    </div>
+  </div>
+
+  <!-- 15 poisson-fish Vasco -->
+  <div class="card" data-source="hf" data-tags="vasco starfield bethesda game robot companion">
+    <div class="card-header">
+      <div class="card-icon">🚀</div>
+      <div>
+        <div class="card-title">poisson-fish / piper-vasco</div>
+        <div class="card-source">huggingface.co — /onnx subfolder</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Vasco (Starfield)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>Vasco</td><td class="filename">onnx/vasco.onnx</td><td class="filename">onnx/vasco.onnx.json</td><td class="size"><span class="quality-high">114 MB (high)</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Files are in the <code>/onnx</code> subdirectory. A <code>vasco.tar.gz</code> bundle (105 MB) is also available for convenient download.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/poisson-fish/piper-vasco/tree/main/onnx" target="_blank">↗ huggingface.co/poisson-fish/piper-vasco</a>
+    </div>
+  </div>
+
+  <!-- 16 davet2001 Wheatley -->
+  <div class="card" data-source="hf" data-tags="wheatley portal 2 british robot ai moron">
+    <div class="card-header">
+      <div class="card-icon">🔵</div>
+      <div>
+        <div class="card-title">davet2001 / wheatley1</div>
+        <div class="card-source">huggingface.co</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Wheatley (Portal 2)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>Wheatley</td><td class="filename">wheatley1.onnx</td><td class="filename">wheatley1.onnx.json</td><td class="size"><span class="quality-high">114 MB (high)</span></td></tr>
+      </tbody>
+    </table>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/davet2001/wheatley1/tree/main" target="_blank">↗ huggingface.co/davet2001/wheatley1</a>
+    </div>
+  </div>
+
+  <!-- 17 russdill Kronk -->
+  <div class="card" data-source="hf" data-tags="kronk emperors new groove disney cartoon buff dumb funny">
+    <div class="card-header">
+      <div class="card-icon">💪</div>
+      <div>
+        <div class="card-title">russdill / kronk</div>
+        <div class="card-source">huggingface.co — en/en_US/kronk/medium</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Kronk (Emperor's New Groove)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>Kronk</td><td class="filename">kronk-medium.onnx</td><td class="filename">kronk-medium.onnx.json</td><td class="size">63.5 MB</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Path:</strong> Navigate to <code>en/en_US/kronk/medium/</code> in the repo. Samples folder included for audio preview.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/russdill/kronk/tree/main/en/en_US/kronk/medium" target="_blank">↗ huggingface.co/russdill/kronk</a>
+    </div>
+  </div>
+
+  <!-- 18 jgkawell JARVIS -->
+  <div class="card" data-source="hf" data-tags="jarvis iron man tony stark ai butler british marvel">
+    <div class="card-header">
+      <div class="card-icon">🔴</div>
+      <div>
+        <div class="card-title">jgkawell / jarvis</div>
+        <div class="card-source">huggingface.co — en/en_GB/jarvis/medium and /high</div>
+      </div>
+      <span class="status-pill status-verified">Verified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">JARVIS — medium (en-GB)</span>
+      <span class="voice-chip">JARVIS — high (en-GB)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>JARVIS medium</td><td class="filename">jarvis-medium.onnx</td><td class="filename">jarvis-medium.onnx.json</td><td class="size">63.5 MB</td></tr>
+        <tr><td>JARVIS high</td><td class="filename">jarvis-high.onnx</td><td class="filename">jarvis-high.onnx.json</td><td class="size"><span class="quality-high">~114 MB</span></td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>License:</strong> MIT. Files are HA-compatible (renamed). Path: <code>en/en_GB/jarvis/{medium|high}/</code>. Community confirmed working — popular choice for HA wake-word setups.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/jgkawell/jarvis/tree/main/en/en_GB/jarvis/medium" target="_blank">↗ jgkawell/jarvis (medium)</a>
+      <a class="repo-link" href="https://huggingface.co/jgkawell/jarvis/tree/main/en/en_GB/jarvis/high" target="_blank">↗ jgkawell/jarvis (high)</a>
+    </div>
+  </div>
+
+  <!-- 19 Aquaaa123 Subnautica PDA -->
+  <div class="card" data-source="hf" data-tags="subnautica pda robot voice game underwater">
+    <div class="card-header">
+      <div class="card-icon">🌊</div>
+      <div>
+        <div class="card-title">Aquaaa123 / piper-tts-pda-subnautica</div>
+        <div class="card-source">huggingface.co</div>
+      </div>
+      <span class="status-pill status-partial">Needs Fix</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">PDA (Subnautica)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>PDA</td><td class="filename">pda.onnx</td><td class="filename">pda.onnx.json</td><td class="size">63.5 MB</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Fix required:</strong> Add <code>"dataset": "pda"</code> to the <code>.onnx.json</code> file so HA can match the voice entry in the dropdown.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/Aquaaa123/piper-tts-pda-subnautica/tree/main" target="_blank">↗ huggingface.co/Aquaaa123/piper-tts-pda-subnautica</a>
+    </div>
+  </div>
+
+  <!-- 20 AkumaVenom Rocket Raccoon -->
+  <div class="card" data-source="hf" data-tags="rocket raccoon guardians galaxy marvel marvel">
+    <div class="card-header">
+      <div class="card-icon">🦝</div>
+      <div>
+        <div class="card-title">AkumaVenom / RocketRacoon-Piper-US-Medium</div>
+        <div class="card-source">huggingface.co</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Rocket Raccoon (MCU)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>ONNX file</th><th>JSON file</th><th>Size</th></tr></thead>
+      <tbody>
+        <tr><td>Rocket Raccoon</td><td class="filename">rocket_racoon.onnx</td><td class="filename">rocket_racoon.onnx.json</td><td class="size">63.5 MB</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Status:</strong> Listed as "untested" in the HA thread. Both files present and correctly named. Try it out!</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://huggingface.co/AkumaVenom/RocketRacoon-Piper-US-Medium/tree/main" target="_blank">↗ huggingface.co/AkumaVenom/RocketRacoon-Piper-US-Medium</a>
+    </div>
+  </div>
+
+</div><!-- /hf grid -->
+
+
+<!-- ════════════════════════════════════════════════
+     SECTION: Other / External
+═════════════════════════════════════════════════ -->
+<div class="section-label">Other Sources</div>
+<div class="grid">
+
+  <!-- 21 grace-central Alexa/Cortana/Zarvox -->
+  <div class="card" data-source="other" data-tags="alexa cortana zarvox apple siri assistant female">
+    <div class="card-header">
+      <div class="card-icon">🗣️</div>
+      <div>
+        <div class="card-title">grace-central.net / Piper TTS Voices Repository</div>
+        <div class="card-source">grace-central.net/piper/</div>
+      </div>
+      <span class="status-pill status-partial">404 at time of check</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Alexa</span>
+      <span class="voice-chip">Cortana</span>
+      <span class="voice-chip">Zarvox</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Alexa, Cortana, Zarvox</td><td>⚠️ Site returned 404 — may be temporarily offline. The HA thread confirmed this URL is the correct location and re-linked it in Jan 2026.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> The site went down at least once (HA thread post #16) but was confirmed working again as of Jan 2026 (post #17). Try the link — it may be intermittent. Cache/Wayback Machine may have files.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://grace-central.net/piper/" target="_blank">↗ grace-central.net/piper/</a>
+      <a class="repo-link" href="https://web.archive.org/web/*/grace-central.net/piper/" target="_blank">↗ Wayback Machine</a>
+    </div>
+  </div>
+
+  <!-- 22 Bender filedn.com -->
+  <div class="card" data-source="other" data-tags="bender futurama robot bite my shiny">
+    <div class="card-header">
+      <div class="card-icon">🤖</div>
+      <div>
+        <div class="card-title">Bender (Futurama) — anonymous share</div>
+        <div class="card-source">filedn.com direct link (ZIP)</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Bender (Futurama)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Voice</th><th>Download</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Bender</td><td class="filename">bender_piper.zip</td><td>Contains .onnx file. JSON may need to be added/edited.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Caveat:</strong> Shared via the HA Voice Assistant Contest thread. Trained on LJ Speech Dataset so inflection is odd but voice is recognizable. Work in progress per original poster.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://filedn.com/lUFT01oKaP5FuOR782wnNRm/bender_piper.zip" target="_blank">↗ Direct ZIP download</a>
+    </div>
+  </div>
+
+  <!-- 23 Nexusmods Fallout4 -->
+  <div class="card" data-source="other" data-tags="fallout 4 synth institute npc various pack">
+    <div class="card-header">
+      <div class="card-icon">☢️</div>
+      <div>
+        <div class="card-title">NexusMods — Fallout 4 Piper Voice Pack</div>
+        <div class="card-source">nexusmods.com/fallout4/mods/79747</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Large pack (Fallout 4 characters)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Archive</th><th>File ID</th></tr></thead>
+      <tbody>
+        <tr><td>Voice pack</td><td class="filename">file_id=352431</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Requires free NexusMods account to download. Contents not independently verified — inspect files before deploying to wyoming-piper. Large pack, likely multiple .onnx/.json pairs.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://www.nexusmods.com/fallout4/mods/79747?tab=files&file_id=352431" target="_blank">↗ nexusmods.com/fallout4/mods/79747</a>
+    </div>
+  </div>
+
+  <!-- 24 Nexusmods Skyrim -->
+  <div class="card" data-source="other" data-tags="skyrim dragons npc pack fantasy voices">
+    <div class="card-header">
+      <div class="card-icon">🐉</div>
+      <div>
+        <div class="card-title">NexusMods — Skyrim SE Piper Voice Packs</div>
+        <div class="card-source">nexusmods.com/skyrimspecialedition/mods/98631</div>
+      </div>
+      <span class="status-pill status-unverified">Unverified</span>
+    </div>
+    <div class="voices">
+      <span class="voice-chip">Large pack (Skyrim characters)</span>
+    </div>
+    <table class="file-table">
+      <thead><tr><th>Source</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Skyrim SE Mod #98631</td><td>Multiple voice model archives. Require free NexusMods account.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> Requires free NexusMods account. Files tab has multiple packs. Character list not confirmed — check the Files tab for individual pack descriptions before downloading.</div>
+    <div class="card-footer">
+      <a class="repo-link" href="https://www.nexusmods.com/skyrimspecialedition/mods/98631?tab=files" target="_blank">↗ nexusmods.com/skyrimspecialedition/mods/98631</a>
+    </div>
+  </div>
+
+</div><!-- /other grid -->
+
+<!-- ════════════════════════════════════════════════
+     SECTION: Quick Reference — Installation
+═════════════════════════════════════════════════ -->
+<div class="section-label" style="margin-top:8px;">Quick Reference — Wyoming Piper Installation</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; font-size: 13px; line-height: 1.8; color: var(--subtext);">
+  <p style="margin-bottom:12px; color: var(--text); font-weight:600;">Steps to add any custom voice to wyoming-piper / Home Assistant</p>
+  <ol style="padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+    <li>Download <strong>both</strong> the <code style="background:var(--tag-bg);padding:1px 6px;border-radius:3px;color:var(--accent);">.onnx</code> and <code style="background:var(--tag-bg);padding:1px 6px;border-radius:3px;color:var(--accent);">.onnx.json</code> files (they must have matching base names).</li>
+    <li>Copy them to your Piper data directory:<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;• HA add-on: <code style="background:var(--tag-bg);padding:1px 6px;border-radius:3px;color:var(--accent2);">/share/piper/</code><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;• Docker / wyoming-piper: <code style="background:var(--tag-bg);padding:1px 6px;border-radius:3px;color:var(--accent2);">/var/lib/wyoming-piper/data/</code> (or your mapped volume)</li>
+    <li>Verify the <code>.onnx.json</code> has a <code>"dataset"</code> field that <strong>exactly matches</strong> the .onnx filename (without extension).</li>
+    <li>For medium quality (~60 MB) set <code>"quality": "medium"</code>; for high (~110 MB) set <code>"quality": "high"</code>. Sample rate is almost always <code>22050</code>.</li>
+    <li>Restart the Piper add-on / container, then restart Home Assistant.</li>
+    <li>Navigate to <strong>Settings → Voice Assistants → your assistant → Text-to-speech</strong> and select the new voice from the dropdown.</li>
+  </ol>
+  <p style="margin-top:16px; color: var(--muted); font-size:12px;">💡 If the voice doesn't appear, the most common cause is a mismatch between the filename and the <code>"dataset"</code> value inside the JSON. Edit the JSON to match.</p>
+</div>
+
+</main>
+
+<div class="totals" id="totals">
+  <span><strong id="totalCount">24</strong> sources catalogued</span>
+  <span><strong id="verifiedCount">11</strong> verified (onnx + json confirmed)</span>
+  <span><strong id="voiceCount">34</strong> individual voices</span>
+  <span>Last updated: <strong>June 2026</strong></span>
+</div>
+
+<script>
+  let activeFilter = 'all';
+
+  function filterCards() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const cards  = document.querySelectorAll('.card');
+    cards.forEach(c => {
+      const text = (c.textContent + ' ' + (c.dataset.tags || '')).toLowerCase();
+      const srcMatch = activeFilter === 'all' || c.dataset.source === activeFilter;
+      const txtMatch = !query || text.includes(query);
+      c.classList.toggle('hidden', !(srcMatch && txtMatch));
+    });
+  }
+
+  function setFilter(f, btn) {
+    activeFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterCards();
+  }
+</script>
+</body>
+</html>
