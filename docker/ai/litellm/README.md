@@ -16,9 +16,12 @@
 - **Virtual keys (per-app):** backed by Postgres DB `litellm`
   (`DATABASE_URL=postgresql://litellm:${LITELLM_DB_PASSWORD}@postgres:5432/litellm`; LiteLLM runs
   its Prisma migrations on startup). Mint a scoped key with the master key:
-  `POST /key/generate {"key_alias":"<app>","models":["unsloth/Qwen3.5-4B-GGUF"]}` → returns `sk-…`.
+  `POST /key/generate {"key_alias":"<app>","models":["unsloth/Qwen3.5-4B-GGUF","bge-m3"]}` → returns `sk-…`.
+  Scope the key to **every** model the app uses (chat + embeddings) — a missing model 403s with
+  `key_model_access_denied`. Add a model to an existing key via `POST /key/update {"key":"sk-…","models":[…]}`.
   Revoke/rotate per app via `/key/delete` and `/key/generate` without rotating the master key.
-  Existing keys: **`apollo`** (Apollo voice-assistant project, 2026-06-17).
+  Existing keys: **`apollo`** (Apollo voice-assistant project, 2026-06-17) — scoped to
+  `unsloth/Qwen3.5-4B-GGUF` + `bge-m3` (chat + embeddings).
 - Routed at `litellm.${DOMAIN}` with `secure-chain@file` (master-key auth, **not** SSO). Add a
   `litellm.pdx.sanctioned.tech → 192.168.2.10` EdgeRouter mapping for by-name access.
 
