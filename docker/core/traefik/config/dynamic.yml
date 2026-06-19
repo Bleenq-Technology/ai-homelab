@@ -14,6 +14,17 @@ http:
       priority: 1000
       tls: {}
 
+    # Friendly entry point: account.${DOMAIN} -> Keycloak homelab "Signing in" page.
+    # Lets users manage passkeys/2FA without knowing the realm URL. The redirect
+    # middleware answers before the service is ever used (service is just a required
+    # placeholder). Wildcard *.pdx cert covers account.pdx automatically.
+    account-redirect:
+      rule: "Host(`account.pdx.sanctioned.tech`)"
+      entryPoints: ["websecure"]
+      service: oauth2-proxy
+      middlewares: ["account-redirect"]
+      tls: {}
+
   services:
     oauth2-proxy:
       loadBalancer:
@@ -21,6 +32,14 @@ http:
           - url: "http://oauth2-proxy:4180"
 
   middlewares:
+
+    # ---- account.${DOMAIN} -> Keycloak homelab "Signing in" page ----
+    # 302 (not permanent) so the target can change later without poisoning caches.
+    account-redirect:
+      redirectRegex:
+        regex: ".*"
+        replacement: "https://keycloak.pdx.sanctioned.tech/realms/homelab/account/account-security/signing-in"
+        permanent: false
 
     # ---- Security headers (incl. HSTS) ----
     security-headers:
