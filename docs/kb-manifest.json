@@ -34,6 +34,20 @@
       "source": { "type": "github", "repo": "Bleenq-Technology/apollo", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
     },
     {
+      "name": "kb_research_ai_ml",
+      "enabled": true,
+      "collection": "kb_research_ai_ml",
+      "description": "Curated AI/ML research — links (YouTube talks, articles, papers, repos, docs) harvested from the team's Discord AI/ML channels and credibility-filtered. Use for questions about AI/ML tools, models, agents, techniques, and notable resources the team is tracking.",
+      "source": { "type": "discord-harvest", "app": "discord-curator" }
+    },
+    {
+      "name": "kb_research_trading",
+      "enabled": true,
+      "collection": "kb_research_trading",
+      "description": "Curated trading research — links harvested from the team's Discord trading channels and credibility-filtered (ephemeral 'stocks this week' content excluded). Use for questions about trading strategies, market-analysis tools, indicators, and notable trading resources the team is tracking.",
+      "source": { "type": "discord-harvest", "app": "discord-curator" }
+    },
+    {
       "name": "kb_mddocsviewer_docs",
       "enabled": false,
       "collection": "kb_mddocsviewer_docs",

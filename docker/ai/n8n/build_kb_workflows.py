@@ -41,7 +41,11 @@ def repo_url(repo):
     return f"https://github.com/{repo}"
 
 def build_ingest(manifest):
-    kbs = [k for k in manifest["kbs"] if k.get("enabled")]
+    # Only github-sourced KBs are git-pulled+rebuilt here. Other sources (e.g. "discord-harvest")
+    # are populated by their own app's flow, so they're excluded from kb-ingest but still appear in
+    # kb-chat / kb-list / kb-search (those include every enabled KB).
+    kbs = [k for k in manifest["kbs"]
+           if k.get("enabled") and k.get("source", {}).get("type", "github") == "github"]
     nodes, conns = [], {}
 
     manual = {"id": "trg_manual", "name": "Manual Trigger",
@@ -258,10 +262,13 @@ def main():
     manifest = json.load(open(args.manifest, encoding="utf-8"))
     os.makedirs(args.out, exist_ok=True)
     enabled = [k["collection"] for k in manifest["kbs"] if k.get("enabled")]
+    ingest_kbs = [k["collection"] for k in manifest["kbs"]
+                  if k.get("enabled") and k.get("source", {}).get("type", "github") == "github"]
     ingest = build_ingest(manifest)
     pi = os.path.join(args.out, "kb-ingest.json")
     json.dump(ingest, open(pi, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
-    print(f"wrote {pi}: {len(ingest['nodes'])} nodes for KBs {enabled}")
+    print(f"wrote {pi}: {len(ingest['nodes'])} nodes for github KBs {ingest_kbs} "
+          f"(non-github enabled KBs are populated by their own app)")
 
     chat = build_chat(manifest)
     pc = os.path.join(args.out, "kb-chat.json")
