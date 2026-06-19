@@ -6,7 +6,10 @@ the OIDC clients; `master` is kept for Keycloak admin only.
 ## How services authenticate
 
 - **Native OIDC** (the app talks to Keycloak directly): Grafana, Open WebUI,
-  Portainer, Langfuse. Each has its own confidential client + redirect URI.
+  Portainer, Langfuse, **MinIO console**. Each has its own confidential client +
+  redirect URI. (MinIO: console login only — the S3 API still uses access keys;
+  client provisioned by [`provision-minio-client.sh`](provision-minio-client.sh),
+  role mapped to `consoleAdmin` via `MINIO_IDENTITY_OPENID_ROLE_POLICY`.)
 - **Forward-auth** (for apps with no/weak SSO): **oauth2-proxy** (Keycloak client
   `oauth2-proxy`) runs at the central auth domain `auth.${DOMAIN}`. Traefik calls it via the
   `sso@file` / `secure-sso@file` middleware (forwardAuth → `/oauth2/auth`; on no session an

@@ -125,6 +125,18 @@ services:
       # Serve /minio/v2/metrics/* without a bearer token so Prometheus can scrape
       # it (otherwise the scrape gets HTTP 403 -> false InstanceDown).
       MINIO_PROMETHEUS_AUTH_TYPE: public
+      # ---- Keycloak SSO for the Console (human login only) --------------------
+      # OIDC adds a "Login with Keycloak" button to the console; it does NOT touch
+      # the S3 API — in-cluster apps keep using static access keys (root creds /
+      # service accounts) over http://minio:9000. ROLE_POLICY grants every SSO user
+      # the built-in consoleAdmin policy (single-admin homelab). Client secret +
+      # realm client are provisioned by core/keycloak/provision-minio-client.sh.
+      MINIO_IDENTITY_OPENID_CONFIG_URL: https://keycloak.${DOMAIN}/realms/homelab/.well-known/openid-configuration
+      MINIO_IDENTITY_OPENID_CLIENT_ID: minio
+      MINIO_IDENTITY_OPENID_CLIENT_SECRET: ${MINIO_OIDC_CLIENT_SECRET}
+      MINIO_IDENTITY_OPENID_DISPLAY_NAME: "Keycloak"
+      MINIO_IDENTITY_OPENID_SCOPES: "openid,profile,email"
+      MINIO_IDENTITY_OPENID_ROLE_POLICY: consoleAdmin
       TZ: ${TZ}
     volumes:
       - ./minio/data:/data
