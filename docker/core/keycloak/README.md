@@ -41,6 +41,15 @@ docker exec keycloak /opt/keycloak/bin/kcadm.sh create clients/<id>/client-secre
 
 Recreate the user (`paul`) and set a password with `create users` / `set-password`.
 
+After importing, run the post-import helpers to apply the bits that don't live in
+the realm export:
+
+```bash
+./core/keycloak/configure-smtp.sh           # Mailjet SMTP + reset/verify
+./core/keycloak/configure-passkeys.sh        # WebAuthn passwordless policy + Enable Passkeys
+./core/keycloak/add-passkey-2fa-skip.sh      # browser-passkeys flow (skip OTP after passkey)
+```
+
 ## Email / SMTP (password reset, verification)
 
 The realm sends mail via **Mailjet** using the shared `SMTP_*` creds (Infisical →
@@ -96,6 +105,27 @@ service.) The only thing to configure is the realm policy:
 Users self-enroll at `https://keycloak.${DOMAIN}/realms/homelab/account/` →
 **Account security → Signing in → Passkey**. To force enrollment, add the
 `webauthn-register-passwordless` required action to the user.
+
+### Skip 2FA when a passkey is used
+
+A passkey already proves possession + user verification, so a second OTP factor is
+redundant after a passkey login. Keycloak's built-in `browser` flow can't be edited
+in place, so the idempotent helper
+
+```bash
+./core/keycloak/add-passkey-2fa-skip.sh     # run from /opt/homelab
+```
+
+duplicates `browser` → **`browser-passkeys`**, adds a **Condition - credential**
+(`credentials=[webauthn-passwordless]`, `included=false`) ahead of the OTP Form in
+the "Browser - Conditional OTP" subflow, and binds `browser-passkeys` as the realm
+browser flow. Net effect: OTP runs for password logins but is **skipped after a
+passkey login** — the same behaviour as the Keycloak 26.4 default browser flow.
+
+This is a **post-import helper** (like the SMTP/passkey-policy ones), not baked into
+`realm-homelab.json`: on a fresh import the `browser-passkeys` copy doesn't exist
+yet, so the realm export keeps `browserFlow: browser` and the helper creates + binds
+the copy afterward.
 
 **Notes & gotchas:**
 - WebAuthn needs a secure context — satisfied by Traefik TLS + `KC_HOSTNAME=https://…`
