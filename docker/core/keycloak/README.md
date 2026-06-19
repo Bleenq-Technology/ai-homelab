@@ -18,6 +18,8 @@ the OIDC clients; `master` is kept for Keycloak admin only.
 - The **Traefik dashboard** stays on basic-auth as a deliberate break-glass.
 - **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth
   plugin — these keep local logins (or can be forward-auth gated later).
+- **Social login** (Google / LinkedIn) via identity brokering — see
+  [`social-login.md`](social-login.md).
 
 Client secrets live in `/opt/homelab/.env` on the host (`*_OIDC_CLIENT_SECRET`,
 `OAUTH2_PROXY_CLIENT_SECRET`), never in git.
