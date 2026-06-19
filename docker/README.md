@@ -28,8 +28,8 @@ docker/
 - **Secrets**: EasyDNS API creds via Docker secrets (`_FILE` convention). Other
   credentials live in Infisical and flow to `.env` via `pull-secrets.sh` — **always
   add/change secrets with `push-secret.sh`, never by hand-editing `.env`**
-  ([SECRETS.md](SECRETS.md)). Postgres provisions one DB + least-privilege role per
-  service on first boot ([data/postgres/init](data/postgres/init)).
+  (see [core/infisical/README.md](core/infisical/README.md)). Postgres provisions one
+  DB + least-privilege role per service on first boot ([data/postgres/init](data/postgres/init)).
 - **Images are pinned.** Bump deliberately; Watchtower only updates containers you
   explicitly label.
 
