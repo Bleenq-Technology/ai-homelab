@@ -26,7 +26,9 @@ docker/
   `tls=true`, and the shared `secure-chain@file` middleware. No per-service
   `certresolver` label.
 - **Secrets**: EasyDNS API creds via Docker secrets (`_FILE` convention). Other
-  credentials via `.env`. Postgres provisions one DB + least-privilege role per
+  credentials live in Infisical and flow to `.env` via `pull-secrets.sh` — **always
+  add/change secrets with `push-secret.sh`, never by hand-editing `.env`**
+  ([SECRETS.md](SECRETS.md)). Postgres provisions one DB + least-privilege role per
   service on first boot ([data/postgres/init](data/postgres/init)).
 - **Images are pinned.** Bump deliberately; Watchtower only updates containers you
   explicitly label.

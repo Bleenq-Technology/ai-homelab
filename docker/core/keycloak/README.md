@@ -55,6 +55,43 @@ the realm export:
 ./core/keycloak/add-passkey-2fa-skip.sh      # browser-passkeys flow (skip OTP after passkey)
 ```
 
+## Secrets & admin pipeline
+
+**Keycloak is the source of truth for confidential-client secrets.** They flow:
+
+```
+Keycloak (kcadm)  ->  Infisical (prod)  ->  .env  ->  containers
+                                   pull-secrets.sh   compose
+```
+
+- `realm-homelab.json` ships every client secret as `REPLACE_AFTER_IMPORT` (never
+  real values — those are only ever in Keycloak's DB, Infisical, and the host `.env`).
+- `pull-secrets.sh` does `infisical export > .env`, which **truncates `.env` first**.
+  If a value isn't in Infisical it won't survive a re-pull — so add new secrets to
+  Infisical, not just `.env`. (A deleted/empty `.env` cascades: recreated containers
+  get blank config — grafana crashes on an empty SMTP address, oauth2-proxy fails token
+  exchange with `invalid_client`. Fix: `./pull-secrets.sh`, then recreate.)
+
+Helpers (all idempotent, run from `/opt/homelab`):
+
+```bash
+./core/keycloak/provision-permanent-admin.sh   # create permanent master admin -> Infisical
+./core/keycloak/sync-oidc-secrets.sh           # reconcile KC client secrets -> Infisical -> .env
+./core/keycloak/provision-minio-client.sh      # create the minio OIDC client (console SSO)
+```
+
+- **Permanent admin** (`keycloak-admin`): Keycloak 26's `KC_BOOTSTRAP_ADMIN_*` account
+  is **temporary and expires mid-run**, which silently breaks `kcadm` (`invalid_grant`).
+  `provision-permanent-admin.sh` creates a real master-realm admin with the `admin`
+  role and stores it as `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` in Infisical, so
+  automation no longer depends on the bootstrap account. Run it once while a valid
+  admin session exists (e.g. just after a Keycloak recreate).
+- **Reconcile drift**: if a client secret in `.env`/Infisical ever diverges from
+  Keycloak (a running container's value is *not* authoritative — verify against
+  Keycloak), `sync-oidc-secrets.sh` pushes Keycloak's values back into Infisical and
+  re-pulls `.env`. To **rotate** a secret: `kcadm create clients/<id>/client-secret`,
+  then `sync-oidc-secrets.sh` to propagate.
+
 ## Email / SMTP (password reset, verification)
 
 The realm sends mail via **Mailjet** using the shared `SMTP_*` creds (Infisical →
