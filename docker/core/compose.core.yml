@@ -83,6 +83,9 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
+      # Passkeys (passwordless WebAuthn) are GA / enabled by default as of 26.4+
+      # (this image is 26.6.3), so no KC_FEATURES flag is needed. The realm-side
+      # policy + "Enable Passkeys" switch are applied by ./keycloak/configure-passkeys.sh.
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     volumes:

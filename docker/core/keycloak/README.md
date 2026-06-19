@@ -62,3 +62,49 @@ It reads `SMTP_*` + the admin creds from `.env` and sets `realms/homelab`
 - Mailjet SMTP: port **587**, **StartTLS** (`ssl=false`, `starttls=true`),
   `user` = API key, `password` = secret key.
 - The same `SMTP_*` creds are reused by Grafana, NetBox, and Baserow.
+
+## Passkeys (passwordless WebAuthn)
+
+Keycloak 26 supports **passkeys** — discoverable WebAuthn credentials that log a
+user in with a biometric/PIN and no password. This covers **iPhone Face ID**
+(and Touch ID, Windows Hello, Android, hardware keys like YubiKey): the passkey is
+created in iCloud Keychain and used either directly in Safari on the phone, or
+**cross-device** from a desktop browser by scanning a QR code and approving with
+Face ID (the WebAuthn "hybrid" transport).
+
+Passkeys are **GA / enabled by default** as of Keycloak 26.4 (this image is
+26.6.3), so **no `KC_FEATURES` flag is needed** — the `PASSKEYS` feature reports
+`enabled=true, type=DEFAULT` out of the box. (It was a preview feature `passkeys`
+in 26.0–26.3; if you ever pin one of those, add `KC_FEATURES: passkeys` to the
+service.) The only thing to configure is the realm policy:
+
+- **Realm policy** — apply (or re-apply after a realm rebuild) with the idempotent
+  helper:
+
+   ```bash
+   ./core/keycloak/configure-passkeys.sh     # run from /opt/homelab
+   ```
+
+   It sets the **WebAuthn Passwordless Policy** (RP ID = the parent `${DOMAIN}` so one
+   passkey works across every `*.${DOMAIN}` app; require resident key = Yes; user
+   verification = required), enables the `webauthn-register-passwordless` required
+   action, and flips the **Enable Passkeys** switch
+   (`webAuthnPolicyPasswordlessPasskeysEnabled`). With Passkeys on, the **default
+   browser flow** shows the conditional/modal passkey prompt automatically — no flow
+   editing needed (26.4+).
+
+Users self-enroll at `https://keycloak.${DOMAIN}/realms/homelab/account/` →
+**Account security → Signing in → Passkey**. To force enrollment, add the
+`webauthn-register-passwordless` required action to the user.
+
+**Notes & gotchas:**
+- WebAuthn needs a secure context — satisfied by Traefik TLS + `KC_HOSTNAME=https://…`
+  and `KC_PROXY_HEADERS=xforwarded`.
+- The passwordless-policy fields + `webAuthnPolicyPasswordlessPasskeysEnabled: true`
+  are baked into [`realm-homelab.json`](realm-homelab.json), so a clean realm import
+  comes up passkey-ready; `configure-passkeys.sh` is the idempotent re-apply for an
+  already-running realm. (We patch those fields in place rather than a full `kc.sh
+  export`, which would splice real client secrets over the `REPLACE_AFTER_IMPORT`
+  placeholders.)
+- RP ID `${DOMAIN}` means passkeys are bound to that registrable domain; they won't
+  work if a service is reached over a bare IP or a different domain.
