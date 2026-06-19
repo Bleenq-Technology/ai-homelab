@@ -148,12 +148,13 @@ the copy afterward.
 (fired by `webauthnRegister.js`), which users found confusing.
 
 It overrides a single template, [`login/webauthn-register.ftl`](themes/homelab/login/webauthn-register.ftl),
-adding one line — `window.prompt = () => null;` — just before registration runs. The
-stock JS treats a null prompt result as "use the default label" and auto-submits, so
-the dialog never appears. The default label is set to `Passkey` via
-[`login/messages/messages_en.properties`](themes/homelab/login/messages/messages_en.properties).
-The JS itself is **not** overridden, so this survives Keycloak upgrades; only re-check
-the FTL if upstream rewrites `webauthn-register.ftl`.
+replacing the dialog's `window.prompt` with a function that returns a **unique**
+auto-label (`Passkey <timestamp>`) just before registration runs. The stock JS uses
+that returned string as the label and auto-submits, so the dialog never appears.
+The label must be unique because **Keycloak rejects duplicate WebAuthn labels** — a
+constant default would break enrolling a 2nd passkey. The JS itself is **not**
+overridden, so this survives Keycloak upgrades; only re-check the FTL if upstream
+rewrites `webauthn-register.ftl`.
 
 **Notes:**
 - Theme caching is on in `start` mode — **recreate the keycloak container** after
