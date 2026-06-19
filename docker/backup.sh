@@ -14,10 +14,11 @@
 # Cron (installed on jarvis):
 #   0 2 * * *  /opt/homelab/backup.sh >> /opt/homelab/backups/backup.log 2>&1
 #
-# ⚠ OFF-HOST GAP: local copies AND MinIO both live on jarvis's single disk, so this
-# protects against accidental deletion / app corruption but NOT disk loss. Wire an
-# off-host target (rclone/rsync to a NAS or cloud bucket) for true DR — everything
-# here is <1 GB total, so it's cheap. Left as a follow-up pending a target.
+# OFF-HOST replica: after the local/MinIO copies, the whole backups dir is pushed
+# to the Asustor NAS (stor.pdx.sanctioned.tech) via restic to an append-only REST
+# server — client-side encrypted, deduplicated, integrity-checked. This is the true
+# DR copy (survives loss of jarvis's disk). The NAS account can ADD but never DELETE
+# (append-only), so a compromised jarvis can't wipe history. See docs/off-host-backup.md.
 # ============================================================================
 set -uo pipefail            # NOT -e: one datastore failing must not skip the others
 cd "$(dirname "$0")"
@@ -88,11 +89,31 @@ backup_minio(){
   log "minio: wrote $(du -h "$out" | cut -f1)"
 }
 
+# Off-host: encrypted + deduped replica of the whole backups dir to the Asustor NAS
+# via the restic REST server (append-only). Repo + REST creds come from .env
+# (Infisical: ASUSTOR_* / RESTIC_*). See docs/off-host-backup.md.
+backup_offhost(){
+  local user pass host repopw
+  user=$(val ASUSTOR_INTEGRATION_LOGIN); pass=$(val RESTIC_REST_PASSWORD)
+  host=$(val ASUSTOR_HOST_NAME);         repopw=$(val RESTIC_PASSWORD)
+  [ -n "$user$pass$host$repopw" ] || { log "offhost: SKIP (missing ASUSTOR_/RESTIC_ vars)"; return 1; }
+  command -v restic >/dev/null     || { log "offhost: SKIP (restic not installed)"; return 1; }
+  # RESTIC_REST_PASSWORD is URL-safe hex; restic masks the URL password as *** in output.
+  export RESTIC_REPOSITORY="rest:http://${user}:${pass}@${host}:8000/${user}/"
+  export RESTIC_PASSWORD="$repopw"
+  log "offhost: restic backup -> ${host} (append-only)"
+  restic backup "$BK" --tag offhost --host jarvis || { unset RESTIC_REPOSITORY RESTIC_PASSWORD; return 1; }
+  # Sundays: verify off-host repo integrity (append-only blocks prune; see runbook).
+  [ "$(date +%u)" = 7 ] && { log "offhost: weekly restic check"; restic check || log "offhost: WARN check failed"; }
+  unset RESTIC_REPOSITORY RESTIC_PASSWORD
+}
+
 log "===== homelab backup $TS start ====="
 backup_postgres   || log "[ERROR] postgres backup FAILED"
 backup_clickhouse || log "[ERROR] clickhouse backup FAILED"
 backup_questdb    || log "[ERROR] questdb backup FAILED"
 backup_minio      || log "[ERROR] minio backup FAILED"
+backup_offhost    || log "[ERROR] off-host (restic->NAS) FAILED"
 
 # prune local copies older than RETAIN_DAYS
 find "$BK" -type f \( -name 'postgres-all-*.sql.gz' -o -name 'clickhouse-*.zip' \

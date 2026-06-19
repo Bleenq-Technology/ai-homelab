@@ -225,13 +225,16 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
       `pull-secrets.sh`; `.env` is a generated artifact (bootstrap kept out-of-band)
 - [x] **Backups** — nightly `backup.sh` cron snapshots every datastore, each online-consistent:
       Postgres `pg_dumpall`, ClickHouse native `BACKUP`, QuestDB `CHECKPOINT`, MinIO object store
-      → local (rotated) + MinIO. *(Off-host replication still TODO — local + MinIO share one disk.)*
+      → local (rotated) + MinIO, **plus an off-host encrypted replica to the Asustor NAS** via
+      restic to an append-only REST server (client-side encrypted, deduplicated, tamper-resistant)
+      — see [docs/off-host-backup.md](docs/off-host-backup.md).
 - [x] **Images pinned (pre-dev hardening)** — audited all ~40 images (CVE/EOL via live
       registries) and pinned to stable/secure versions; mutable `:latest`/`:main` removed
 - [x] Migrated `traefik-forward-auth` → **oauth2-proxy** (Keycloak OIDC, central auth domain
       `auth.${DOMAIN}`, Redis-backed sessions) — the archived image is gone
 - [x] Hardening — strong creds verified; QuestDB PG-wire/ILP pulled off the LAN (internal-only)
-- [ ] Off-host backup replication (local + MinIO currently share jarvis's disk)
+- [x] **Off-host backup replication** — restic → append-only REST server on the Asustor NAS
+      (`stor.pdx.sanctioned.tech`); wired into the nightly `backup.sh`. See [docs/off-host-backup.md](docs/off-host-backup.md)
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 
 ## Known / deferred
