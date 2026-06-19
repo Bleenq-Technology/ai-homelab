@@ -54,9 +54,11 @@
                     initLabelPrompt : ${msg("webauthn-registration-init-label-prompt")?c},
                     errmsg : ${msg("webauthn-unsupported-browser-text")?c}
                 };
-                // homelab: suppress the "name your passkey" dialog. returnSuccess()
-                // treats a null prompt result as "use the default label" and submits.
-                window.prompt = () => null;
+                // homelab: suppress the confusing "name your passkey" dialog. Keycloak
+                // REJECTS duplicate labels, so we can't use a constant — return a unique,
+                // readable label ("Passkey 2026-06-19 04:55:01"). returnSuccess() uses this
+                // returned string as the label and auto-submits, so no dialog is shown.
+                window.prompt = () => "Passkey " + new Date().toISOString().slice(0, 19).replace("T", " ");
                 registerByWebAuthn(input);
             },  { once: true });
             </#outputformat>
