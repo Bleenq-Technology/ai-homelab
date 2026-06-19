@@ -181,6 +181,36 @@ Realm-seed client secrets were always placeholders, never real.
 **Done when:** the pre-commit hook is installed + documented, a clean full-history scan report exists,
 and any historical secrets are rotated + scrubbed — committed.
 
+## 7. Audio transcription (STT) over an OpenAI-compatible endpoint  _(filed by discord-curator)_
+
+**Why.** `discord-curator` (Phase 2) harvests links and needs to turn **audio/podcast** sources into
+text before embedding them into `kb_research_*`. The platform's only STT today is
+**wyoming-faster-whisper**, which speaks the **Wyoming TCP protocol on :10300 — not HTTP**, and our
+**LiteLLM gateway exposes no `/audio/transcriptions` route**. So n8n flows (and any app) currently have
+**no HTTP way to transcribe audio**. YouTube captions + yt-dlp cover most harvested links, so this is a
+**capability gap, not a blocker** — discord-curator v1 marks raw-audio links `skipped` until this lands.
+
+**Goal.** Any app/flow can POST audio and get a transcript back over an **OpenAI-compatible
+`/v1/audio/transcriptions`** endpoint, ideally through the **same LiteLLM gateway** everything else uses
+(so it's keyed + Langfuse-traced like chat/embeddings).
+
+**Suggested approach (pick one, evaluate).**
+- **faster-whisper HTTP container** exposing an OpenAI-compatible `/v1/audio/transcriptions` (e.g.
+  `fedirz/faster-whisper-server` or `speaches`), GPU on the 3090 (mirror the ComfyUI/bge-m3 GPU pattern),
+  then register it in **LiteLLM** as a `whisper-1`-style model. Cleanest for callers.
+- Or a **thin Wyoming→HTTP shim** in front of the existing `wyoming-faster-whisper` if we'd rather not
+  run a second model.
+
+**Guard-rails.**
+- Networks: `ai` (LiteLLM + apps reach it internally); **no public route** needed.
+- 3090 VRAM is shared (unsloth, ComfyUI, bge-m3) — note the budget / model size (`base`/`small` is plenty
+  for spoken-word podcasts); don't starve the others.
+- Keep model files out of git (download into a mounted models dir on jarvis); pin the image version.
+- Prefer routing via **LiteLLM** so the key + Langfuse tracing story matches `bge-m3` and chat.
+
+**Done when:** POSTing an audio file to the OpenAI-compatible endpoint (direct **and** via LiteLLM)
+returns a transcript; documented in a short README; committed. (Unblocks discord-curator audio ingest.)
+
 ---
 
 _Tip for Jacob: start with #1 (self-contained, very visual, great for getting the deploy loop in

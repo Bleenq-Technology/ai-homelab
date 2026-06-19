@@ -37,5 +37,6 @@ create_db_and_role n8n       n8n       "${N8N_DB_PASSWORD}"
 create_db_and_role mlflow    mlflow    "${MLFLOW_DB_PASSWORD}"
 create_db_and_role litellm   litellm   "${LITELLM_DB_PASSWORD}"
 create_db_and_role firezone  firezone  "${FIREZONE_DB_PASSWORD:-change_me_firezone_db}"
+create_db_and_role discord_curator discord_curator "${DISCORD_CURATOR_DB_PASSWORD:-change_me_discord_curator}"
 
 echo "==> per-service databases ready"
