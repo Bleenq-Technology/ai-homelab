@@ -138,3 +138,25 @@ the copy afterward.
   placeholders.)
 - RP ID `${DOMAIN}` means passkeys are bound to that registrable domain; they won't
   work if a service is reached over a bare IP or a different domain.
+
+## Custom login theme (`homelab`)
+
+[`themes/homelab/`](themes/homelab) is a minimal **login** theme (parent
+`keycloak.v2`) mounted at `/opt/keycloak/themes` and set as the realm `loginTheme`
+(baked into `realm-homelab.json`). It exists for one reason: stock Keycloak pops a
+`window.prompt()` asking the user to **name the passkey** right after creating it
+(fired by `webauthnRegister.js`), which users found confusing.
+
+It overrides a single template, [`login/webauthn-register.ftl`](themes/homelab/login/webauthn-register.ftl),
+adding one line — `window.prompt = () => null;` — just before registration runs. The
+stock JS treats a null prompt result as "use the default label" and auto-submits, so
+the dialog never appears. The default label is set to `Passkey` via
+[`login/messages/messages_en.properties`](themes/homelab/login/messages/messages_en.properties).
+The JS itself is **not** overridden, so this survives Keycloak upgrades; only re-check
+the FTL if upstream rewrites `webauthn-register.ftl`.
+
+**Notes:**
+- Theme caching is on in `start` mode — **recreate the keycloak container** after
+  changing theme files (`docker compose -f compose.yml up -d --force-recreate keycloak`).
+- The theme provides only the `login` type; the account console stays on stock
+  `keycloak.v3`.
