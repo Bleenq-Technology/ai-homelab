@@ -34,6 +34,20 @@
       "source": { "type": "github", "repo": "your-org/assistant-app", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
     },
     {
+      "name": "kb_topic_ai_ml",
+      "enabled": true,
+      "collection": "kb_topic_ai_ml",
+      "description": "Curated AI/ML research — links (YouTube talks, articles, papers, repos, docs) harvested from the team's Discord AI/ML channels and credibility-filtered. Use for questions about AI/ML tools, models, agents, techniques, and notable resources the team is tracking.",
+      "source": { "type": "discord-harvest", "app": "content-curator" }
+    },
+    {
+      "name": "kb_topic_markets",
+      "enabled": true,
+      "collection": "kb_topic_markets",
+      "description": "Curated markets research — links harvested from the team's Discord markets channels and credibility-filtered (ephemeral 'stocks this week' content excluded). Use for questions about markets strategies, market-analysis tools, indicators, and notable markets resources the team is tracking.",
+      "source": { "type": "discord-harvest", "app": "content-curator" }
+    },
+    {
       "name": "kb_mddocsviewer_docs",
       "enabled": false,
       "collection": "kb_mddocsviewer_docs",
