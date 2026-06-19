@@ -128,6 +128,16 @@ services:
       ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY:-change_me_infisical_enc}
       AUTH_SECRET: ${INFISICAL_AUTH_SECRET:-change_me_infisical_auth}
       SITE_URL: https://infisical.${DOMAIN}
+      # Shared Mailjet SMTP creds (same vars Grafana/Keycloak use) so org invites and
+      # password resets email out. Infisical's var names differ from the shared set:
+      # SMTP_USER -> SMTP_USERNAME, SMTP_FROM -> SMTP_FROM_ADDRESS. Port 587 = STARTTLS
+      # (Infisical's SMTP_SECURE defaults false, which is correct for 587).
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_ADDRESS: ${SMTP_FROM}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
       TZ: ${TZ}
     labels:
       - "traefik.enable=true"
