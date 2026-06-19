@@ -29,6 +29,15 @@ artifact, never the source.
   gitignored): `INFISICAL_DOMAIN`, `INFISICAL_PROJECT_ID`, `INFISICAL_ENV`,
   `INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`.
 - Add/rotate a secret in the Infisical UI → re-run `pull-secrets.sh` → recreate the service.
+- **Or from the CLI** with [`push-secret.sh`](../../push-secret.sh) — the write counterpart to
+  `pull-secrets.sh`, using the same `jarvis-deploy` machine identity (which has write access):
+  ```bash
+  ./push-secret.sh KEY VALUE     # set/rotate KEY to VALUE in homelab/prod
+  ./push-secret.sh KEY           # set KEY from its current ./.env value
+  ```
+  The value is never printed (only its length). Use this so any var added to `.env` also lands in
+  Infisical — otherwise the next `pull-secrets.sh` regen drops it (exactly how
+  `DISCORD_CURATOR_DB_PASSWORD` got emptied before it was pushed).
 
 ### Bootstrap set (keep OUT of git AND Infisical — store in a password manager)
 
