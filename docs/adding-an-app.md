@@ -278,22 +278,50 @@ Gotchas:
 
 ## 8. Monitoring — add to Uptime Kuma
 
-Uptime Kuma is on **all four networks** so it can reach services on their **internal
-container endpoint**, which **bypasses Traefik forward-auth** and gives a true backend
-health signal (clean `200`) instead of the `302`-to-Keycloak you'd get on the public URL.
+Uptime Kuma sits on **all four networks** so it can reach in-cluster services on their
+**internal container endpoint**, which **bypasses Traefik forward-auth**.
 
-Add a monitor in the UI (https://uptime.pdx.sanctioned.tech):
-- **HTTP(s)** monitor → URL = internal endpoint, e.g. `http://librarian:<port>/health`
-  (use an **unauthenticated** health path; verify it returns `200` from inside the
-  network). For SSO-gated public URLs, monitor the internal endpoint, not the public one.
+### Which URL to monitor (decide first)
+
+| Your app is… | Monitor this | Why |
+|---|---|---|
+| an **infra container** that is **SSO-gated** (`secure-sso`) | **internal** `http://<service>:<port>/health` | the public URL returns `302`→Keycloak; the internal endpoint gives a true backend `200` |
+| an **infra container**, public / app-auth | internal endpoint (preferred) or public URL | both work; internal tests the backend, not the proxy |
+| an **external app** (no container on Jarvis) | the **public URL** `https://<app>.${DOMAIN}/` | there is no internal endpoint to hit |
+
+> **Example — `librarian`:** it isn't a container on Jarvis (no internal endpoint) and
+> isn't SSO-gated (returns a clean `200` publicly), so it's monitored at its **public
+> URL** `https://librarian.pdx.sanctioned.tech/`. If it later moves onto Jarvis as a
+> container, switch the monitor to its internal endpoint.
+
+### Adding the monitor
+
+- **HTTP(s)** monitor → the URL chosen above, accepting `200-299` (use an
+  unauthenticated path; verify the code from the right vantage point).
 - **TCP/port** monitor for non-HTTP services (e.g. a DB on `5432`).
-- Edge cases: if a service's root only returns `302`/`401` unauthenticated, set the
-  monitor to accept that code (as done for AdGuard).
-- **Tag** it by stack (`core`/`data`/`monitoring`/`ai`) for filtering.
+- Edge cases: if a root only returns `302`/`401` unauthenticated, set the monitor to
+  accept that code (as done for AdGuard).
+- **Tag** it by stack — `core` / `data` / `monitoring` / `ai` (tag ids 1–4) — for filtering.
 
-> Uptime Kuma **2.x dropped JSON import**, so `monitors-import.json` can't be uploaded —
-> add new monitors **through the UI**. See
-> [monitoring/uptime-kuma/README.md](../docker/monitoring/uptime-kuma/README.md).
+> Uptime Kuma **2.x dropped JSON import** *and* has no simple create-monitor API, so you
+> can't upload `monitors-import.json`. Two ways to add a monitor:
+> 1. **UI** (normal path): https://uptime.pdx.sanctioned.tech → *Add New Monitor*.
+> 2. **SQLite clone** (scriptable/agent path): the monitors live in
+>    `/app/data/kuma.db` in the `uptime-kuma` container. Back it up, clone an existing
+>    HTTP monitor, then **restart the container** so it reloads:
+>    ```bash
+>    ssh Jarvis 'docker exec uptime-kuma cp /app/data/kuma.db /app/data/kuma.db.bak'
+>    ssh Jarvis "docker exec -i uptime-kuma sqlite3 /app/data/kuma.db" <<'SQL'
+>    CREATE TEMP TABLE t AS SELECT * FROM monitor WHERE id=6;   -- 6 = NetBox (public-URL HTTP template)
+>    UPDATE t SET id=NULL, name='Librarian',
+>      url='https://librarian.pdx.sanctioned.tech/', active=1, created_date=DATETIME('now');
+>    INSERT INTO monitor SELECT * FROM t; DROP TABLE t;
+>    INSERT INTO monitor_tag (monitor_id, tag_id, value)
+>      VALUES ((SELECT id FROM monitor WHERE name='Librarian'), 4, '');  -- tag 4 = ai
+>    SQL
+>    ssh Jarvis 'docker restart uptime-kuma'   # reloads monitors from the DB
+>    ```
+> See [monitoring/uptime-kuma/README.md](../docker/monitoring/uptime-kuma/README.md).
 
 Optional: add the app to the personal launchpad page (`homelab-apps.html`, kept outside
 the repo).
@@ -342,7 +370,7 @@ git push
 | Deploy a change | `scp` file → `/opt/homelab/<path>`, then `docker compose -f compose.yml up -d <svc>` |
 | Routing | Traefik labels (infra app) or `core/traefik/config/dynamic.yml` (external app) |
 | Auth | middleware `secure-chain@file` (public) / `secure-sso@file` (SSO) / native OIDC client |
-| Monitor | Uptime Kuma UI, internal endpoint, tag by stack |
+| Monitor | Uptime Kuma — internal endpoint if in-cluster, public URL if external; UI or SQLite-clone (2.x has no import/API); tag by stack |
 
 Deep-dive docs: [core/infisical/README.md](../docker/core/infisical/README.md) ·
 [core/keycloak/README.md](../docker/core/keycloak/README.md) ·
