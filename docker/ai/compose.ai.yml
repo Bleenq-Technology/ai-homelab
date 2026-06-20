@@ -50,8 +50,8 @@ services:
       # access-control rework). Until a fix lands in a release >0.9.6 we must
       # bypass + full-inject.
       #
-      # Full injection is UNBOUNDED, and our unsloth context is 32k tokens/slot
-      # (64k total / --parallel 2, q8_0 KV — see host/unsloth/README.md). 4 full
+      # Full injection is UNBOUNDED, and our unsloth context is 40k tokens/slot
+      # (80k total / --parallel 2, q8_0 KV — see host/unsloth/README.md). 4 full
       # results overflowed it (observed 20k then 33.7k-token prompts), so cap at
       # 2 results (~17k worst case — fits with headroom). The grounding template
       # below keeps it from hallucinating. PROPER FIX once #25585 is released:
