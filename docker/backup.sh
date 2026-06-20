@@ -6,10 +6,11 @@
 #   * ClickHouse — native online `BACKUP ALL` (Langfuse traces) -> .zip
 #   * QuestDB    — CHECKPOINT CREATE + tar of the data volume -> .tar.gz
 #   * MinIO      — tar of the object store (MLflow artifacts, Langfuse, ...) -> .tar.gz
+#   * Homarr     — tar of the appdata SQLite dir (dashboard config) -> .tar.gz
 #
-# Each logical dump (PG/CH/QuestDB) is also copied to the MinIO "backups" bucket.
-# Local copies rotate after RETAIN_DAYS. Backups are crash-consistent (CH BACKUP
-# and QuestDB CHECKPOINT are online-consistent; MinIO objects are immutable files).
+# Each logical dump (PG/CH/QuestDB/Homarr) is also copied to the MinIO "backups"
+# bucket. Local copies rotate after RETAIN_DAYS. Backups are crash-consistent (CH
+# BACKUP and QuestDB CHECKPOINT are online-consistent; MinIO objects are immutable).
 #
 # Cron (installed on jarvis):
 #   0 2 * * *  /opt/homelab/backup.sh >> /opt/homelab/backups/backup.log 2>&1
@@ -89,6 +90,21 @@ backup_minio(){
   log "minio: wrote $(du -h "$out" | cut -f1)"
 }
 
+backup_homarr(){
+  # Homarr keeps its whole config (boards, tiles, integrations + their encrypted
+  # secrets) in a SQLite DB under the bind-mounted appdata dir — NOT in Postgres,
+  # so the pg_dumpall above doesn't capture it. Tar it so the dashboard survives a
+  # host/disk loss. Stopping isn't required (better-sqlite3 WAL is crash-consistent),
+  # but a tar of a quiescent dir is plenty for a low-write config DB.
+  local out="$BK/homarr-$TS.tar.gz" src="/opt/homelab/core/homarr/appdata"
+  [ -d "$src" ] || { log "homarr: SKIP (no appdata dir at $src)"; return 1; }
+  log "homarr: tar appdata -> $(basename "$out")"
+  tar czf "$out" -C "$src" . 2>/dev/null || return 1
+  [ -s "$out" ] || return 1
+  log "homarr: wrote $(du -h "$out" | cut -f1)"
+  push_minio "$out" && log "homarr: -> MinIO" || log "homarr: WARN MinIO upload failed"
+}
+
 # Off-host: encrypted + deduped replica of the whole backups dir to the Asustor NAS
 # via the restic REST server (append-only). Repo + REST creds come from .env
 # (Infisical: ASUSTOR_* / RESTIC_*). See docs/off-host-backup.md.
@@ -113,14 +129,15 @@ backup_postgres   || log "[ERROR] postgres backup FAILED"
 backup_clickhouse || log "[ERROR] clickhouse backup FAILED"
 backup_questdb    || log "[ERROR] questdb backup FAILED"
 backup_minio      || log "[ERROR] minio backup FAILED"
+backup_homarr     || log "[ERROR] homarr backup FAILED"
 backup_offhost    || log "[ERROR] off-host (restic->NAS) FAILED"
 
 # prune local copies older than RETAIN_DAYS
 find "$BK" -type f \( -name 'postgres-all-*.sql.gz' -o -name 'clickhouse-*.zip' \
-  -o -name 'questdb-*.tar.gz' -o -name 'minio-*.tar.gz' \) -mtime +"$RETAIN_DAYS" -delete
+  -o -name 'questdb-*.tar.gz' -o -name 'minio-*.tar.gz' -o -name 'homarr-*.tar.gz' \) -mtime +"$RETAIN_DAYS" -delete
 # prune the MinIO "backups" bucket too — the find above only touches local disk, so
 # without this the bucket grows unbounded.
 docker run --rm --network data --entrypoint sh "$MC_IMAGE" -c "
   mc alias set m http://minio:9000 '$MUSER' '$MPW' >/dev/null &&
   mc rm --recursive --force --older-than ${RETAIN_DAYS}d m/backups/ >/dev/null 2>&1" || true
-log "===== backup done — sets present: pg=$(ls "$BK"/postgres-all-*.sql.gz 2>/dev/null | wc -l) ch=$(ls "$BK"/clickhouse-*.zip 2>/dev/null | wc -l) qdb=$(ls "$BK"/questdb-*.tar.gz 2>/dev/null | wc -l) minio=$(ls "$BK"/minio-*.tar.gz 2>/dev/null | wc -l) ====="
+log "===== backup done — sets present: pg=$(ls "$BK"/postgres-all-*.sql.gz 2>/dev/null | wc -l) ch=$(ls "$BK"/clickhouse-*.zip 2>/dev/null | wc -l) qdb=$(ls "$BK"/questdb-*.tar.gz 2>/dev/null | wc -l) minio=$(ls "$BK"/minio-*.tar.gz 2>/dev/null | wc -l) homarr=$(ls "$BK"/homarr-*.tar.gz 2>/dev/null | wc -l) ====="
