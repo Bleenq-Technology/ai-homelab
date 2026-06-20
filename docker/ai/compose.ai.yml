@@ -42,16 +42,23 @@ services:
       TAVILY_API_KEY: ${TAVILY_API_KEY}
       SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
       # Inject fetched web-search results straight into the prompt (BYPASS=true)
-      # instead of the embed -> Qdrant -> top-k retrieval path. In OpenWebUI 0.9.6
-      # that retrieval step silently dead-ends after storing the embeddings (no
-      # sources, no answer). The unsloth LLM serves a 64k context (2x 32k-token
-      # slots, q8_0 KV — see host/unsloth/README.md), which holds these 4 full
-      # results (~20k tokens typical) plus the conversation; the grounding template
-      # below keeps it from hallucinating. NOTE: 4 very large pages can still exceed
-      # the 32k/slot window -> if that recurs, lower WEB_SEARCH_RESULT_COUNT or
-      # re-enable the embed+retrieval path on a newer OpenWebUI.
+      # instead of the embed -> Qdrant -> top-k retrieval path. The retrieval path
+      # is broken in OpenWebUI v0.9.6 (the latest release as of 2026-06): a
+      # regression in chat_web_search_handler / get_sources_from_items drops every
+      # source, so non-bypass web search returns "no sources, no answer" (upstream
+      # OPEN issue open-webui#25585, dup #25908 — introduced by v0.9.6's
+      # access-control rework). Until a fix lands in a release >0.9.6 we must
+      # bypass + full-inject.
+      #
+      # Full injection is UNBOUNDED, and our unsloth context is 32k tokens/slot
+      # (64k total / --parallel 2, q8_0 KV — see host/unsloth/README.md). 4 full
+      # results overflowed it (observed 20k then 33.7k-token prompts), so cap at
+      # 2 results (~17k worst case — fits with headroom). The grounding template
+      # below keeps it from hallucinating. PROPER FIX once #25585 is released:
+      # set BYPASS=false + raise the count — retrieval injects only top-k chunks,
+      # bounding context regardless of page size (and keeps VRAM low).
       BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL: "true"
-      WEB_SEARCH_RESULT_COUNT: "4"
+      WEB_SEARCH_RESULT_COUNT: "2"
       # Grounding template for retrieved web-search context: answer ONLY from the
       # context; if it's empty/insufficient, say so instead of hallucinating.
       RAG_TEMPLATE: |
