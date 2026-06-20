@@ -17,6 +17,7 @@ secrets/*
 
 # Per-service runtime data and persistent volumes (bind-mounted under each service)
 */*/data/
+**/appdata/
 */*/letsencrypt/
 */*/acme.json
 **/acme.json
