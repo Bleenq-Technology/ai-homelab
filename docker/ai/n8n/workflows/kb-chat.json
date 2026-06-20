@@ -47,8 +47,8 @@
         "model": {
           "__rl": true,
           "mode": "list",
-          "value": "unsloth/Qwen3.5-4B-GGUF",
-          "cachedResultName": "unsloth/Qwen3.5-4B-GGUF"
+          "value": "unsloth/Qwen3-8B-GGUF",
+          "cachedResultName": "unsloth/Qwen3-8B-GGUF"
         },
         "options": {
           "responseFormat": "text"
