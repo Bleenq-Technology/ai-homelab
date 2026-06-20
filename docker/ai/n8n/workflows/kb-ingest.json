@@ -493,6 +493,121 @@
           "name": "LiteLLM (OpenAI-compat)"
         }
       }
+    },
+    {
+      "id": "clr_4",
+      "name": "Clear kb_discord_curator_docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        2120
+      ],
+      "parameters": {
+        "method": "DELETE",
+        "url": "http://qdrant:6333/collections/kb_discord_curator_docs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "ins_4",
+      "name": "Insert kb_discord_curator_docs",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        2120
+      ],
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "mode": "list",
+          "value": "kb_discord_curator_docs",
+          "cachedResultName": "kb_discord_curator_docs"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "scAvBp08Km3zUMqK",
+          "name": "Qdrant (homelab)"
+        }
+      }
+    },
+    {
+      "id": "ld_4",
+      "name": "Load kb_discord_curator_docs",
+      "type": "@n8n/n8n-nodes-langchain.documentGithubLoader",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        2300
+      ],
+      "parameters": {
+        "repository": "https://github.com/Bleenq-Technology/discord-curator",
+        "branch": "main",
+        "textSplittingMode": "custom",
+        "additionalOptions": {
+          "recursive": true,
+          "ignorePaths": "*.py,**/*.py,*.ts,**/*.ts,*.tsx,**/*.tsx,*.js,**/*.js,*.jsx,**/*.jsx,*.mjs,**/*.mjs,*.cjs,**/*.cjs,*.json,**/*.json,*.yml,**/*.yml,*.yaml,**/*.yaml,*.toml,**/*.toml,*.ini,**/*.ini,*.cfg,**/*.cfg,*.conf,**/*.conf,*.sh,**/*.sh,*.bash,**/*.bash,*.bat,**/*.bat,*.ps1,**/*.ps1,*.xml,**/*.xml,*.html,**/*.html,*.htm,**/*.htm,*.css,**/*.css,*.scss,**/*.scss,*.sass,**/*.sass,*.less,**/*.less,*.svg,**/*.svg,*.png,**/*.png,*.jpg,**/*.jpg,*.jpeg,**/*.jpeg,*.gif,**/*.gif,*.ico,**/*.ico,*.webp,**/*.webp,*.pdf,**/*.pdf,*.txt,**/*.txt,*.csv,**/*.csv,*.tsv,**/*.tsv,*.lock,**/*.lock,*.example,**/*.example,*.env,**/*.env,*.service,**/*.service,*.gitignore,**/*.gitignore,*.gitattributes,**/*.gitattributes,*.gitkeep,**/*.gitkeep,*.dockerignore,**/*.dockerignore,*.map,**/*.map,*.woff,**/*.woff,*.woff2,**/*.woff2,*.ttf,**/*.ttf,*.eot,**/*.eot,Dockerfile,**/Dockerfile,LICENSE,**/LICENSE,Makefile,**/Makefile"
+        }
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "er4zkVl3U64gSEe2",
+          "name": "KB GitHub (ai-homelab-infra RO)"
+        }
+      }
+    },
+    {
+      "id": "sp_4",
+      "name": "Split kb_discord_curator_docs",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        300,
+        2480
+      ],
+      "parameters": {
+        "chunkSize": 1400,
+        "chunkOverlap": 200,
+        "options": {}
+      }
+    },
+    {
+      "id": "em_4",
+      "name": "Embed kb_discord_curator_docs",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        2300
+      ],
+      "parameters": {
+        "model": "bge-m3",
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "hIaZztiMPUNRvEZS",
+          "name": "LiteLLM (OpenAI-compat)"
+        }
+      }
     }
   ],
   "connections": {
@@ -516,6 +631,11 @@
           },
           {
             "node": "Clear kb_apollo_docs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clear kb_discord_curator_docs",
             "type": "main",
             "index": 0
           }
@@ -542,6 +662,11 @@
           },
           {
             "node": "Clear kb_apollo_docs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clear kb_discord_curator_docs",
             "type": "main",
             "index": 0
           }
@@ -718,6 +843,50 @@
         [
           {
             "node": "Insert kb_apollo_docs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear kb_discord_curator_docs": {
+      "main": [
+        [
+          {
+            "node": "Insert kb_discord_curator_docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load kb_discord_curator_docs": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert kb_discord_curator_docs",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split kb_discord_curator_docs": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Load kb_discord_curator_docs",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed kb_discord_curator_docs": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert kb_discord_curator_docs",
             "type": "ai_embedding",
             "index": 0
           }

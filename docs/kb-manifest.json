@@ -34,6 +34,13 @@
       "source": { "type": "github", "repo": "Bleenq-Technology/apollo", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
     },
     {
+      "name": "kb_discord_curator_docs",
+      "enabled": true,
+      "collection": "kb_discord_curator_docs",
+      "description": "discord-curator app documentation — design, architecture, roadmap, setup/deploy, and the n8n harvest+ingest flow design for the Discord-to-KB curation bot (the 'Librarian'). Use for questions about how discord-curator works, its pipeline, channels/links data model, or its components.",
+      "source": { "type": "github", "repo": "Bleenq-Technology/discord-curator", "branch": "main", "include": ["*.md"] }
+    },
+    {
       "name": "kb_research_ai_ml",
       "enabled": true,
       "collection": "kb_research_ai_ml",
