@@ -104,66 +104,67 @@ optional and not needed to go live.
 ### Native OIDC (optional upgrade) — Homarr ↔ Keycloak
 
 Switch Homarr from the forward-auth gate to **its own** Keycloak login (so Homarr
-knows the user, and you get one login button instead of a double prompt). Full
-decision/recipe: [`../keycloak/README.md`](../keycloak/README.md) → *Integrating a new
-app*. Homarr-specific fill-in:
+knows the user and you get one "Keycloak" button instead of a double prompt). Decision
+principle + general recipe: [`../keycloak/README.md`](../keycloak/README.md) →
+*Integrating a new app*. The env below is **pinned to Homarr's official OIDC docs**
+(homarr.dev → Single Sign-On); Homarr is **v1.67.0** here, at `https://home.pdx.sanctioned.tech`.
 
-**1. Create the Keycloak client (`kcadm`).** Homarr's callback path is
-`/api/auth/callback/oidc`:
-
+**1. Create the Keycloak client** — run the ready provisioning script (idempotent;
+creates the `homarr` client with the correct redirect, adds a `groups` claim mapper for
+role mapping, writes `HOMARR_OIDC_CLIENT_SECRET` to `.env`, and prints the sanitized
+client for the realm seed):
 ```bash
 ssh Jarvis && cd /opt/homelab
-KC(){ docker exec keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
-g(){ grep "^$1=" .env | cut -d= -f2- | sed -E "s/^['\"]//;s/['\"]\$//"; }
-KC config credentials --server http://localhost:8080 --realm master \
-  --user "$(g KEYCLOAK_ADMIN)" --password "$(g KEYCLOAK_ADMIN_PASSWORD)"
-KC create clients -r homelab \
-  -s clientId=homarr -s enabled=true -s protocol=openid-connect \
-  -s publicClient=false -s standardFlowEnabled=true -s directAccessGrantsEnabled=false \
-  -s 'redirectUris=["https://home.pdx.sanctioned.tech/api/auth/callback/oidc","https://home.pdx.sanctioned.tech/*"]' \
-  -s 'webOrigins=["https://home.pdx.sanctioned.tech"]'
-CID=$(KC get clients -r homelab -q clientId=homarr --fields id --format csv --noquotes)
-KC get "clients/$CID/client-secret" -r homelab        # copy the {"value":"…"}
+./core/keycloak/provision-homarr-client.sh          # prints the sanitized client rep (save it for step 5)
 ```
-(Or copy [`../keycloak/provision-minio-client.sh`](../keycloak/provision-minio-client.sh)
-→ `provision-homarr-client.sh`, swapping `minio`→`homarr`, the redirect URIs, and
-`MINIO_OIDC_CLIENT_SECRET`→`HOMARR_OIDC_CLIENT_SECRET` — it also writes the secret to
-`.env` and prints the sanitized client rep for the realm seed.)
+> Callback/redirect URI it registers: `https://home.pdx.sanctioned.tech/api/auth/callback/oidc`
+> (Homarr's fixed OIDC callback path).
 
-**2. Store the secret** + add an `.env.example` placeholder:
+**2. Store the secret in Infisical** + add the `.env.example` placeholder:
 ```bash
-./push-secret.sh HOMARR_OIDC_CLIENT_SECRET '<the value from above>'
+./push-secret.sh HOMARR_OIDC_CLIENT_SECRET    # reads the value the script just wrote to ./.env
 ./pull-secrets.sh
 ```
+Add `HOMARR_OIDC_CLIENT_SECRET=<placeholder>` to [`../../.env.example`](../../.env.example).
 
-**3. Configure Homarr's OIDC env** in the `homarr` service
-(`core/compose.core.yml`). Homarr reads `AUTH_*` vars — keep `credentials` if you want
-a local-login fallback, or use `oidc` alone:
+**3. Configure Homarr's OIDC env** in the `homarr` service (`core/compose.core.yml`) —
+**verified against Homarr v1 docs**:
 ```yaml
-      AUTH_PROVIDERS: "oidc"                  # or "credentials,oidc"
-      AUTH_OIDC_ISSUER: "https://keycloak.${DOMAIN}/realms/homelab"
+      AUTH_PROVIDERS: "oidc,credentials"        # comma-sep; drop "credentials" to remove local login
       AUTH_OIDC_CLIENT_ID: "homarr"
       AUTH_OIDC_CLIENT_SECRET: ${HOMARR_OIDC_CLIENT_SECRET}
-      AUTH_OIDC_CLIENT_NAME: "Keycloak"       # label on the login button
-      # AUTH_OIDC_AUTO_LOGIN: "true"          # optional: skip Homarr's login page
+      AUTH_OIDC_ISSUER: "https://keycloak.${DOMAIN}/realms/homelab"
+      AUTH_OIDC_CLIENT_NAME: "Keycloak"         # login-button label (default "OIDC")
+      AUTH_OIDC_SCOPE_OVERWRITE: "openid email profile groups"   # default; keep "groups" for role mapping
+      AUTH_OIDC_GROUPS_ATTRIBUTE: "groups"      # claim Homarr maps groups from (default; matches the mapper)
+      # AUTH_OIDC_AUTO_LOGIN: "true"            # optional: skip Homarr's login page, go straight to Keycloak
 ```
-> The exact `AUTH_OIDC_*` names + callback path are Homarr's; **confirm against the
-> Homarr docs for the pinned image (`v1.67.0`)** before deploying — Homarr's auth env
-> has changed across releases. The first OIDC user may need promoting to admin in
-> Homarr (Manage → Users).
+Notes / gotchas (all confirmed):
+- **Reverse proxy:** Homarr (Auth.js) derives its callback from the `X-Forwarded-Proto/Host`
+  headers our `secure-chain*` middleware already sets, so it resolves to
+  `https://home.${DOMAIN}/...` automatically — **no base-URL var needed**. (If you ever see a
+  redirect to `http://localhost:7575`, that's a missing `X-Forwarded-Host`, not a Homarr setting.)
+- **Auth secret:** Homarr v1 uses Auth.js. If startup/login errors about a missing secret, set
+  `AUTH_SECRET` to a random value (store as `HOMARR_AUTH_SECRET` in Infisical) — separate from the
+  existing `SECRET_ENCRYPTION_KEY`.
+- **Admin via Keycloak groups:** the script adds a `groups` mapper, so a Keycloak group flows to
+  Homarr under the `groups` claim. Create a Keycloak group and a **same-named** Homarr group with
+  admin perms → members inherit it on login (`AUTH_OIDC_GROUPS_LOCAL_MANAGEMENT` left `false`, so
+  Keycloak is authoritative for membership). Simplest start: skip groups and just promote the first
+  OIDC user in Homarr → Manage → Users.
 
-**4. Drop the forward-auth gate** (else you double-gate: oauth2-proxy *then* Homarr).
+**4. Drop the forward-auth gate** (else you double-gate: oauth2-proxy *then* Homarr's own login).
 Change the router middleware from `sso@file,secure-chain-stream@file` to just
 **`secure-chain-stream@file`** (keep the stream chain for Homarr's websocket):
 ```yaml
       - "traefik.http.routers.homarr.middlewares=secure-chain-stream@file"
 ```
 
-**5. Bake + deploy:** add the sanitized client (`"secret":"REPLACE_AFTER_IMPORT"`) to
-[`../keycloak/realm-homelab.json`](../keycloak/realm-homelab.json), scp the changed
-`compose.core.yml` / `.env.example` (via `/tmp` + `sudo install`, per Step 6), recreate
-`homarr`, and verify `https://home.pdx.sanctioned.tech/` now shows **Homarr's** login
-with a "Keycloak" button (not the oauth2-proxy 302).
+**5. Bake + deploy:** paste the sanitized client (`"secret":"REPLACE_AFTER_IMPORT"`) from step 1
+into [`../keycloak/realm-homelab.json`](../keycloak/realm-homelab.json), scp the changed
+`compose.core.yml` / `.env.example` (via `/tmp` + `sudo install`, per Step 6), recreate `homarr`,
+and verify `https://home.pdx.sanctioned.tech/` now shows **Homarr's** login with a **Keycloak**
+button (not the oauth2-proxy `302`). Log in, confirm you land in Homarr as that user.
 
 ## 6. Deploy — scp via /tmp + recreate via the aggregate compose
 
