@@ -44,9 +44,12 @@ services:
       # Inject fetched web-search results straight into the prompt (BYPASS=true)
       # instead of the embed -> Qdrant -> top-k retrieval path. In OpenWebUI 0.9.6
       # that retrieval step silently dead-ends after storing the embeddings (no
-      # sources, no answer). Bypass is fine here because the unsloth context is
-      # 256k tokens, so the full result content fits; the grounding template below
-      # keeps it from hallucinating.
+      # sources, no answer). The unsloth LLM serves a 64k context (2x 32k-token
+      # slots, q8_0 KV — see host/unsloth/README.md), which holds these 4 full
+      # results (~20k tokens typical) plus the conversation; the grounding template
+      # below keeps it from hallucinating. NOTE: 4 very large pages can still exceed
+      # the 32k/slot window -> if that recurs, lower WEB_SEARCH_RESULT_COUNT or
+      # re-enable the embed+retrieval path on a newer OpenWebUI.
       BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL: "true"
       WEB_SEARCH_RESULT_COUNT: "4"
       # Grounding template for retrieved web-search context: answer ONLY from the
