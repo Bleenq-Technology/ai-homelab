@@ -103,6 +103,23 @@ calling it done. Useful facts when testing:
   Follow it for any new service; don't reinvent the steps.
 - Pin image versions (no `:latest`/`:main`); GPU containers follow the ComfyUI pattern.
 
+## Authentication — how & when to integrate
+Three first-class options behind Traefik + Keycloak; **choose by what the app needs, not by rank:**
+- **Native OIDC** — when the app supports OIDC **and must know who the user is** (per-user identity,
+  roles/groups, attribution). The app does the login; route stays `secure-chain@file`; needs a
+  **per-app Keycloak client + redirect URI + secret**.
+- **oauth2-proxy forward-auth** — the **default** when you just need a **login gate** in front of an
+  app with no/weak auth. One line: set the router middleware to **`secure-sso@file`** (websockets:
+  `sso@file,secure-chain-stream@file`). **No per-app client** (shares the one oauth2-proxy client +
+  single callback). Not a lesser fallback — it's the low-friction choice; step up to OIDC only for
+  in-app identity.
+- **Public** — `secure-chain@file`, only when intentionally unauthenticated and it leaks nothing
+  sensitive (e.g. a landing page).
+
+Full decision table, the **native-OIDC recipe**, and secret rotation:
+[docker/core/keycloak/README.md](docker/core/keycloak/README.md) → *Integrating a new app*. The
+end-to-end onboarding flow is [docs/adding-an-app.md](docs/adding-an-app.md) §6.
+
 ## The shared local LLM & its couplings (handle with care)
 The host LLM (`unsloth/Qwen3-8B-GGUF`, OpenAI-compatible on `:8888`, fronted by LiteLLM) is a
 **shared dependency** across the lab and sibling repos. If you change its **model name**, it

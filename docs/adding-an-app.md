@@ -218,6 +218,12 @@ Everything else (DNS, auth, secrets, monitoring) is identical.
 
 ## 6. Authentication — pick one
 
+> **Canonical guide:** the full decision principle (choose by what the app *needs*), the
+> step-by-step **native-OIDC recipe**, and secret rotation live in
+> [core/keycloak/README.md](../docker/core/keycloak/README.md) → *Integrating a new app — choosing
+> & wiring auth*. The three options below are the in-flow summary. **Default to forward-auth (B);**
+> step up to native OIDC (C) only when the app must map identity/roles itself.
+
 **Option A — Public / app-native login** (`secure-chain@file`). The app handles its own
 auth (or is open on the trusted LAN). Nothing else to do. *(This is what `librarian`
 currently uses — it returns `200` directly.)*

@@ -27,6 +27,82 @@ the OIDC clients; `master` is kept for Keycloak admin only.
 Client secrets live in `/opt/homelab/.env` on the host (`*_OIDC_CLIENT_SECRET`,
 `OAUTH2_PROXY_CLIENT_SECRET`), never in git.
 
+## Integrating a new app — choosing & wiring auth
+
+**Decide by what the app needs, not by a ranking.** Native OIDC and forward-auth are
+both first-class; they answer different questions:
+
+| Choose… | When | Cost | Middleware | Examples |
+|---|---|---|---|---|
+| **Native OIDC** | the app **supports OIDC** *and* needs to **know who the user is** — per-user identity, roles/groups, attribution, audit | a per-app Keycloak **client + redirect URI + secret** | `secure-chain@file` (app does the login, not the proxy) | Grafana, Open WebUI, Portainer, Langfuse, MinIO console |
+| **Forward-auth (oauth2-proxy)** | the app has **no / weak auth**, or doesn't speak OIDC, or you **only need a login gate** in front | **near-zero** — no per-app client, no redirect URI (shares the one `oauth2-proxy` client + single callback) | `secure-sso@file` (or `sso@file,secure-chain-stream@file` for websockets/streaming) | Prometheus, Alertmanager, SearXNG, ComfyUI, MLflow, Homarr, Uptime Kuma |
+| **Public** | the route is **meant to be seen without login** and leaks nothing sensitive | none | `secure-chain@file` | a public landing page |
+
+> **Rule of thumb:** reach for **forward-auth by default** — it's the lowest-friction gate and
+> gives SSO across every gated app for free. Step up to **native OIDC only when the app must map
+> identity inside itself** (different users see different things, RBAC, per-user data). Forward-auth
+> is *not* a lesser fallback; native OIDC just buys in-app identity at the cost of a per-app client.
+>
+> Caveat: forward-auth only protects the **public Traefik route** — anything reaching the
+> container directly on the internal networks is ungated (fine on the trusted LAN). Native OIDC
+> protects the app itself.
+
+### Forward-auth (the easy path) — one line
+Set the router's middleware to **`secure-sso@file`** (websocket/streaming apps:
+`sso@file,secure-chain-stream@file`). That's it — oauth2-proxy gates the route against Keycloak's
+shared client at `https://auth.${DOMAIN}/oauth2/callback`. **No new Keycloak client, no per-host
+redirect URI.** (Worked example: [`../homarr/README.md`](../homarr/README.md) §5.)
+
+### Native OIDC — the recipe
+Use when the app needs in-app identity. Steps (kcadm or the admin UI):
+
+1. **Create the confidential client with `kcadm`** (our standard tool — same idiom as
+   [`provision-minio-client.sh`](provision-minio-client.sh), the **copy-paste template** for a new
+   app: it's idempotent, reads the secret back, and prints the sanitized client for the realm seed).
+   The **redirect URI path is app-specific — check the app's docs** (Grafana `/login/generic_oauth`,
+   Homarr `/api/auth/callback/oidc`, many use `/oauth_callback`):
+   ```bash
+   ssh Jarvis && cd /opt/homelab
+   KC(){ docker exec keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
+   g(){ grep "^$1=" .env | cut -d= -f2- | sed -E "s/^['\"]//;s/['\"]\$//"; }
+   # authenticate kcadm as the permanent master admin (creds from .env)
+   KC config credentials --server http://localhost:8080 --realm master \
+     --user "$(g KEYCLOAK_ADMIN)" --password "$(g KEYCLOAK_ADMIN_PASSWORD)"
+   # create the client — swap <app> and the callback path for your app
+   KC create clients -r homelab \
+     -s clientId=<app> -s enabled=true -s protocol=openid-connect \
+     -s publicClient=false -s standardFlowEnabled=true -s directAccessGrantsEnabled=false \
+     -s 'redirectUris=["https://<app>.pdx.sanctioned.tech/<callback-path>","https://<app>.pdx.sanctioned.tech/*"]' \
+     -s 'webOrigins=["https://<app>.pdx.sanctioned.tech"]'
+   CID=$(KC get clients -r homelab -q clientId=<app> --fields id --format csv --noquotes)
+   KC get "clients/$CID/client-secret" -r homelab        # -> {"value":"<the secret>"}
+   ```
+   Easiest path: **copy `provision-minio-client.sh` → `provision-<app>-client.sh`**, swap the
+   `clientId` / redirect URIs / `*_OIDC_CLIENT_SECRET` var, and run it — it does all of the above
+   plus writes the secret to `.env` and prints the sanitized client rep for step 5.
+2. **Store the secret in Infisical:** `./push-secret.sh <APP>_OIDC_CLIENT_SECRET '<secret>'` then
+   `./pull-secrets.sh`. Add a **placeholder** to [`docker/.env.example`](../../.env.example). The
+   real value lives only in Keycloak, Infisical, and the host `.env` — **never in git**.
+3. **Configure the app's OIDC env** (in its compose service): issuer
+   `https://keycloak.${DOMAIN}/realms/homelab`, client id `<app>`,
+   `${<APP>_OIDC_CLIENT_SECRET}`, scopes `openid email profile`.
+4. **Roles/groups (only if the app does RBAC):** add a realm/client role + a group or roles mapper,
+   and map it to the app's role config (see the MinIO console example —
+   [`provision-minio-client.sh`](provision-minio-client.sh) + `*_ROLE_POLICY`).
+5. **Bake the client into [`realm-homelab.json`](realm-homelab.json)** with
+   `"secret": "REPLACE_AFTER_IMPORT"` (never the real value) so a clean realm import reproduces it.
+6. **Route stays on `secure-chain@file`** — the app performs the OIDC dance itself; do **not** also
+   put `secure-sso` in front (that would double-gate).
+7. Reconcile/rotate the secret with [`sync-oidc-secrets.sh`](sync-oidc-secrets.sh) (Keycloak is the
+   source of truth; a running container's value is not authoritative).
+
+Prereqs already satisfied for every app: TLS + `KC_HOSTNAME=https://…` + `KC_PROXY_HEADERS=xforwarded`
+give OIDC the secure context/correct redirect URLs it needs.
+
+> **Switching an app from forward-auth → native OIDC later** (e.g. Homarr, to map users): create
+> the client (steps 1–5), remove `sso@file`/`secure-sso@file` from its router and set
+> `secure-chain@file`, recreate. Nothing else in the stack changes.
+
 ## Reproducing the realm
 
 [`realm-homelab.json`](realm-homelab.json) is a sanitized export (client secrets
