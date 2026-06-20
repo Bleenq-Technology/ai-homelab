@@ -11,7 +11,7 @@ This folder version-controls the service definition so the deployment is reprodu
 | File | What it is | On jarvis |
 |------|-----------|-----------|
 | `unsloth-studio.service` | Base unit — **created by the Unsloth Studio installer** (reference only; its `--model` is illustrative) | `/etc/systemd/system/unsloth-studio.service` |
-| `unsloth-studio.service.d/override.conf` | **Our** drop-in: model, quant, `--max-seq-length 65536`, `--parallel 2`, q8_0 KV cache | `/etc/systemd/system/unsloth-studio.service.d/override.conf` |
+| `unsloth-studio.service.d/override.conf` | **Our** drop-in: model, quant, `--max-seq-length 81920`, `--parallel 2`, q8_0 KV cache | `/etc/systemd/system/unsloth-studio.service.d/override.conf` |
 
 ## How it's wired (`:8888` ↔ `:49057`)
 `unsloth run` (the Unsloth **Studio** CLI, the process the systemd unit launches) listens on
@@ -36,16 +36,17 @@ Studio derives the `llama-server` command line from the unit's args:
   for any multimodal repo with no opt-out. Text-only ⇒ no projector ⇒ no wasted VRAM. The
   8B is a clear step up from the previous 4B for tool-calling / instruction-following in the
   n8n agents and curation flows.
-- **Context:** `--max-seq-length 65536` (`-c 65536`) with `--parallel 2` ⇒ two concurrent
-  **32k-token slots**. 32k/slot is sized to hold OpenWebUI's web-search results (full page
-  text is injected, not summarized — ~20k-token prompts), which overflowed the earlier
-  16k/slot (`-c 32768`) window. The KV cache scales with total `-c`, so context is the main
-  VRAM lever — but see the q8_0 KV trick below, which is what makes a 64k context affordable.
+- **Context:** `--max-seq-length 81920` (`-c 81920`) with `--parallel 2` ⇒ two concurrent
+  **40k-token slots**. 40,960 is **exactly the model's native context** (the GGUF's
+  `qwen3.context_length=40960`), so we get the largest window the model handles *without* rope
+  scaling — no YaRN, no long-context quality degradation. 40k/slot comfortably holds OpenWebUI's
+  web-search results (full page text is injected, not summarized), which overflowed the first
+  16k/slot (`-c 32768`) window and were tight at 32k/slot. Going beyond 40k/slot would need YaRN
+  (or the separate `unsloth/Qwen3-8B-128K-GGUF` variant) **and** more VRAM — see the budget below.
 - **KV cache `q8_0`:** `--cache-type-k q8_0 --cache-type-v q8_0` stores the KV cache at 8-bit
-  instead of f16, roughly **halving** its VRAM. This is what lets us double the context (32k →
-  64k total) for ~no extra VRAM vs the old 32k-f16 config. q8_0 KV is effectively lossless for
-  chat/tool-use and requires flash-attn (Studio enables it). Still well above the old **256k**,
-  so the GPU stays freed.
+  instead of f16, roughly **halving** its VRAM. That's what keeps an 80k context affordable
+  (~6 GB of q8 KV vs ~12 GB at f16). q8_0 KV is effectively lossless for chat/tool-use and
+  requires flash-attn (Studio enables it). Still far below the old **256k**, so the GPU stays freed.
 - **`enable_thinking: false`** — forced via `--chat-template-kwargs '{"enable_thinking":
   false}'` in the override. Studio defaults thinking **on** for Qwen3-8B, but the `<think>`
   blocks slow replies and break the n8n AI-Agent's tool-call parsing, so we turn it off
@@ -55,14 +56,16 @@ Studio derives the `llama-server` command line from the unit's args:
 ## GPU / VRAM budget (RTX 3090, 24 GB)
 | Consumer | VRAM |
 |----------|------|
-| This LLM (8B UD-Q4_K_XL @ 64k ctx, 2× 32k slots, q8_0 KV) | **~9–10 GB** |
+| This LLM (8B UD-Q4_K_XL @ 80k ctx, 2× 40k slots, q8_0 KV) | **~11 GB** |
 | `bge-m3` embeddings (1024-dim) | ~0.9 GB |
 | ComfyUI | bursty — loads only while generating (run with `--disable-smart-memory` so it frees VRAM when idle) |
 
-That leaves **~13 GB free** for ComfyUI and other GPU workloads. (The previous 4B @ 256k ctx
+That leaves **~12 GB free** for ComfyUI and other GPU workloads. (The previous 4B @ 256k ctx
 used ~12.8 GB — almost entirely oversized KV cache, since the 4B weights were only ~3 GB.)
-The q8_0 KV cache is the key trick: a 64k-f16 KV would push this to ~14 GB, but at q8_0 the
-64k context costs about the same as the original 32k-f16 config.
+KV is linear in total `-c`: at q8_0 each ~16k of total context is ~1.2 GB. For reference —
+`-c 65536` (32k/slot) ≈ 10 GB total / ~13 GB free; `-c 81920` (40k/slot, native) ≈ 11 GB /
+~12 GB free; `-c 131072` (64k/slot, **needs YaRN**) ≈ 15 GB / ~8 GB free. We run the native
+80k as the sweet spot — biggest no-rope-scaling window with ComfyUI headroom intact.
 
 ## Deploy / re-apply
 1. Install Unsloth Studio (creates `/opt/unsloth`, the `unsloth` user, and the base unit).

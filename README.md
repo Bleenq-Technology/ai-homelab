@@ -63,7 +63,7 @@ flowchart TB
         end
     end
     subgraph LLMB["④ LLM backend · GPU (host)"]
-        UNS["unsloth · Qwen3-8B · 64k ctx"]
+        UNS["unsloth · Qwen3-8B · 80k ctx"]
     end
     subgraph DATA["⑤ Data layer"]
         PG[("Postgres")]
@@ -163,8 +163,8 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **Wyoming Piper/Whisper** | `tcp :10200 / :10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 LAN |
 
 **AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3-8B`,
-64k ctx) on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI**
-for image generation, → **Tavily** for web search (results injected into the 64k context),
+80k ctx) on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI**
+for image generation, → **Tavily** for web search (results injected into the 80k context),
 and **Qdrant** for document/Knowledge RAG, with **Redis** as the websocket manager / cache.
 
 ## Repository layout
@@ -179,7 +179,7 @@ docker/
 ├── monitoring/  compose.monitoring.yml  + prometheus/ grafana/ loki/ alertmanager/ …
 └── ai/          compose.ai.yml          + openwebui/ litellm/ comfyui/ langfuse/ searxng/ …
 host/                        # host-level (non-Docker) services
-├── unsloth/                 # unsloth LLM systemd unit + override (64k context, q8 KV)
+├── unsloth/                 # unsloth LLM systemd unit + override (80k context, q8 KV)
 └── wireguard/               # EdgeRouter WireGuard VPN — topology, peers, EdgeOS config, gotchas
 kubernetes/                  # reserved for a future migration
 ```
