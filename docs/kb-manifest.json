@@ -56,9 +56,9 @@
     },
     {
       "name": "kb_mddocsviewer_docs",
-      "enabled": false,
+      "enabled": true,
       "collection": "kb_mddocsviewer_docs",
-      "description": "md-docs-viewer app docs. Disabled by default — it's a Next.js viewer app, not a knowledge source; enable only if its docs/ are real reference material.",
+      "description": "md-docs-viewer app documentation — the docs/ tree and README for the Next.js markdown-docs viewer app. Use for questions about how md-docs-viewer works, its setup, or its components.",
       "source": { "type": "github", "repo": "Bleenq-Technology/md-docs-viewer", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
     }
   ]
