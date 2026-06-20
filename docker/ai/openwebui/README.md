@@ -51,7 +51,7 @@
 
 ## Model system prompt (reproducibility)
 Per-model overrides live in Open WebUI's **own DB** (`./openwebui/data`, SQLite — **not** Postgres,
-so not in the `pg_dumpall` backup). The base model `unsloth/Qwen3.5-4B-GGUF` carries a system prompt
+so not in the `pg_dumpall` backup). The base model `unsloth/Qwen3-8B-GGUF` carries a system prompt
 so it stops refusing image requests (a separate ComfyUI tool renders images). To re-apply after a
 fresh Open WebUI DB:
 
@@ -61,7 +61,7 @@ TOKEN=$(curl -s -X POST https://openwebui.pdx.sanctioned.tech/api/v1/auths/signi
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 curl -s -X POST https://openwebui.pdx.sanctioned.tech/api/v1/models/create \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
-    "id":"unsloth/Qwen3.5-4B-GGUF","base_model_id":null,"name":"Qwen3.5-4B-GGUF",
+    "id":"unsloth/Qwen3-8B-GGUF","base_model_id":null,"name":"Qwen3-8B-GGUF",
     "meta":{"capabilities":{"vision":false}},
     "params":{"system":"You are a helpful assistant in an app that has a separate, built-in image-generation tool (powered by ComfyUI). When the user asks for an image, picture, drawing, logo, or any visual, do NOT say you cannot create images - the image tool renders it automatically. Briefly acknowledge and provide a vivid one-sentence visual description suitable as an image prompt. For everything else, answer normally and concisely."},
     "is_active":true}'

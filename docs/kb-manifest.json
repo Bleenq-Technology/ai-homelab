@@ -3,7 +3,7 @@
   "embedder": "bge-m3",
   "dim": 1024,
   "distance": "Cosine",
-  "chat_model": "unsloth/Qwen3.5-4B-GGUF",
+  "chat_model": "unsloth/Qwen3-8B-GGUF",
   "kbs": [
     {
       "name": "kb_homelab_docs",

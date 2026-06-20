@@ -1,8 +1,10 @@
 # Reference copy of the base unit CREATED BY THE UNSLOTH STUDIO INSTALLER.
 # On jarvis it lives at /etc/systemd/system/unsloth-studio.service.
 # We don't author this — it's reproduced by installing Unsloth Studio. It's kept
-# here so the deployment is fully documented. Our customization is the drop-in
-# override in ./unsloth-studio.service.d/override.conf.
+# here so the deployment is fully documented. The --model below is illustrative
+# (the installer pins whatever model it was pointed at); the model, quant,
+# context, and concurrency we actually serve are set by the drop-in override in
+# ./unsloth-studio.service.d/override.conf, which fully replaces this ExecStart.
 [Unit]
 Description=Unsloth Studio LLM Server
 After=network-online.target
@@ -11,7 +13,7 @@ After=network-online.target
 Type=simple
 User=unsloth
 Environment=HOME=/opt/unsloth
-ExecStart=/opt/unsloth/.unsloth/studio/unsloth_studio/bin/unsloth run -H 0.0.0.0 -p 8888 --model unsloth/Qwen3.5-4B-GGUF
+ExecStart=/opt/unsloth/.unsloth/studio/unsloth_studio/bin/unsloth run -H 0.0.0.0 -p 8888 --model unsloth/Qwen3-8B-GGUF
 Restart=on-failure
 
 [Install]

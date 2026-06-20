@@ -63,7 +63,7 @@ flowchart TB
         end
     end
     subgraph LLMB["④ LLM backend · GPU (host)"]
-        UNS["unsloth · Qwen3.5-4B · 256k ctx"]
+        UNS["unsloth · Qwen3-8B · 32k ctx"]
     end
     subgraph DATA["⑤ Data layer"]
         PG[("Postgres")]
@@ -162,9 +162,9 @@ All web services are at `https://<name>.pdx.sanctioned.tech`. **Auth** legend:
 | **Qdrant** | `qdrant.…` | Vector DB (backs Open WebUI document/Knowledge RAG) | 🎟️ API key |
 | **Wyoming Piper/Whisper** | `tcp :10200 / :10300` | TTS / STT (GPU, Wyoming protocol) | 🔓 LAN |
 
-**AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3.5-4B`,
-256k ctx) on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI**
-for image generation, → **Tavily** for web search (full results injected into the 256k context),
+**AI integrations:** Open WebUI → local **unsloth** (llama.cpp, OpenAI-compatible, `Qwen3-8B`,
+32k ctx) on the host via the **LiteLLM** gateway (every call traced to **Langfuse**), → **ComfyUI**
+for image generation, → **Tavily** for web search (results injected into the 32k context),
 and **Qdrant** for document/Knowledge RAG, with **Redis** as the websocket manager / cache.
 
 ## Repository layout
