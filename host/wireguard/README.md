@@ -3,7 +3,8 @@
 Remote access to the home LANs via WireGuard, terminated **on the Ubiquiti
 EdgeRouter-4 (EdgeOS v3.0.1)** — not a container. Chosen over a self-hosted mesh
 (NetBird) for simplicity: runs on hardware we already own, no extra services to
-maintain, excellent mobile support. 4 peers (paul / jake / user2 / user4).
+maintain, excellent mobile support. **One peer per device** (9 today, across 4 users:
+paul, jacob, user2, user4) — never share a key between devices.
 
 ## Topology
 - **Interface** `wg0` on the router, `10.10.10.1/24`, UDP **51820** (WAN = `eth0`).
@@ -19,17 +20,28 @@ maintain, excellent mobile support. 4 peers (paul / jake / user2 / user4).
 - **Server public key** `<PUBKEY>`
 
 ## Peers
-| Name | Tunnel IP | Public key |
-|------|-----------|-----------|
-| paul  | 10.10.10.4 | `<PUBKEY>` |
-| jake  | 10.10.10.2 | `<PUBKEY>` |
-| user2 | 10.10.10.3 | `<PUBKEY>` |
-| user4 | 10.10.10.5 | `<PUBKEY>` |
+One peer per device; naming convention `<user>-<device>`. Public keys only (not secret):
 
-**Client configs (which contain the private keys) live on jarvis at
-`/opt/homelab/wireguard-clients/{name}.conf` + `{name}.png` (QR), perms 600 — NOT in
-git.** Each person imports by scanning their QR with the WireGuard mobile app (or
-loading the `.conf`). Distribute securely.
+| Peer            | Tunnel IP   | Public key |
+|-----------------|-------------|------------|
+| `jacob-android` | 10.10.10.2  | `<PUBKEY>` |
+| `user2-iphone`  | 10.10.10.3  | `<PUBKEY>` |
+| `paul-iphone`   | 10.10.10.4  | `<PUBKEY>` |
+| `user4-iphone`  | 10.10.10.5  | `<PUBKEY>` |
+| `paul-macbook`  | 10.10.10.6  | `<PUBKEY>` |
+| `user2-macbook` | 10.10.10.7  | `<PUBKEY>` |
+| `user2-ipad`    | 10.10.10.8  | `<PUBKEY>` |
+| `user2-windows` | 10.10.10.9  | `<PUBKEY>` |
+| `user4-ipad`    | 10.10.10.10 | `<PUBKEY>` |
+
+Next free tunnel IP: **`10.10.10.11`**. (`.2/.3/.5` were the original per-*user* peers
+`jake`/`user2`/`user4`, repurposed to each user's first device — same key, renamed.)
+
+**Client configs contain private keys and are NOT in git.** They're generated +
+managed in the operator's private VPN working area (off-repo) — see that area's
+`vpn-admin.md` for the add/remove/rotate runbook and the device registry. Each person
+imports by scanning their QR (`<peer>.png`) with the WireGuard app, or loading the
+`<peer>.conf`. Distribute over a secure channel.
 
 ## EdgeOS config (reference — server private key omitted)
 ```
@@ -66,8 +78,14 @@ that updates the record via the EasyDNS REST API (reusing the ACME EasyDNS creds
   and returns 404 for an update.
 
 ## Add / remove a peer
-- **Add:** `wg genkey | tee priv | wg pubkey` → `set interfaces wireguard wg0 peer
-  <PUB> allowed-ips 10.10.10.N/32` (+ `description`), commit; build the client `.conf`
-  (copy an existing one, swap PrivateKey/Address) + `qrencode -t png`.
-- **Remove:** `delete interfaces wireguard wg0 peer <PUB>`, commit; delete the
-  client's files in `/opt/homelab/wireguard-clients/`.
+Tooling is split: the **firewall** has `wg` (keygen) but no `qrencode`; **jarvis** has
+`qrencode` but no `wg`. So: generate keys on the firewall, render the QR on jarvis. The
+off-repo VPN working area has an `add-device.sh` that automates the whole flow; the
+manual steps:
+- **Add:** name the peer `<user>-<device>`, pick the next free IP. On the firewall:
+  `priv=$(wg genkey); pub=$(printf '%s' "$priv" | wg pubkey)` → `set interfaces
+  wireguard wg0 peer <PUB> description <user>-<device>` + `... allowed-ips
+  10.10.10.N/32`, commit (with the `vyatta_sbindir` fix). Build the client `.conf`
+  (swap PrivateKey/Address), `qrencode -t png` it on jarvis, distribute securely.
+- **Remove (revoke):** `delete interfaces wireguard wg0 peer <PUB>`, commit; delete the
+  device's files in the off-repo working area. Do this immediately for a lost device.

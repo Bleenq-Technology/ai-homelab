@@ -219,7 +219,7 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [x] **Metric alerting → Discord** — Prometheus rules + Alertmanager dispatch: GPU/CPU
       temperature, disk usage, host-memory pressure, container OOM-kills / restart-loops,
       Postgres connections, Redis memory (see [docker/monitoring/alertmanager/](docker/monitoring/alertmanager/README.md))
-- [x] **VPN** — WireGuard on the EdgeRouter (4 peers, split-tunnel to the home LANs, internal
+- [x] **VPN** — WireGuard on the EdgeRouter (per-device peers, split-tunnel to the home LANs, internal
       DNS over the tunnel; EasyDNS DDNS for the dynamic WAN). See [host/wireguard/](host/wireguard/README.md)
 - [x] **Secrets in Infisical** — all secrets in the `homelab` project; deploys pull via
       `pull-secrets.sh`; `.env` is a generated artifact (bootstrap kept out-of-band)
