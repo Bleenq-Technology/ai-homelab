@@ -6,8 +6,10 @@ the OIDC clients; `master` is kept for Keycloak admin only.
 ## How services authenticate
 
 - **Native OIDC** (the app talks to Keycloak directly): Grafana, Open WebUI,
-  Portainer, Langfuse, **MinIO console**. Each has its own confidential client +
-  redirect URI. (MinIO: console login only — the S3 API still uses access keys;
+  Portainer, Langfuse, **MinIO console**, **Nextcloud** (on stor, via the `user_oidc`
+  app — provisioned by [`provision-nextcloud-client.sh`](provision-nextcloud-client.sh);
+  its secret is applied on stor, *not* in jarvis `.env`, since Nextcloud runs off-box).
+  Each has its own confidential client + redirect URI. (MinIO: console login only — the S3 API still uses access keys;
   client provisioned by [`provision-minio-client.sh`](provision-minio-client.sh),
   role mapped to `consoleAdmin` via `MINIO_IDENTITY_OPENID_ROLE_POLICY`.)
 - **Forward-auth** (for apps with no/weak SSO): **oauth2-proxy** (Keycloak client
