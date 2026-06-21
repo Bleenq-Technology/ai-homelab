@@ -15,6 +15,24 @@
 - `dynamic.yml` defines the shared middlewares: `secure-chain`, `secure-chain-stream`, `sso`, `secure-sso`.
 - Healthcheck: `traefik healthcheck --ping`.
 
+## Firewall (EdgeRouter) GUI cert sync
+The EdgeRouter (`firewall`, EdgeOS) used to get its own GUI cert via acme.sh HTTP-01,
+which broke once inbound 80/443 were blocked. Instead of giving the router its own ACME
+client, we **reuse this wildcard** — `*.pdx.sanctioned.tech` already covers
+`firewall.pdx` and `home.pdx`. [`sync-firewall-cert.sh`](sync-firewall-cert.sh) extracts
+the wildcard from `letsencrypt/acme.json` and pushes it to the router's GUI whenever it
+changes (idempotent on the leaf SHA-256, tracked in `.fw-cert-fingerprint`).
+
+- **Runs on jarvis as root** (needs to read `acme.json`) via `/etc/cron.d/fw-cert-sync` (daily 04:17).
+- **Deploys over SSH** as the key-only `certsync` EdgeOS user (`level admin`); jarvis's
+  key is `/root/.ssh/fw_certsync`. Addresses the router by **IP `192.168.2.1`** — the name
+  `firewall.pdx.sanctioned.tech` resolves to `127.0.1.1` on jarvis (`/etc/hosts`), so the
+  IP is required.
+- On the router it writes `/config/ssl/server.pem` (cert+key) + `/config/ssl/ca.pem` (chain)
+  and `systemctl restart lighttpd`. The old `renew.acme` task-scheduler job was removed.
+- Manual run / check: `sudo /opt/homelab/core/traefik/sync-firewall-cert.sh` then
+  `tail /var/log/fw-cert-sync.log`.
+
 ## Issues & Fixes
 
 **Symptom:** Traefik's Docker provider crash-looped, logging repeatedly: `Failed to retrieve information of the docker client and server host error="...client version 1.24 is too old. Minimum supported API version is 1.40, please upgrade your client to a newer version"`
