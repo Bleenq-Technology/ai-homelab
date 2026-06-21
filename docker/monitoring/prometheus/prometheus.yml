@@ -28,6 +28,19 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
+  # zoomie — Paul's Windows workstation (Telegraf prometheus_client on :9273).
+  # External LAN host on 192.168.1.0/24, reached cross-subnet via the EdgeRouter
+  # (Prometheus egresses as the jarvis host IP 192.168.2.10). Captures CPU/mem/disk +
+  # RTX 5070 Ti GPU power/temp; up==0 marks the workstation's frequent reboots.
+  - job_name: 'zoomie'
+    static_configs:
+      - targets: ['192.168.1.10:9273']
+    metric_relabel_configs:
+      # nvidia_smi attaches volatile labels (pstate flips every scrape) that churn
+      # the GPU time series and break graph continuity — drop the noisy ones.
+      - regex: 'pstate|display_mode|display_active|compute_mode|vbios_version|serial'
+        action: labeldrop
+
   - job_name: 'nvidia-gpu'
     static_configs:
       - targets: ['nvidia-gpu-exporter:9835']
