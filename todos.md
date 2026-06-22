@@ -162,24 +162,25 @@ OpenAI-compatible routing on a mature OpenResty core.
 swapping, Kong CE deployed DB-less on the `ai`/`proxy` networks, the OpenAI endpoints re-pointed and
 verified, LiteLLM removed — committed.
 
-## 6. Secrets hygiene — pre-commit scanning + pre-open-source history scrub
+## 6. Secrets hygiene — pre-commit scanning  ✅ pre-open-source scrub complete
 
-**Why.** We intend to **open-source this stack** (with write-ups). Two gaps: nothing automated stops
-a secret reaching git, and the git **had one since-rotated secret, now scrubbed.**
-Realm-seed client secrets were always placeholders, never real.
+> Done ahead of open-sourcing: a full-history secret scan (gitleaks) found one real committed
+> secret — a since-rotated, internal-only Grafana key — which was scrubbed from history with
+> `git filter-repo`. Realm/seed client secrets are `set_in_keycloak` / `REPLACE_AFTER_IMPORT`
+> placeholders (verified, not real), and `.env.example` is all placeholders. CI now runs
+> gitleaks + Trivy + an AI security review on every PR (`.github/workflows/security.yml`).
 
-**Goal.** Make "no secret ever reaches git" enforceable, and clean existing history before going public.
-- **Pre-commit scanning:** wire up **`infisical scan`** (it's gitleaks under the hood) —
-  `infisical scan install --pre-commit-hook` for a local git hook, and/or an `infisical scan` step in
-  CI. Catches secrets *before* the commit lands.
-- **History audit:** run `infisical scan` / `gitleaks detect` over the **full history**; for every hit,
-  **rotate** the secret and **scrub** history (`git filter-repo` or BFG) before the repo is public.
-- **Discipline (every commit, starting now):** manually scan staged changes for secrets — the same pass
-  we did on the realm seed (client secrets, SMTP creds, private keys, high-entropy tokens). Claude Code
-  should do this automatically before any commit.
+**Why.** We open-source this stack, so "no secret ever reaches git" must stay enforceable.
 
-**Done when:** the pre-commit hook is installed + documented, a clean full-history scan report exists,
-and any historical secrets are rotated + scrubbed — committed.
+**Remaining.**
+- **Pre-commit scanning (residual):** install a local hook — `infisical scan install
+  --pre-commit-hook` (gitleaks under the hood) — so secrets are caught *before* a commit lands,
+  not only in CI.
+- **Discipline (every commit):** scan staged changes for secrets (client secrets, SMTP creds,
+  private keys, high-entropy tokens); keep realm/seed files on `REPLACE_AFTER_IMPORT` placeholders.
+
+**Done when:** the local pre-commit hook is installed + documented (CI scanning + the history
+scrub are already in place).
 
 ## 7. Audio transcription (STT) over an OpenAI-compatible endpoint  _(filed by discord-curator)_
 

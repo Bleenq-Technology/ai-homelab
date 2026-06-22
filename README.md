@@ -8,7 +8,8 @@
 > ⚠️ **This is a reference architecture, not a turnkey product.** The hostnames, domain
 > (`*.pdx.sanctioned.tech`), and host (`jarvis`) are *our* values — change them for your
 > environment, supply your own secrets (nothing real is committed; see [`docker/.env.example`](docker/.env.example)),
-> and review before any production use. See [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+> and review before any production use. **Deploying it yourself? Start with [DEPLOY.md](DEPLOY.md).**
+> See also [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Unified, production-style **homelab stack** for the server **`jarvis`** — reverse proxy,
 identity, data services, full observability, and a GPU-accelerated AI/automation suite,
@@ -197,7 +198,14 @@ kubernetes/                  # reserved for a future migration
 See **[docker/README.md](docker/README.md)** for the full deploy/runbook (networks, secrets,
 EasyDNS, and the jarvis bring-up sequence).
 
-## Deploy (summary)
+## Deploy
+
+> **Standing this up on a fresh host? → [DEPLOY.md](DEPLOY.md)** — full guide: prerequisites, the
+> scp/`/opt/homelab` deploy model, secrets (manual or Infisical → [bootstrap](docs/INFISICAL-BOOTSTRAP.md)),
+> [DNS/TLS for any provider](docs/DNS-AND-TLS.md), and a
+> [must-change-for-your-environment](docs/MUST-CHANGE.md) checklist.
+
+Maintainer quick reference (existing host):
 
 ```bash
 docker context use jarvis
