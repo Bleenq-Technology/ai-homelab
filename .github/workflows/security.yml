@@ -1,14 +1,13 @@
 name: Security
 
 # Layered security CI for an infra/compose/shell repo:
-#   1. Claude Code security review  — AI semantic review of PR diffs
-#   2. gitleaks                     — credential scanning
-#   3. Trivy (config)               — IaC / Dockerfile / compose misconfig
-#   4. hadolint                     — Dockerfile linting
+#   1. Claude Code security review  — AI semantic review of PR diffs (PRs only)
+#   2. Trivy (config)               — IaC / Dockerfile / compose misconfig
+#   3. hadolint                     — Dockerfile linting
 #
+# Credential scanning is handled by GitHub's native secret scanning + push protection
+# (Settings → Code security), enabled on this repo as the server-side backstop.
 # Setup: add repo secret ANTHROPIC_API_KEY (Settings → Secrets and variables → Actions).
-# Also enable GitHub native secret scanning + push protection (Settings → Code security)
-# as the server-side backstop — note that file-based scanners skip .gitignored paths.
 # The Claude review action is NOT hardened against prompt injection: keep "Require approval
 # for all external contributors" enabled (Settings → Actions → General).
 
@@ -37,16 +36,6 @@ jobs:
           comment-pr: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
-  gitleaks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trivy-config:
     runs-on: ubuntu-latest

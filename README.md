@@ -269,7 +269,7 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 ## Authors
 
 Built by **[Paul Vilevac](https://www.linkedin.com/in/pvilevac/)** ([@bleenq-paulv](https://github.com/bleenq-paulv))
-and **[Jacob Vilevac](https://www.linkedin.com/in/jacob-vilevac/)** ([@bleenq-jacob](https://github.com/bleenq-jacob))
+and **[Jacob Vilevac](https://www.linkedin.com/in/jacob-vilevac/)** ([@bleenq-jacobv](https://github.com/bleenq-jacobv))
 — the team at **Bleenq LLC**, a boutique AI/ML consulting firm and incubator.
 
 This platform reflects 30+ years of production engineering: security (CISSP, CISA, AWS Solutions
