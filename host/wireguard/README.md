@@ -3,8 +3,8 @@
 Remote access to the home LANs via WireGuard, terminated **on the Ubiquiti
 EdgeRouter-4 (EdgeOS v3.0.1)** — not a container. Chosen over a self-hosted mesh
 (NetBird) for simplicity: runs on hardware we already own, no extra services to
-maintain, excellent mobile support. **One peer per device** (9 today, across 4 users:
-paul, jacob, chloe, becky) — never share a key between devices.
+maintain, excellent mobile support. **One peer per device** (9 today, across 4
+household users) — never share a key between devices.
 
 ## Topology
 - **Interface** `wg0` on the router, `10.10.10.1/24`, UDP **51820** (WAN = `eth0`).
@@ -17,25 +17,27 @@ paul, jacob, chloe, becky) — never share a key between devices.
 - **DNS** — clients use `10.10.10.1` (the router); `dnsmasq` listens on `wg0`
   (`service dns forwarding listen-on wg0`), so internal `*.lab.example`
   names resolve and external queries go through AdGuard, exactly like on-LAN.
-- **Server public key** `xsE8iJs66UUkPwpfgUF1ZUT5Z/lR3IUHvZvKNRXQam0=`
+- **Server public key** `<SERVER_PUBKEY>`
 
 ## Peers
-One peer per device; naming convention `<user>-<device>`. Public keys only (not secret):
+One peer per device; naming convention `<user>-<device>`. Public keys are not secret,
+but are omitted here (placeholders) since this is a public repo — the live values live
+in the off-repo VPN working area's device registry.
 
 | Peer            | Tunnel IP   | Public key |
 |-----------------|-------------|------------|
-| `jacob-android` | 10.10.10.2  | `iawB12A0fEjiSsjvMDAtVgNVSRkJjdH4BzmPAoLb9B0=` |
-| `chloe-iphone`  | 10.10.10.3  | `JqOHwRubF7uAdYdyMnLzKoGLerjacuAHrqoKhhAsXjw=` |
-| `paul-iphone`   | 10.10.10.4  | `2wY+IU9wQ8cxLfNCGI5zzHoEfhW4Fo3eIM2J2c19TRs=` |
-| `becky-iphone`  | 10.10.10.5  | `PiQZ7kl8eUzmnX+lS1CjQw06lx3DegN8uaX6STCv3lc=` |
-| `paul-macbook`  | 10.10.10.6  | `Odsj4A1E0GfCaS5hY+2/Yc7h2t3fuqDrwckwSEa1aAI=` |
-| `chloe-macbook` | 10.10.10.7  | `aWLqYhe8HXXCtWYGfkeZMJr7tNnzyfN+1seWFmBC1Aw=` |
-| `chloe-ipad`    | 10.10.10.8  | `Go7D0cipVA/YAaI2z8QCXYDpcNcAilFmj0A6XiopMUM=` |
-| `chloe-windows` | 10.10.10.9  | `pwLq3E4sKDk6OFxdOuD1ZQ1nrorGPYJXJVhOBprYsWU=` |
-| `becky-ipad`    | 10.10.10.10 | `nXe4IHjobkooDFxN0SFmcS/pf3o4RMcANYjs7NmpG3M=` |
+| `user1-android` | 10.10.10.2  | `<PUBKEY>` |
+| `user2-iphone`  | 10.10.10.3  | `<PUBKEY>` |
+| `user3-iphone`  | 10.10.10.4  | `<PUBKEY>` |
+| `user4-iphone`  | 10.10.10.5  | `<PUBKEY>` |
+| `user3-macbook` | 10.10.10.6  | `<PUBKEY>` |
+| `user2-macbook` | 10.10.10.7  | `<PUBKEY>` |
+| `user2-ipad`    | 10.10.10.8  | `<PUBKEY>` |
+| `user2-windows` | 10.10.10.9  | `<PUBKEY>` |
+| `user4-ipad`    | 10.10.10.10 | `<PUBKEY>` |
 
-Next free tunnel IP: **`10.10.10.11`**. (`.2/.3/.5` were the original per-*user* peers
-`jake`/`chloe`/`becky`, repurposed to each user's first device — same key, renamed.)
+Next free tunnel IP: **`10.10.10.11`**. (`.2/.3/.5` were the original per-*user* peers,
+repurposed to each user's first device — same key, renamed.)
 
 **Client configs contain private keys and are NOT in git.** They're generated +
 managed in the operator's private VPN working area (off-repo) — see that area's
