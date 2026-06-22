@@ -1,5 +1,15 @@
 # ai-homelab-infra
 
+> **An open, production-style, self-hostable AI/LLM platform.** ~40 services as modular Docker
+> Compose — reverse proxy, identity, secrets, a full observability stack, and a GPU-accelerated
+> AI/automation suite — fronted by Traefik with automatic wildcard TLS. Built and open-sourced by
+> **Bleenq LLC** as a reference architecture you can study, adapt, and run yourself.
+>
+> ⚠️ **This is a reference architecture, not a turnkey product.** The hostnames, domain
+> (`*.pdx.sanctioned.tech`), and host (`jarvis`) are *our* values — change them for your
+> environment, supply your own secrets (nothing real is committed; see [`docker/.env.example`](docker/.env.example)),
+> and review before any production use. See [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
 Unified, production-style **homelab stack** for the server **`jarvis`** — reverse proxy,
 identity, data services, full observability, and a GPU-accelerated AI/automation suite,
 all defined as modular Docker Compose and fronted by Traefik with automatic wildcard TLS.
@@ -248,6 +258,12 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin — these
   keep local logins (can be forward-auth gated later). Traefik dashboard keeps break-glass basic-auth.
 
+## Contributing & security
+
+Contributions, issues, and questions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+To report a security vulnerability, follow **[SECURITY.md](SECURITY.md)** — please do **not** open
+a public issue for vulnerabilities.
+
 ## License
 
-MIT
+[MIT](LICENSE) © 2025–2026 Bleenq LLC (Paul & Jacob Vilevac).

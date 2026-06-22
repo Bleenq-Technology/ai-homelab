@@ -1,0 +1,71 @@
+name: Security
+
+# Layered security CI for an infra/compose/shell repo:
+#   1. Claude Code security review  — AI semantic review of PR diffs
+#   2. gitleaks                     — credential scanning
+#   3. Trivy (config)               — IaC / Dockerfile / compose misconfig
+#   4. hadolint                     — Dockerfile linting
+#
+# Setup: add repo secret ANTHROPIC_API_KEY (Settings → Secrets and variables → Actions).
+# Also enable GitHub native secret scanning + push protection (Settings → Code security)
+# as the server-side backstop — note that file-based scanners skip .gitignored paths.
+# The Claude review action is NOT hardened against prompt injection: keep "Require approval
+# for all external contributors" enabled (Settings → Actions → General).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 13 * * 1"   # weekly Monday sweep
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  claude-security-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-security-review@main
+        with:
+          comment-pr: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: "0"        # report-only initially; set "1" to gate merges
+          format: table
+
+  hadolint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+          failure-threshold: warning
+        continue-on-error: true
