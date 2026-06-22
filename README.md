@@ -266,6 +266,19 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin — these
   keep local logins (can be forward-auth gated later). Traefik dashboard keeps break-glass basic-auth.
 
+## Authors
+
+Built by **[Paul Vilevac](https://www.linkedin.com/in/pvilevac/)** ([@bleenq-paulv](https://github.com/bleenq-paulv))
+and **[Jacob Vilevac](https://www.linkedin.com/in/jacob-vilevac/)** ([@bleenq-jacob](https://github.com/bleenq-jacob))
+— the team at **Bleenq LLC**, a boutique AI/ML consulting firm and incubator.
+
+This platform reflects 30+ years of production engineering: security (CISSP, CISA, AWS Solutions
+Architect), operational maturity, and observability built in from day one, not bolted on. It's a
+"homelab" in name only.
+
+**Applying these patterns in your own organization, or building something ambitious with AI/ML?**
+Connect with us on LinkedIn — we'd be glad to talk.
+
 ## Contributing & security
 
 Contributions, issues, and questions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
