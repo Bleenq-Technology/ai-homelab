@@ -72,6 +72,12 @@ services:
         restart: unless-stopped
         command: start
         networks: [proxy, data]
+        extra_hosts:
+            # AD DC (heimdall) — pin IPv4 so writable LDAPS federation never tries the
+            # IPv6 ULA AAAA (this container has no IPv6 route). An A record also resolves
+            # via the firewall's ad.pdx conditional-forward; this keeps the auth path
+            # deterministic and removes a DNS dependency from SSO.
+            - "heimdall.ad.lab.example:192.168.2.2"
         environment:
             KC_DB: postgres
             KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -82,6 +88,11 @@ services:
             KC_HTTP_ENABLED: "true"
             KC_HEALTH_ENABLED: "true"
             KC_METRICS_ENABLED: "true"
+            # Trust the Samba AD DC's self-signed CA so writable LDAPS federation to
+            # heimdall (ldaps://heimdall.ad.lab.example:636) validates. KC 26
+            # auto-loads conf/truststores; set explicitly for clarity. CA file lives at
+            # ./keycloak/truststore/heimdall-ad-ca.pem (valid to 2028; Samba auto-renews).
+            KC_TRUSTSTORE_PATHS: /opt/keycloak/conf/truststores
             # Passkeys (passwordless WebAuthn) are GA / enabled by default as of 26.4+
             # (this image is 26.6.3), so no KC_FEATURES flag is needed. The realm-side
             # policy + "Enable Passkeys" switch are applied by ./keycloak/configure-passkeys.sh.
@@ -89,6 +100,7 @@ services:
             KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
         volumes:
             - ./keycloak/themes:/opt/keycloak/themes
+            - ./keycloak/truststore:/opt/keycloak/conf/truststores:ro
         labels:
             - "traefik.enable=true"
             - "traefik.http.routers.keycloak.rule=Host(`keycloak.${DOMAIN}`)"

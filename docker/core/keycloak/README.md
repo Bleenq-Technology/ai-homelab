@@ -192,6 +192,41 @@ It reads `SMTP_*` + the admin creds from `.env` and sets `realms/homelab`
   `user` = API key, `password` = secret key.
 - The same `SMTP_*` creds are reused by Grafana, NetBox, and Baserow.
 
+## Active Directory federation (Samba AD DC `heimdall`)
+
+The `homelab` realm federates the **Samba AD Domain Controller** `heimdall`
+(`192.168.2.2`, repo [`identity-infra`](https://github.com/your-org/identity-infra/blob/main/docs/ad-dc-build.md))
+in **WRITABLE** edit mode, so AD is the source of truth for the human users
+(`paul/jacob/becky/chloe`) and a **Keycloak password reset writes back to AD**
+(`unicodePwd`) — one credential covers **SMB + web SSO**.
+
+Provisioned by the idempotent [`provision-ldap-federation.sh`](provision-ldap-federation.sh)
+(run from `/opt/homelab`). Key points:
+
+- **LDAPS is mandatory** for writable mode (AD won't change passwords over plaintext
+  LDAP): `ldaps://heimdall.ad.lab.example:636`.
+- **Cert trust:** Samba's self-signed CA ([`truststore/heimdall-ad-ca.pem`](truststore/heimdall-ad-ca.pem))
+  is mounted into the container at `/opt/keycloak/conf/truststores` (KC 26 auto-loads
+  it; `KC_TRUSTSTORE_PATHS` set in `compose.core.yml`). Chosen over the `*.pdx`
+  wildcard — the wildcard doesn't cover the `…ad.pdx…` FQDN, and a renewing LE cert on
+  the DC would add a fragile cert-sync job to the critical auth path.
+- **IPv4 pin:** the keycloak service has `extra_hosts: heimdall.ad.lab.example:192.168.2.2`
+  because Samba also publishes an IPv6 ULA AAAA the (IPv4-only) container can't route.
+- **Bind account `svc-keycloak`** — credential in Infisical/`.env` as `AD_LDAP_BIND_CREDENTIAL`
+  (push to Infisical; `pull-secrets.sh` truncates `.env`). Currently in Domain Admins;
+  hardening TODO (delegated reset-password ACL) is in the identity-infra runbook.
+- **Scoped to humans:** `customUserSearchFilter=(memberOf=CN=family,…)` keeps AD built-ins
+  (`administrator/krbtgt/guest/heimdall$`) out of the realm.
+- **One-time reconciliation:** local Keycloak users sharing a username *or email* with an AD
+  user block the import — the pre-existing local `paul/jacob/becky` and a stray
+  `paul.vilevac@example.com` social account were backed up (`/opt/homelab/backups/`) and
+  deleted so the four federate cleanly. **Email/social reset** still works (SMTP above);
+  `trustEmail=true` treats AD-sourced email as verified.
+
+To re-apply after a realm rebuild: `./core/keycloak/provision-ldap-federation.sh`
+(the federation is a post-import helper, like the SMTP/passkey scripts — not baked into
+`realm-homelab.json`, since `bindCredential` must never land in git).
+
 ## Passkeys (passwordless WebAuthn)
 
 Keycloak 26 supports **passkeys** — discoverable WebAuthn credentials that log a
