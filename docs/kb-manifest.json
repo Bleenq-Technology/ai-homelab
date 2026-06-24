@@ -55,6 +55,20 @@
       "source": { "type": "discord-harvest", "app": "content-curator" }
     },
     {
+      "name": "kb_topic_fitness",
+      "enabled": true,
+      "collection": "kb_topic_fitness",
+      "description": "Curated fitness & health research — links (YouTube, articles, guides) harvested from the team's Discord fitness/health channels and credibility-filtered. Use for questions about training, nutrition, health/longevity protocols, and notable fitness resources the team is tracking.",
+      "source": { "type": "discord-harvest", "app": "content-curator" }
+    },
+    {
+      "name": "kb_topic_income",
+      "enabled": true,
+      "collection": "kb_topic_income",
+      "description": "Curated alternate-income research — links harvested from the team's Discord income / side-income channels and credibility-filtered. Use for questions about side income, monetization, online business ideas, and notable income-stream resources the team is tracking.",
+      "source": { "type": "discord-harvest", "app": "content-curator" }
+    },
+    {
       "name": "kb_mddocsviewer_docs",
       "enabled": true,
       "collection": "kb_mddocsviewer_docs",
