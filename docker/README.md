@@ -89,3 +89,9 @@ docker compose -f docker/monitoring/compose.monitoring.yml restart grafana
   dashboard keeps a deliberate break-glass basic-auth. (Firezone was removed → EdgeRouter WireGuard.)
 - **Secrets backend**: Infisical **is** the source of truth — every secret lives in the `homelab`
   project; `pull-secrets.sh` regenerates `.env` on deploy (a generated artifact).
+- **Clean shutdown / restart**: `./safe-shutdown.sh` (interactive — type `yes` to confirm; pick
+  shutdown vs restart). It ensures a full backup ran within the last 6h (runs `backup.sh` if stale,
+  and **blocks on backup `[ERROR]`s** unless `--force`), gracefully stops the stack (`compose stop
+  -t 60`), clears swap (only if freed RAM can hold it), `sync`s + verifies, then powers off/reboots.
+  `--dry-run` shows every step changing nothing. Because services are `restart: unless-stopped`, after
+  a reboot bring the stack back with `docker compose -f compose.yml up -d`.
