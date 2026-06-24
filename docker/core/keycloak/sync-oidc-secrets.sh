@@ -52,5 +52,5 @@ done <<< "$PAIRS"
 [ "$miss" = 0 ] || { echo "Some keys missing from .env — check Infisical path/env. NOT recreating."; exit 1; }
 
 echo "Recreating OIDC apps so they pick up durable secrets..."
-docker compose -f compose.yml up -d grafana langfuse openwebui oauth2-proxy minio
+docker compose -f compose.yml up -d grafana langfuse-web langfuse-worker openwebui oauth2-proxy minio
 echo "Done."
