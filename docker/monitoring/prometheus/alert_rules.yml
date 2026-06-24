@@ -10,6 +10,11 @@
 #                  reports a bogus 216 C — both are excluded by the chip match.)
 #   - Containers: docker_container_status_{oomkilled,restart_count}  (telegraf docker input)
 #   - Redis maxmemory is 0 (unbounded), so Redis is alerted on absolute bytes.
+#   - Drive SMART: smartctl_device_* (smartctl-exporter v0.14.0). VERIFIED live
+#     2026-06-24: percentage_used/available_spare are 0-100 (not 0-1); device
+#     labels are bare "nvme0"/"sda" (NOT "/dev/..." as the exporter's EXAMPLE.md
+#     shows). NVMe-only fields (percentage_used, available_spare, bytes_written)
+#     are absent for sda, so wear/spare alerts scope to device=~"nvme.*".
 groups:
 
   # ---- Up / reachability --------------------------------------------------
@@ -103,6 +108,66 @@ groups:
         annotations:
           summary: "Disk {{ $labels.mountpoint }} over 90% full ({{ $value | printf \"%.0f\" }}%)"
           description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} is over 90% full — imminent out-of-space. Clean up now (you hit 90% once before)."
+
+  # ---- Drive SMART health / wear / temperature (smartctl-exporter) --------
+  # NVMe-only metrics (percentage_used, available_spare) are absent for the SATA
+  # drive, so wear/spare alerts are scoped to device=~"nvme.*". smartctl device
+  # labels are bare "nvme0" / "sda" (NOT the node_disk nvme0n1/sda, NOT /dev/*).
+  - name: disk-smart
+    rules:
+      - alert: DriveSMARTFailing
+        expr: smartctl_device_smart_status == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SMART overall-health FAILED on {{ $labels.device }}"
+          description: "smartctl reports the SMART self-assessment FAILED for {{ $labels.device }} — the drive is predicting its own failure. Back up and replace it."
+
+      - alert: NVMeWearHigh
+        expr: smartctl_device_percentage_used{device=~"nvme.*"} > 80
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} at {{ $value | printf \"%.0f\" }}% of rated life"
+          description: "NVMe endurance used has exceeded 80% on {{ $labels.device }}. Plan a replacement before it reaches 100% (this is the wear signal we lacked when the old 256G drive aged out)."
+
+      - alert: NVMeSpareLow
+        expr: smartctl_device_available_spare{device=~"nvme.*"} < 10
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.device }} available spare critically low ({{ $value | printf \"%.0f\" }}%)"
+          description: "NVMe reserved spare blocks below 10% on {{ $labels.device }} — failure is imminent. Replace now."
+
+      - alert: DriveMediaErrors
+        expr: smartctl_device_media_errors > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.device }} reported {{ $value | printf \"%.0f\" }} media/integrity errors"
+          description: "smartctl logged media errors on {{ $labels.device }} — uncorrected data-integrity events. Investigate; this often precedes failure."
+
+      - alert: DriveTempHigh
+        expr: smartctl_device_temperature{temperature_type="current"} > 70
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drive {{ $labels.device }} temperature high ({{ $value | printf \"%.0f\" }} C)"
+          description: "{{ $labels.device }} has been above 70 C for 10 minutes (the nvme sits in the 3090's airflow path). Check cooling / sustained write load."
+
+      - alert: DriveTempCritical
+        expr: smartctl_device_temperature{temperature_type="current"} > 80
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Drive {{ $labels.device }} temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
+          description: "{{ $labels.device }} above 80 C — thermal-throttle / wear-acceleration territory. Investigate cooling now (heat-related NVMe death is the failure mode we're guarding against)."
 
   # ---- Host memory pressure (ties into OOM risk) --------------------------
   - name: memory-pressure

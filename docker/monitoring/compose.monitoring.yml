@@ -176,9 +176,36 @@ services:
     networks: [monitoring]
     command:
       - '--path.rootfs=/host'
+      # Default collectors already cover cpu/diskstats/filesystem/hwmon/meminfo/
+      # netdev/loadavg. Enable per-state process / PID-pressure counts (off by
+      # default; reads /proc via pid:host, no extra mounts).
+      # NOTE: --collector.interrupts was tried and REMOVED — it errors every
+      # scrape here ("couldn't get interrupts: interrupts empty") under this
+      # containerized pid:host setup, spamming logs for a high-cardinality
+      # nice-to-have. Other opt-ins if ever needed: --collector.tcpstat,
+      # --collector.ethtool, --collector.softirqs.
+      - '--collector.processes'
     pid: host
     volumes:
       - /:/host:ro,rslave
+
+  # ---- smartctl Exporter (drive SMART health / wear / temp) ---------------
+  # The ONE thing node-exporter's hwmon can't give us: SMART wear & health.
+  # Exposes percentage_used (NVMe life), available_spare, media_errors,
+  # smart_status, bytes_written (TBW), and per-drive temperature for BOTH the
+  # 990 PRO (nvme0) and the 870 EVO (sda). Auto-scans all drives, so new disks
+  # appear with no config change. Dedicated exporter (not telegraf) keeps the
+  # raw-device privilege isolated to one small purpose-built container — the
+  # established pattern here (node/nvidia/postgres/redis exporters).
+  # privileged: required for the SMART ioctls (NVMe admin passthrough + SAT for
+  # SATA); grants host /dev access so smartctl --scan sees the real drives.
+  smartctl-exporter:
+    image: prometheuscommunity/smartctl-exporter:v0.14.0
+    container_name: smartctl-exporter
+    restart: unless-stopped
+    networks: [monitoring]
+    privileged: true
+    user: root
 
   # ---- NVIDIA GPU Exporter (nvidia-smi -> Prometheus) ---------------------
   # Scrapes the RTX 3090: utilisation, VRAM used/total, temp, power, clocks.

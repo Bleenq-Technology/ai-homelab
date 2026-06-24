@@ -1,0 +1,125 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": "-- Grafana --", "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jarvis", "storage", "disk", "smart"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "Storage & Drives",
+  "uid": "jarvis-storage",
+  "panels": [
+    { "type": "gauge", "title": "Root / Used", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "showThresholdMarkers": true, "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype=~\"ext4|xfs\"} * 100)", "refId": "A" } ] },
+
+    { "type": "gauge", "title": "/srv/ai-data Used", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "showThresholdMarkers": true, "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"} * 100)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Temp (990 PRO)", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "celsius", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 75 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_temperature{device=\"nvme0\", temperature_type=\"current\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "SATA Temp (870 EVO)", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "celsius", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 55 }, { "color": "red", "value": 65 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_temperature{device=\"sda\", temperature_type=\"current\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Life Used", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_percentage_used{device=\"nvme0\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "SMART Health (all drives)", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "none", "color": { "mode": "thresholds" }, "mappings": [ { "type": "value", "options": { "0": { "text": "FAILED", "color": "red" }, "1": { "text": "PASSED", "color": "green" } } } ], "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["min"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "min(smartctl_device_smart_status)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Available Spare", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 6, "x": 0, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 20 }, { "color": "green", "value": 50 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_available_spare{device=\"nvme0\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Total Written (TBW)", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 6, "x": 6, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_bytes_written{device=\"nvme0\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Power-On Time", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 6, "x": 12, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_power_on_seconds{device=\"nvme0\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Media Errors (all drives)", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 6, "x": 18, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "none", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum(smartctl_device_media_errors)", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Disk Throughput (read / write)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "rate(node_disk_read_bytes_total{device=~\"nvme0n1|sda\"}[$__rate_interval])", "legendFormat": "{{device}} read", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_written_bytes_total{device=~\"nvme0n1|sda\"}[$__rate_interval])", "legendFormat": "{{device}} write", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Disk IOPS (read / write)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "iops", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "rate(node_disk_reads_completed_total{device=~\"nvme0n1|sda\"}[$__rate_interval])", "legendFormat": "{{device}} read", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_writes_completed_total{device=~\"nvme0n1|sda\"}[$__rate_interval])", "legendFormat": "{{device}} write", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Disk Utilization (% busy)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "rate(node_disk_io_time_seconds_total{device=~\"nvme0n1|sda\"}[$__rate_interval]) * 100", "legendFormat": "{{device}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Disk Avg Latency (read / write)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "rate(node_disk_read_time_seconds_total{device=~\"nvme0n1|sda\"}[$__rate_interval]) / clamp_min(rate(node_disk_reads_completed_total{device=~\"nvme0n1|sda\"}[$__rate_interval]), 1)", "legendFormat": "{{device}} read", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_write_time_seconds_total{device=~\"nvme0n1|sda\"}[$__rate_interval]) / clamp_min(rate(node_disk_writes_completed_total{device=~\"nvme0n1|sda\"}[$__rate_interval]), 1)", "legendFormat": "{{device}} write", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Filesystem Used (bytes)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never", "stacking": { "mode": "none" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "node_filesystem_size_bytes{mountpoint=~\"/|/srv/ai-data\",fstype=~\"ext4|xfs\"} - node_filesystem_avail_bytes{mountpoint=~\"/|/srv/ai-data\",fstype=~\"ext4|xfs\"}", "legendFormat": "{{mountpoint}} used", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "node_filesystem_size_bytes{mountpoint=~\"/|/srv/ai-data\",fstype=~\"ext4|xfs\"}", "legendFormat": "{{mountpoint}} total", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Drive Temperatures", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "celsius", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 75 } ] } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_temperature{temperature_type=\"current\"}", "legendFormat": "{{device}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "NVMe Endurance (life used / spare)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "smartctl_device_percentage_used{device=\"nvme0\"}", "legendFormat": "Life used %", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "smartctl_device_available_spare{device=\"nvme0\"}", "legendFormat": "Available spare %", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Total Bytes Written (TBW tracker)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_bytes_written", "legendFormat": "{{device}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Motherboard Sensors (hwmon temps)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "fieldConfig": { "defaults": { "unit": "celsius", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "node_hwmon_temp_celsius < 150", "legendFormat": "{{chip}} {{sensor}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Fan Speeds (hwmon)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "fieldConfig": { "defaults": { "unit": "rotrpm", "custom": { "drawStyle": "line", "fillOpacity": 0, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "node_hwmon_fan_rpm", "legendFormat": "{{chip}} {{sensor}}", "refId": "A" } ] }
+  ]
+}

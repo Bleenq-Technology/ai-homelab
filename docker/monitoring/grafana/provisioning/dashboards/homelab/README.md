@@ -15,11 +15,17 @@ back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` 
 | **Containers (Docker)** | `jarvis-containers` | Per-container CPU %, memory, network & block I/O (by name), + a usage table | `telegraf` (docker input) |
 | **Postgres** | `jarvis-postgres` | Status, connections vs max, cache-hit ratio, transactions/sec, connections + sizes per database, deadlocks/temp | `postgres-exporter` |
 | **Redis** | `jarvis-redis` | Status, memory, clients, ops/sec, keyspace hit ratio, keys per DB, hits/misses, network I/O, evictions | `redis-exporter` |
+| **Storage & Drives** | `jarvis-storage` | Filesystem usage; per-device throughput / IOPS / utilisation / latency; drive temps; NVMe life-used / spare / TBW; SMART status & media errors; motherboard hwmon temps & fans | `node-exporter`, `smartctl-exporter` |
 
 ## Metric sources
 
 - **Host** — `node-exporter` (`job=node`), already scraped. CPU/mem/disk/network/load. No Telegraf
-  needed; node-exporter is the Prometheus-native equivalent.
+  needed; node-exporter is the Prometheus-native equivalent. Runs with the default collectors plus
+  `--collector.processes` and `--collector.interrupts` enabled (see the compose service).
+- **Drive SMART** — `smartctl-exporter` (`prometheuscommunity/smartctl-exporter`, `job=smartctl`,
+  `smartctl_device_*`), added in [compose.monitoring.yml](../../../compose.monitoring.yml). Exposes
+  per-drive wear/health/temperature for the NVMe + SATA SSD — the signal hwmon can't provide. See
+  [../../../smartctl-exporter/README.md](../../../smartctl-exporter/README.md).
 - **GPU** — `nvidia-gpu-exporter` (`utkuozdemir/nvidia_gpu_exporter`, `job=nvidia-gpu`), added in
   [compose.monitoring.yml](../../../compose.monitoring.yml). Exposes `nvidia_smi_*` (util, VRAM,
   temp, power, fan, clocks) for the RTX 3090.
