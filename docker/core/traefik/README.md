@@ -41,6 +41,10 @@ changes (idempotent on the leaf SHA-256, tracked in `.fw-cert-fingerprint`).
 **Symptom:** Every service served Traefik's self-signed DEFAULT certificate; `acme.json` stayed 0 bytes and no DNS-01 challenge was ever attempted.
 **Fix:** Add the wildcard `tls.domains` (main `lab.example` + SAN `*.lab.example`) and `tls.certresolver=le` onto the dashboard ROUTER labels — defining `tls.domains` only at the entrypoint level did not trigger ACME issuance.
 
+**Symptom (2026-06-24, after a root-drive swap reboot):** every service served the self-signed DEFAULT cert again, but `acme.json` was a *populated* 16 KB. Logs: `The ACME resolve is skipped from the resolvers list error="...permissions 660 for /letsencrypt/acme.json are too open, please use 600"` and `Router uses a nonexistent certificate resolver certificateResolver=le`. Downstream: `minio` stuck "Waiting for OpenID" (cert verify fail), `oauth2-proxy` crash-looping.
+**Cause:** `letsencrypt/acme.json` had drifted to `660` (a blanket `sudo chmod -R g+rwX /opt/homelab` deploy fixup widens `600`→`660`). Traefik **refuses to load the resolver** unless `acme.json` is `600`; it only surfaced when the reboot restarted Traefik and it re-checked the perm.
+**Fix:** `sudo chmod 600 /opt/homelab/core/traefik/letsencrypt/acme.json` → restart traefik. `le.acme` then loads, the stored wildcard is served, and minio/oauth2-proxy recover. **Always re-tighten `acme.json` to `600` after a blanket `g+rwX`** (see the golden rule in the root `CLAUDE.md`).
+
 **Symptom:** after secrets moved to Infisical, the dashboard returned 404 (basicauth middleware invalid). Infisical exports `.env` values single-quoted, which made the `$$`-escaped apr1 hash literal, corrupting the htpasswd users.
 **Fix:** gate the dashboard with Keycloak forward-auth (`secure-sso@file`) and drop the basicauth hash entirely — `TRAEFIK_DASHBOARD_AUTH` was the only `$`-containing value, so this also makes the quoted `.env` fully clean.
 
