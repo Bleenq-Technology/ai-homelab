@@ -115,7 +115,7 @@ backup_offhost(){
   [ -n "$user$pass$host$repopw" ] || { log "offhost: SKIP (missing ASUSTOR_/RESTIC_ vars)"; return 1; }
   command -v restic >/dev/null     || { log "offhost: SKIP (restic not installed)"; return 1; }
   # RESTIC_REST_PASSWORD is URL-safe hex; restic masks the URL password as *** in output.
-  export RESTIC_REPOSITORY="rest:http://${user}:${pass}@${host}:8000/${user}/"
+  export RESTIC_REPOSITORY="rest:http://${user}:${pass}@${host}:28000/${user}/"
   export RESTIC_PASSWORD="$repopw"
   log "offhost: restic backup -> ${host} (append-only)"
   restic backup "$BK" --tag offhost --host jarvis || { unset RESTIC_REPOSITORY RESTIC_PASSWORD; return 1; }

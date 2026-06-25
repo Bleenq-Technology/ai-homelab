@@ -13,8 +13,8 @@ jarvis (Ubuntu)                              stor.lab.example  (Asustor AS6706F 
 /opt/homelab/backup.sh   (cron 0 2 * * *)    ADM 5.1.3 · Docker 28.x · App Central "docker-ce"
   ├─ pg_dumpall / CH BACKUP / QuestDB / MinIO   ┌──────────────────────────────────────────────┐
   └─ backup_offhost():  restic backup  ───────► │ restic/rest-server  --private-repos            │
-        $BK = /opt/homelab/backups               │                     --append-only :8000 (HTTP) │
-        RESTIC_REPOSITORY=rest:http://jarvis:***@stor:8000/jarvis/   │ repo data → /volume1/Docker/restic-rest/data/jarvis
+        $BK = /opt/homelab/backups               │                     --append-only :28000 (HTTP) │
+        RESTIC_REPOSITORY=rest:http://jarvis:***@stor:28000/jarvis/   │ repo data → /volume1/Docker/restic-rest/data/jarvis
         RESTIC_PASSWORD=*** (repo encryption)    └──────────────────────────────────────────────┘
                                                   repo data → /volume1/restic-backups/jarvis (shared folder)
 ```
@@ -31,13 +31,13 @@ jarvis (Ubuntu)                              stor.lab.example  (Asustor AS6706F 
 
 ## Credentials (all in Infisical `homelab/prod`)
 
-| Var | Role |
-|-----|------|
-| `ASUSTOR_HOST_NAME` | NAS hostname — `stor.lab.example` (resolves to `192.168.2.11`) |
-| `ASUSTOR_INTEGRATION_LOGIN` | NAS account **and** rest-server basic-auth user — `jarvis` |
-| `ASUSTOR_INTEGRATION_PASSWORD` | the NAS `jarvis` account password (SSH / SMB / sudo) |
-| `RESTIC_REST_PASSWORD` | rest-server basic-auth password for user `jarvis` (URL-safe hex) |
-| `RESTIC_PASSWORD` | **repo encryption key** — losing it makes every backup unrecoverable |
+| Var                            | Role                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| `ASUSTOR_HOST_NAME`            | NAS hostname — `stor.lab.example` (resolves to `192.168.2.11`) |
+| `ASUSTOR_INTEGRATION_LOGIN`    | NAS account **and** rest-server basic-auth user — `jarvis`             |
+| `ASUSTOR_INTEGRATION_PASSWORD` | the NAS `jarvis` account password (SSH / SMB / sudo)                   |
+| `RESTIC_REST_PASSWORD`         | rest-server basic-auth password for user `jarvis` (URL-safe hex)       |
+| `RESTIC_PASSWORD`              | **repo encryption key** — losing it makes every backup unrecoverable   |
 
 > `RESTIC_PASSWORD` belongs in the **bootstrap set** vaulted in a password manager
 > (alongside `INFISICAL_ENCRYPTION_KEY`): if jarvis *and* Infisical are both lost, you
@@ -63,7 +63,7 @@ services:
     environment:
       - OPTIONS=--private-repos --append-only
     ports:
-      - "8000:8000"
+      - "28000:8000"
     volumes:
       - /volume1/restic-backups:/data               # dedicated shared folder; repo + .htpasswd live here
 ```
@@ -89,7 +89,7 @@ htpasswd -nbB jarvis "$RRP" | ssh jarvis@stor.lab.example 'cat > /volume1/restic
 On any host with `restic` + the two repo secrets:
 
 ```bash
-export RESTIC_REPOSITORY="rest:http://jarvis:<RESTIC_REST_PASSWORD>@stor.lab.example:8000/jarvis/"
+export RESTIC_REPOSITORY="rest:http://jarvis:<RESTIC_REST_PASSWORD>@stor.lab.example:28000/jarvis/"
 export RESTIC_PASSWORD="<RESTIC_PASSWORD>"
 
 restic snapshots                              # list available points in time
