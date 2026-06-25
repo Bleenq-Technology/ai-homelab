@@ -3,8 +3,9 @@
 Auto-loaded from this folder by the `Homelab` dashboard provider
 ([../dashboards.yml](../dashboards.yml)) into the **Homelab** folder in Grafana. Files here are the
 source of truth — edit the JSON and Grafana reloads it (changes made in the UI are not persisted
-back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` in
-[datasources.yml](../../datasources/datasources.yml) so references resolve on a fresh provision).
+back). Most panels query the **Prometheus** datasource (pinned `uid: prometheus` in
+[datasources.yml](../../datasources/datasources.yml) so references resolve on a fresh provision); the
+**Logs (Loki)** dashboard queries the **Loki** datasource (`uid: loki`).
 
 | Dashboard | uid | What it shows | Source data |
 |-----------|-----|---------------|-------------|
@@ -16,6 +17,7 @@ back). All panels query the **Prometheus** datasource (pinned `uid: prometheus` 
 | **Postgres** | `jarvis-postgres` | Status, connections vs max, cache-hit ratio, transactions/sec, connections + sizes per database, deadlocks/temp | `postgres-exporter` |
 | **Redis** | `jarvis-redis` | Status, memory, clients, ops/sec, keyspace hit ratio, keys per DB, hits/misses, network I/O, evictions | `redis-exporter` |
 | **Storage & Drives** | `jarvis-storage` | Filesystem usage; per-device throughput / IOPS / utilisation / latency; drive temps; NVMe life-used / spare / TBW; SMART status & media errors; motherboard hwmon temps & fans | `node-exporter`, `smartctl-exporter` |
+| **Logs (Loki)** | `jarvis-logs` | Centralised log search/filter across all containers + host: log-volume-by-service bars, line & error-line counts, a logs panel, an errors-only panel; **Service/container** + **text-filter** variables | `loki` (promtail) |
 
 ## Metric sources
 
