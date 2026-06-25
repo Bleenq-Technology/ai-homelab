@@ -1,0 +1,85 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": "-- Grafana --", "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jarvis", "data", "redpanda", "streaming"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Redpanda",
+  "uid": "jarvis-redpanda",
+  "panels": [
+    { "type": "stat", "title": "Broker Up", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "mappings": [ { "type": "value", "options": { "1": { "text": "UP", "color": "green" }, "0": { "text": "DOWN", "color": "red" } } } ], "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "up{job=\"redpanda\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Brokers", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "max(redpanda_cluster_brokers)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Partitions", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "max(redpanda_cluster_partitions)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Unavailable Partitions", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }, "color": { "mode": "thresholds" } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "max(redpanda_cluster_unavailable_partitions)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Disk Free (spine)", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "decbytes", "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "min(redpanda_storage_disk_free_bytes)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Uptime", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "fixed", "fixedColor": "text" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "max(redpanda_application_uptime_seconds_total)", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Consumer-group lag (max_offset − committed_offset)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "description": "Computed lag per consumer group + topic. Empty until a consumer with committed offsets is attached (e.g. the example-app QuestDB sink). This is the 'are the sinks keeping up?' signal.",
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum by (redpanda_group, redpanda_topic) (redpanda_kafka_max_offset{redpanda_namespace=\"kafka\"} - on (redpanda_topic, redpanda_partition) group_right() redpanda_kafka_consumer_group_committed_offset)", "legendFormat": "{{redpanda_group}} / {{redpanda_topic}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Throughput by topic (bytes/s)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "description": "Produce/consume byte rate per user topic (internal namespaces excluded).",
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "sum by (redpanda_topic) (rate(redpanda_kafka_request_bytes_total{redpanda_namespace=\"kafka\", redpanda_request=\"produce\"}[5m]))", "legendFormat": "produce {{redpanda_topic}}", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "sum by (redpanda_topic) (rate(redpanda_kafka_request_bytes_total{redpanda_namespace=\"kafka\", redpanda_request=\"consume\"}[5m]))", "legendFormat": "consume {{redpanda_topic}}", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Log end offset by topic", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "description": "redpanda_kafka_max_offset — the high-water mark per partition, summed by topic. Rising = data flowing in.",
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum by (redpanda_topic) (redpanda_kafka_max_offset{redpanda_namespace=\"kafka\"})", "legendFormat": "{{redpanda_topic}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Kafka request rate by type", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [ { "datasource": "Prometheus", "expr": "sum by (redpanda_request) (rate(redpanda_kafka_request_latency_seconds_count[5m]))", "legendFormat": "{{redpanda_request}}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Disk free vs total", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "fieldConfig": { "defaults": { "unit": "decbytes", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "min(redpanda_storage_disk_free_bytes)", "legendFormat": "free", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "max(redpanda_storage_disk_total_bytes)", "legendFormat": "total", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Health: under-replicated & raft leadership changes", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "description": "Under-replicated is always 0 single-broker (RF=1). Leadership churn indicates instability.",
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "sum(redpanda_kafka_under_replicated_replicas)", "legendFormat": "under-replicated", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "sum(rate(redpanda_raft_leadership_changes[5m]))", "legendFormat": "leadership changes/s", "refId": "B" } ] }
+  ]
+}

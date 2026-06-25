@@ -93,6 +93,15 @@ scrape_configs:
     static_configs:
       - targets: ['minio:9000']
 
+  # Redpanda broker — curated public metrics on the admin port (9644). NOT the
+  # market/event data itself; throughput, partitions, disk, consumer-group offsets.
+  # Consumer-group LAG is computed in PromQL (max_offset - committed_offset) — see
+  # the Redpanda Grafana dashboard; Redpanda exposes the two offsets, not lag directly.
+  - job_name: 'redpanda'
+    metrics_path: /public_metrics
+    static_configs:
+      - targets: ['redpanda:9644']
+
   - job_name: 'adguard-exporter'
     static_configs:
       - targets: ['adguard-exporter:9617']

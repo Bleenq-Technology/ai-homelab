@@ -28,6 +28,7 @@ The 990 PRO sits in the airflow path **above the 3090** (hot). It's a high-endur
 | **Backups** (nightly dumps) | `/opt/homelab/backups` | 9.6 G | bind | **high** (~10–15 G written/night) | **→ SSD** (wear ★) |
 | **MinIO** object store | `/opt/homelab/data/minio` | 8.7 G | bind | med-high (artifacts + nightly tar) | **→ SSD** (wear ★) |
 | **ClickHouse** (Langfuse traces) | `/opt/homelab/data/clickhouse` | 2.5 G | bind | **high** (continuous) | **→ SSD** (wear ★) |
+| **Redpanda** (event spine log) | `/srv/ai-data/streaming/redpanda` | new | bind-backed vol | **high** (continuous append) | **already on SSD** (greenfield, no migration) ★ |
 | Prometheus TSDB | `homelab_prometheus_data` (vol) | 892 M | named vol | high (continuous) | **→ SSD (optional, Phase 3)** |
 | Loki logs | `homelab_loki_data` (vol) | 522 M | named vol | high | **→ SSD (optional, Phase 3)** |
 | QuestDB | `homelab_questdb_data` (vol) | 47 M | named vol | med-high | **→ SSD (optional, Phase 3)** |
@@ -51,6 +52,8 @@ The 990 PRO sits in the airflow path **above the 3090** (hot). It's a high-endur
     bge-m3/         # was /opt/homelab/ai/bge-m3
     piper/  whisper/
   object-store/     # was /opt/homelab/data/minio
+  streaming/
+    redpanda/       # Redpanda event-spine log (greenfield — placed here from day one)
   backups/          # was /opt/homelab/backups
   telemetry/
     clickhouse/     # was /opt/homelab/data/clickhouse

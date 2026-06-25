@@ -283,3 +283,42 @@ groups:
         annotations:
           summary: "Redis using over 4 GB ({{ $value | humanize1024 }}B)"
           description: "Redis memory has exceeded 4 GB — unbounded growth risks host OOM. Set maxmemory and investigate what is filling it."
+
+  # ---- Redpanda (event/streaming spine) -----------------------------------
+  # Metric names verified live on /public_metrics (2026-06-25). Lag is NOT a
+  # direct metric — Redpanda exposes redpanda_kafka_max_offset and
+  # redpanda_kafka_consumer_group_committed_offset; lag is their difference,
+  # and only exists once a consumer group has committed offsets.
+  - name: redpanda
+    rules:
+      - alert: RedpandaUnavailablePartitions
+        expr: redpanda_cluster_unavailable_partitions > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redpanda has {{ $value | printf \"%.0f\" }} unavailable partition(s)"
+          description: "One or more partitions have no leader for 2 minutes — producers/consumers on those topics stall. Check the redpanda container/logs."
+
+      - alert: RedpandaDiskSpaceAlert
+        expr: redpanda_storage_disk_free_space_alert > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redpanda is in a low-disk state on the spine volume"
+          description: "Redpanda has raised its own disk-space alert (free space below its threshold) — it throttles/blocks writes in this state. Free space on /srv/ai-data or shorten topic retention."
+
+      - alert: RedpandaConsumerGroupLagHigh
+        expr: |
+          sum by (redpanda_group, redpanda_topic) (
+            redpanda_kafka_max_offset{redpanda_namespace="kafka"}
+            - on (redpanda_topic, redpanda_partition) group_right()
+            redpanda_kafka_consumer_group_committed_offset
+          ) > 100000
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumer group {{ $labels.redpanda_group }} lag high on {{ $labels.redpanda_topic }} ({{ $value | printf \"%.0f\" }})"
+          description: "A consumer group has been more than 100k messages behind on a topic for 15 minutes — a sink (e.g. the QuestDB sink) is not keeping up with ingestion. Check the consumer."

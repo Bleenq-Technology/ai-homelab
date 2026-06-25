@@ -13,6 +13,16 @@ networks:
 volumes:
   postgres_data:
   questdb_data:
+  # Redpanda log — bind-backed on the 870 EVO SSD (heavy-write tier, see
+  # docs/storage-tiering-plan.md). Fails loud if the SSD isn't mounted: the dir
+  # exists only on the mounted disk, so the container won't start rather than
+  # silently writing to the nvme root. Host dir is owned 101:101 (the image's user).
+  redpanda_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/ai-data/streaming/redpanda
 
 services:
 
@@ -109,6 +119,95 @@ services:
       - "traefik.http.routers.questdb.tls=true"
       - "traefik.http.routers.questdb.middlewares=secure-sso@file"
       - "traefik.http.services.questdb.loadbalancer.server.port=9000"
+
+  # ---- Redpanda — Kafka-API event/streaming spine -------------------------
+  # Shared ingestion backbone (example-app + other data projects): durable
+  # buffering, replay, multi-consumer fan-out. Single binary, no ZooKeeper.
+  # Internal-only on `data` (Kafka API has no auth — never host-publish). Runs as
+  # uid 101; data on the SSD via the bind-backed redpanda_data volume. Capped for
+  # the modest host (--smp/--memory/--overprovisioned). See data/redpanda/README.md.
+  redpanda:
+    image: redpandadata/redpanda:v26.1.10
+    container_name: redpanda
+    restart: unless-stopped
+    networks: [data]
+    # The image ships redpanda.yaml with developer_mode: true, which makes rpk
+    # inject --unsafe-bypass-fsync (data-loss risk on unclean shutdown). We flip it
+    # to false (fsync ON) by sed-ing the image's own config — which is owned by the
+    # redpanda user, so the wrapper edits it cleanly — then handing off to the stock
+    # entrypoint. (A `--set redpanda.developer_mode=false` flag does NOT work: rpk
+    # reads developer_mode from the file before applying --set; and bind-mounting a
+    # replacement file fails because rpk atomically rewrites it, which can't rename
+    # over a bind mount.)
+    entrypoint:
+      - /bin/bash
+      - -c
+      - 'sed -i "s/developer_mode: true/developer_mode: false/" /etc/redpanda/redpanda.yaml; exec /entrypoint.sh "$@"'
+      - _
+    # NB: space-separated flags (not --flag=value). The `--set=k=v` attached form
+    # breaks rpk's repeated-flag parsing (it leaks the 2nd --set to the redpanda
+    # binary, which rejects it). --overprovisioned keeps it cheap on the shared host.
+    command:
+      - redpanda
+      - start
+      - --smp
+      - "1"
+      - --memory
+      - 1G
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --default-log-level
+      - info
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+      - --schema-registry-addr
+      - "0.0.0.0:8081"
+      - --rpc-addr
+      - "0.0.0.0:33145"
+      - --advertise-rpc-addr
+      - redpanda:33145
+      # Governed spine: topics created deliberately (not auto); single-broker RF=1.
+      - --set
+      - redpanda.auto_create_topics_enabled=false
+      - --set
+      - redpanda.default_topic_replications=1
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  # ---- Redpanda Console — web UI for the spine (SSO-gated) ----------------
+  # Full admin power over the unauthenticated broker → the SSO gate is mandatory.
+  # Shares the one oauth2-proxy client (secure-sso@file) — no per-app Keycloak client.
+  redpanda-console:
+    image: redpandadata/console:v3.7.4
+    container_name: redpanda-console
+    restart: unless-stopped
+    networks: [proxy, data]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      SCHEMAREGISTRY_ENABLED: "true"
+      SCHEMAREGISTRY_URLS: http://redpanda:8081
+      REDPANDA_ADMINAPI_ENABLED: "true"
+      REDPANDA_ADMINAPI_URLS: http://redpanda:9644
+      TZ: ${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.redpanda.rule=Host(`redpanda.${DOMAIN}`)"
+      - "traefik.http.routers.redpanda.entrypoints=websecure"
+      - "traefik.http.routers.redpanda.tls=true"
+      - "traefik.http.routers.redpanda.middlewares=secure-sso@file"
+      - "traefik.http.services.redpanda.loadbalancer.server.port=8080"
 
   # ---- MinIO — S3-compatible object storage -------------------------------
   minio:

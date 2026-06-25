@@ -36,7 +36,10 @@ services:
     image: prom/prometheus:v3.11.3
     container_name: prometheus
     restart: unless-stopped
-    networks: [proxy, monitoring]
+    # `data` lets Prometheus scrape data-only services that expose native metrics
+    # without a Traefik route (e.g. redpanda:9644) — the broker stays data-only
+    # rather than being widened onto `proxy` just for scraping.
+    networks: [proxy, monitoring, data]
     volumes:
       - ./prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus

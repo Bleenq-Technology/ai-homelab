@@ -11,7 +11,7 @@ docker/
 ├── .env.example           # copy to .env and fill in (gitignored)
 ├── secrets/               # EasyDNS API token/key (gitignored) — see secrets/README.md
 ├── core/        compose.core.yml        traefik, keycloak, portainer, infisical, firezone, adguard, netbox
-├── data/        compose.data.yml        postgres, redis, minio, clickhouse, baserow, pgadmin
+├── data/        compose.data.yml        postgres, redis, minio, clickhouse, questdb, redpanda(+console), baserow, pgadmin
 ├── monitoring/  compose.monitoring.yml  prometheus, grafana, loki, promtail, alertmanager, exporters, watchtower, uptime-kuma
 └── ai/          compose.ai.yml          openwebui, n8n, comfyui, wyoming TTS/STT, jupyter, flowise, qdrant, neo4j, searxng, langfuse
 ```
