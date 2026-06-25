@@ -45,8 +45,9 @@ alongside the auto-downloaded default `en_US-lessac-medium`.
 
 **Gotcha (this bit us a year ago):** if the files are named with hyphens/lowercase locale
 (e.g. `en-us-glados-high`) or the two filenames don't match, you get `VoiceNotFoundError`.
-Rename to the `en_US-...` scheme. The voice's display name comes from the filename, not a
-field inside the `.onnx.json`.
+Rename to the `en_US-...` scheme. Synthesis keys on the **filename**, but the enumerated
+display name comes from the JSON `dataset` field when present — keep them in sync (see the
+`dataset`-vs-filename gotcha under *Installed voices* below).
 
 Install procedure (from a workstation that has the files):
 ```sh
@@ -71,8 +72,18 @@ ssh sanctioned@jarvis 'D=/opt/homelab/ai/wyoming-piper/data; \
 > directly, so we `curl`-ed the real binaries **on the host** (avoids the Windows-LFS dance),
 > verified each `sha256sum` against the stub's recorded `oid`, then `sudo mv`'d them into the data
 > dir as `en_US-jarvis-{high,medium}` (`root:homelab` 664). Verified by a raw Wyoming `synthesize`
-> request (4.4 s of 22050 Hz audio). The voice's `.onnx.json` `dataset` field stays `jarvis-high`
-> — irrelevant to wyoming-piper, which keys on the **filename** (see the gotcha above).
+> request (4.4 s of 22050 Hz audio).
+>
+> **Gotcha — `dataset` field vs filename (cost us an hour 2026-06-25):** `synthesize` resolves a
+> voice by **filename** (`<name>.onnx` in `/data`), but the **Describe→Info enumeration** advertises
+> each voice by its `.onnx.json` **`dataset`** field *if present*, else the filename. JARVIS's JSON
+> shipped `"dataset": "jarvis-high"`, so it enumerated as `jarvis-high` while only `en_US-jarvis-high`
+> would synthesize — any client that **picks from the voice list** (Home Assistant, Assistant's voice
+> combo) then hits `VoiceNotFoundError`. Fix: set `dataset` to the full filename
+> (`en_US-jarvis-high`) so the advertised name matches what synthesizes. glados avoids this by having
+> **no** `dataset` field (falls back to filename). Also note custom-voice entries only appear in
+> Info **after a `docker restart wyoming-piper`** — the enumeration list is built at startup, though
+> synthesis itself loads new voices on-demand without a restart.
 
 ### Pending / backlog
 - **Cortana (Halo)** — no public *English* Cortana Piper voice exists; the only one is
