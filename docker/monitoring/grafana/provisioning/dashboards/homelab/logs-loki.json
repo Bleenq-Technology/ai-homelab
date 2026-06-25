@@ -1,0 +1,70 @@
+{
+  "annotations": { "list": [ { "builtIn": 1, "datasource": "-- Grafana --", "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" } ] },
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["jarvis", "logs", "loki"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Logs (Loki)",
+  "uid": "jarvis-logs",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service / container",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values(container)",
+        "query": "label_values(container)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+      },
+      {
+        "name": "search",
+        "label": "Text filter (regex, case-insensitive)",
+        "type": "textbox",
+        "query": "",
+        "current": { "text": "", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    { "type": "timeseries", "title": "Log volume by service (lines / interval)", "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" }, "showPoints": "never", "lineWidth": 0 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum by (container) (count_over_time({container=~\"$service\"} |~ \"(?i)$search\" [$__interval]))", "legendFormat": "{{container}}", "queryType": "range", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Lines (selected range)", "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({container=~\"$service\"} |~ \"(?i)$search\" [$__range]))", "queryType": "instant", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Error lines (selected range)", "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 50 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({container=~\"$service\"} |~ \"(?i)(error|fatal|panic|traceback|exception)\" [$__range]))", "queryType": "instant", "refId": "A" } ] },
+
+    { "type": "logs", "title": "Logs — {container=~$service}  filter: \"$search\"", "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 8 },
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" },
+      "targets": [ { "datasource": { "type": "loki", "uid": "loki" }, "expr": "{container=~\"$service\"} |~ \"(?i)$search\"", "queryType": "range", "refId": "A" } ] },
+
+    { "type": "logs", "title": "Errors only (error|fatal|panic|traceback|exception)", "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 22 },
+      "options": { "showTime": true, "showLabels": true, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" },
+      "targets": [ { "datasource": { "type": "loki", "uid": "loki" }, "expr": "{container=~\"$service\"} |~ \"(?i)(error|fatal|panic|traceback|exception)\"", "queryType": "range", "refId": "A" } ] },
+
+    { "type": "text", "title": "Tips", "gridPos": { "h": 4, "w": 24, "x": 0, "y": 31 },
+      "options": { "mode": "markdown", "content": "**Filters:** pick one/many services in **Service / container** (All = `.*`); type a regex in **Text filter** (empty = everything). For ad-hoc queries use **Explore → Loki**. LogQL line ops: `|=` contains · `!=` not · `|~` regex · `!~` not-regex · `| json`/`| logfmt` to parse fields. Other label sets: `{job=\"systemd-journal\", unit=\"docker.service\"}`, `{job=\"varlogs\"}`." } }
+  ]
+}
