@@ -63,12 +63,18 @@ ssh sanctioned@jarvis 'D=/opt/homelab/ai/wyoming-piper/data; \
 | `en_US-amy-medium` **(default)** | Official, auto-downloaded from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). Set as the default voice 2026-06-17 (natural neutral female). |
 | `en_US-lessac-medium`      | Official, auto-downloaded by piper from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices). Previous default. |
 | `en_US-glados-high`        | GLaDOS (Portal). Sourced from [AIHeaven/piper_unofficial_voices](https://huggingface.co/AIHeaven/piper_unofficial_voices) (`en_us-glados-high`); renamed to the `en_US-` scheme. Added 2026-06-17. |
+| `en_US-jarvis-high`        | JARVIS (Paul Bettany, Iron Man). MIT. Real binary downloaded **on the host** from [jgkawell/jarvis](https://huggingface.co/jgkawell/jarvis) `en/en_GB/jarvis/high/` (sha256 `9791877d…`, 114 MB); renamed to the `en_US-` scheme. Added 2026-06-25. |
+| `en_US-jarvis-medium`      | JARVIS, medium quality. Same source, `en/en_GB/jarvis/medium/` (sha256 `3f6534bd…`, 63.5 MB). Added 2026-06-25. |
+
+> **How these were installed (2026-06-25):** the `jarvis-*.onnx` files in our local voice stash
+> were Git-LFS **pointer stubs** (133/134 bytes), not real models. jarvis can reach HuggingFace
+> directly, so we `curl`-ed the real binaries **on the host** (avoids the Windows-LFS dance),
+> verified each `sha256sum` against the stub's recorded `oid`, then `sudo mv`'d them into the data
+> dir as `en_US-jarvis-{high,medium}` (`root:homelab` 664). Verified by a raw Wyoming `synthesize`
+> request (4.4 s of 22050 Hz audio). The voice's `.onnx.json` `dataset` field stays `jarvis-high`
+> — irrelevant to wyoming-piper, which keys on the **filename** (see the gotcha above).
 
 ### Pending / backlog
-- **Jarvis voice** — the `jarvis-*.onnx` files in our voice stash are Git-LFS **pointer
-  stubs** (133 bytes), not the real models; need the real binaries (e.g. from
-  [rhasspy/piper-voices #11](https://huggingface.co/rhasspy/piper-voices/discussions/11))
-  before they can be installed as `en_US-jarvis-{high,medium}`.
 - **Cortana (Halo)** — no public *English* Cortana Piper voice exists; the only one is
   Spanish ([HirCoir es_MX-Cortana](https://huggingface.co/HirCoir/piper-voice-es_MX-Cortana-CE-Legacy),
   trained on the Halo Spanish dub). An English Cortana would require training (e.g. via
