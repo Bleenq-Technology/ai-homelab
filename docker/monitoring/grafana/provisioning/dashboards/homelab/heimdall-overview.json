@@ -1,0 +1,243 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["homelab", "heimdall", "active-directory"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Heimdall — AD Domain Controller",
+  "uid": "heimdall-overview",
+  "version": 1,
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Domain Controller Health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "samba-ad-dc",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "node_systemd_unit_state{instance=\"heimdall\",name=\"samba-ad-dc.service\",state=\"active\"}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "index": 0 }, "1": { "text": "ACTIVE", "index": 1 } } } ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" }
+    },
+    {
+      "type": "stat",
+      "title": "Host reachable (node up)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 3,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "up{instance=\"heimdall\",job=\"node\"}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "index": 0 }, "1": { "text": "UP", "index": 1 } } } ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" }
+    },
+    {
+      "type": "stat",
+      "title": "AD service ports (TCP probe)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 1 },
+      "id": 4,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "probe_success{job=\"blackbox-ad\"}", "legendFormat": "{{svc}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "index": 0 }, "1": { "text": "UP", "index": 1 } } } ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" }
+    },
+    {
+      "type": "row",
+      "title": "Compute",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 10,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU busy %",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 6 },
+      "id": 11,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "100 - (avg(rate(node_cpu_seconds_total{instance=\"heimdall\",mode=\"idle\"}[5m])) * 100)", "legendFormat": "CPU busy", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Load average",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 6 },
+      "id": 12,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "node_load1{instance=\"heimdall\"}", "legendFormat": "1m", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "node_load5{instance=\"heimdall\"}", "legendFormat": "5m", "refId": "B" },
+        { "datasource": "Prometheus", "expr": "node_load15{instance=\"heimdall\"}", "legendFormat": "15m", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "type": "gauge",
+      "title": "Memory used %",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 6 },
+      "id": 13,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "(1 - (node_memory_MemAvailable_bytes{instance=\"heimdall\"} / node_memory_MemTotal_bytes{instance=\"heimdall\"})) * 100", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true }
+    },
+    {
+      "type": "row",
+      "title": "Storage & SMART",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 20,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "gauge",
+      "title": "Root FS used %",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 14 },
+      "id": 21,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{instance=\"heimdall\",mountpoint=\"/\"} / node_filesystem_size_bytes{instance=\"heimdall\",mountpoint=\"/\"} * 100)", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true }
+    },
+    {
+      "type": "stat",
+      "title": "SSD SMART health",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 14 },
+      "id": 22,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "smartctl_device_smart_status{instance=\"heimdall\"}", "legendFormat": "{{device}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [ { "type": "value", "options": { "0": { "text": "FAILING", "index": 0 }, "1": { "text": "PASSED", "index": 1 } } } ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value_and_name" }
+    },
+    {
+      "type": "timeseries",
+      "title": "SSD temperature",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 14 },
+      "id": 23,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "smartctl_device_temperature{instance=\"heimdall\",temperature_type=\"current\"}", "legendFormat": "{{device}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius", "min": 0,
+          "custom": { "drawStyle": "line", "fillOpacity": 10 },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 70 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "type": "stat",
+      "title": "Uptime",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 14 },
+      "id": 24,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "time() - node_boot_time_seconds{instance=\"heimdall\"}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" }
+    },
+    {
+      "type": "row",
+      "title": "Network & I/O",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "id": 30,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Network traffic (enp0s25)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 22 },
+      "id": 31,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "rate(node_network_receive_bytes_total{instance=\"heimdall\",device=\"enp0s25\"}[5m])", "legendFormat": "rx", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "rate(node_network_transmit_bytes_total{instance=\"heimdall\",device=\"enp0s25\"}[5m])", "legendFormat": "tx", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Disk I/O (sda)",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 22 },
+      "id": 32,
+      "targets": [
+        { "datasource": "Prometheus", "expr": "rate(node_disk_read_bytes_total{instance=\"heimdall\",device=\"sda\"}[5m])", "legendFormat": "read", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_written_bytes_total{instance=\"heimdall\",device=\"sda\"}[5m])", "legendFormat": "write", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    }
+  ]
+}

@@ -26,7 +26,12 @@ scrape_configs:
 
   - job_name: 'node'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['node-exporter:9100']          # jarvis host (container, --path.rootfs=/host)
+      # heimdall — sole Samba AD DC (192.168.2.2). Native prometheus-node-exporter
+      # on the trusted LAN; systemd collector exports samba-ad-dc unit health.
+      - targets: ['192.168.2.2:9100']
+        labels:
+          instance: heimdall
 
   # zoomie — Paul's Windows workstation (Telegraf prometheus_client on :9273).
   # External LAN host on 192.168.1.0/24, reached cross-subnet via the EdgeRouter
@@ -48,7 +53,11 @@ scrape_configs:
   # Drive SMART health / wear / temperature (NVMe 990 PRO + SATA 870 EVO)
   - job_name: 'smartctl'
     static_configs:
-      - targets: ['smartctl-exporter:9633']
+      - targets: ['smartctl-exporter:9633']      # jarvis drives
+      # heimdall SSD (PNY CS900 SATA) — same exporter v0.14.0, native on the DC.
+      - targets: ['192.168.2.2:9633']
+        labels:
+          instance: heimdall
 
   - job_name: 'postgres-exporter'
     static_configs:
@@ -105,6 +114,34 @@ scrape_configs:
           - https://n8n.lab.example
           - https://langfuse.lab.example
           - https://uptime.lab.example
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # heimdall AD DC port reachability (TCP connect). A failed KDC/LDAP probe here
+  # is exactly the boot-bind class of fault that broke Kerberos after the hardware
+  # migration — this catches it. `port`/`svc` labels drive the dashboard + alerts.
+  - job_name: 'blackbox-ad'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets: ['192.168.2.2:53']
+        labels: { svc: dns }
+      - targets: ['192.168.2.2:88']
+        labels: { svc: kerberos-kdc }
+      - targets: ['192.168.2.2:389']
+        labels: { svc: ldap }
+      - targets: ['192.168.2.2:464']
+        labels: { svc: kpasswd }
+      - targets: ['192.168.2.2:636']
+        labels: { svc: ldaps }
+      - targets: ['192.168.2.2:3268']
+        labels: { svc: global-catalog }
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
