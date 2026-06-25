@@ -32,6 +32,11 @@ scrape_configs:
       - targets: ['192.168.2.2:9100']
         labels:
           instance: heimdall
+      # stor — Asustor NAS (192.168.2.11). Containerized node-exporter (ADM is
+      # busybox); mdadm (RAID5 md1) + btrfs (/volume1) collectors included.
+      - targets: ['192.168.2.11:9100']
+        labels:
+          instance: stor
 
   # zoomie — Paul's Windows workstation (Telegraf prometheus_client on :9273).
   # External LAN host on 192.168.1.0/24, reached cross-subnet via the EdgeRouter
@@ -58,6 +63,10 @@ scrape_configs:
       - targets: ['192.168.2.2:9633']
         labels:
           instance: heimdall
+      # stor — 3× NVMe (RAID5). Same exporter v0.14.0, containerized.
+      - targets: ['192.168.2.11:9633']
+        labels:
+          instance: stor
 
   - job_name: 'postgres-exporter'
     static_configs:
@@ -142,6 +151,25 @@ scrape_configs:
         labels: { svc: ldaps }
       - targets: ['192.168.2.2:3268']
         labels: { svc: global-catalog }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # stor NAS core service reachability (SMB file sharing + the restic rest-server
+  # that heimdall & jarvis back up to). probe_success==0 -> NASServiceDown alert.
+  - job_name: 'blackbox-stor'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets: ['192.168.2.11:445']
+        labels: { svc: smb }
+      - targets: ['192.168.2.11:28000']
+        labels: { svc: restic-rest }
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

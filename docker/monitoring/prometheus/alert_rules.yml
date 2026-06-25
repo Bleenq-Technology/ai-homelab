@@ -116,7 +116,7 @@ groups:
   - name: disk
     rules:
       - alert: DiskSpaceLow
-        expr: 100 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs"} * 100) > 80
+        expr: 100 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs|btrfs"} * 100) > 80
         for: 10m
         labels:
           severity: warning
@@ -125,13 +125,38 @@ groups:
           description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} has been over 80% full for 10 minutes. Free space or it will fill."
 
       - alert: DiskSpaceCritical
-        expr: 100 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs"} * 100) > 90
+        expr: 100 - (node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs|btrfs"} * 100) > 90
         for: 5m
         labels:
           severity: critical
         annotations:
           summary: "Disk {{ $labels.mountpoint }} over 90% full ({{ $value | printf \"%.0f\" }}%)"
           description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} is over 90% full — imminent out-of-space. Clean up now (you hit 90% once before)."
+
+  # ---- mdadm RAID + NAS services (stor) -----------------------------------
+  - name: storage-raid
+    rules:
+      # Alert on actually-failed member disks, NOT node_md_degraded: Asustor
+      # over-provisions the SYSTEM RAID1 arrays (md0 [6/3], md126 [4/3]) across
+      # all bays, so they report permanently "degraded" while healthy. Failed-disk
+      # count is the true signal (0 on those). Covers the data array md1 (RAID5).
+      - alert: RAIDArrayDiskFailed
+        expr: node_md_disks{state="failed"} > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RAID array {{ $labels.device }} on {{ $labels.instance }} has {{ $value | printf \"%.0f\" }} failed disk(s)"
+          description: "An mdadm array reports a failed member — redundancy is reduced. Check the array and replace the drive."
+
+      - alert: NASServiceDown
+        expr: probe_success{job="blackbox-stor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "stor service {{ $labels.svc }} ({{ $labels.instance }}) is not answering"
+          description: "TCP probe to stor's {{ $labels.svc }} port has failed for 2 minutes. SMB shares / the restic backup target may be unavailable."
 
   # ---- Drive SMART health / wear / temperature (smartctl-exporter) --------
   # NVMe-only metrics (percentage_used, available_spare) are absent for the SATA
