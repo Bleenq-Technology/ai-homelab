@@ -182,6 +182,15 @@ All web services are at `https://<name>.lab.example`. **Auth** legend:
 for image generation, → **Tavily** for web search (results injected into the 80k context),
 and **Qdrant** for document/Knowledge RAG, with **Redis** as the websocket manager / cache.
 
+## Hardware
+
+A single **modest, second-hand-friendly AM4 desktop** — not a datacenter node. ASUS ROG STRIX
+B450-F GAMING · **Ryzen 5 3600X** (6C/12T) · **64 GB** DDR4-3200 (2 of 4 slots used → 128 GB max) ·
+a **used RTX 3090** (24 GB) · Samsung **990 PRO 1 TB** NVMe (`/`) + **870 EVO 2 TB** SATA
+(`/srv/ai-data`, the heavy-write tier) · Gigabit LAN · Ubuntu 26.04 LTS. The 24 GB VRAM and limited
+RAM are the envelope every service budgets against. Full spec, drive layout, and the RAM-upgrade part
+number: **[docs/hardware.md](docs/hardware.md)**.
+
 ## Repository layout
 
 ```
