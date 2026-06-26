@@ -1,0 +1,53 @@
+# Loki single-binary config — vendored from the image's stock
+# /etc/loki/local-config.yaml (grafana/loki:3.7.2) and extended with a
+# limits_config block. Mounted over the image default in compose.monitoring.yml.
+# Keep the rest in sync if you bump the image and its defaults change.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# ---- Ingestion limits (the reason this file exists) ----------------------
+# Stock defaults are 4 MB/s global rate + 6 MB burst (tenant "fake"), which
+# promtail tripped with HTTP 429 whenever it re-shipped a container's whole
+# backlog on (re)discovery — a single 97 MB transfer blew past it. The
+# promtail pipeline now drops the bulk noise (bge-m3 INFO churn, Traefik
+# internal probes), but bursts on restart can still spike, so give Loki real
+# headroom. Per-stream caps bumped too so one chatty container (bge-m3,
+# traefik) can't be throttled on its own stream.
+limits_config:
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  per_stream_rate_limit: 8MB
+  per_stream_rate_limit_burst: 24MB
+
+ruler:
+  alertmanager_url: http://localhost:9093
+
+# We don't ship anonymous usage stats to Grafana Labs (we're heading toward
+# open-sourcing this stack; no phone-home by default).
+analytics:
+  reporting_enabled: false

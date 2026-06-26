@@ -43,6 +43,38 @@ scrape_configs:
         replacement: 'docker'
       - target_label: 'host'
         replacement: 'jarvis'
+    # ---- Noise reduction (deterministic drops, NOT random sampling) -------
+    # We drop only known, high-volume, low-value lines and keep EVERYTHING
+    # else at full fidelity — so when something breaks, the line you need is
+    # still there. (Probabilistic/Google-style sampling is the wrong tool at
+    # homelab scale: it throws away the one log you'll want during an
+    # incident. Revisit if total volume ever dwarfs the signal.)
+    # Drops are scoped per-container via `match` selectors; each carries a
+    # drop_counter_reason so the discards show up in promtail's
+    # `promtail_dropped_lines_total{reason=...}` metric (already scraped).
+    pipeline_stages:
+      # bge-m3 (llama.cpp embeddings server) logs per-request slot churn at
+      # INFO on every call — "update_slots: all slots are idle", "slot
+      # release", "slot prompt_clear", "srv update: - prompt 0x..." — ~19k
+      # lines/hr and the main burst source. llama.cpp prefixes each line with
+      # an uptime stamp + single-char level (I/W/E); drop INFO, keep W/E.
+      - match:
+          selector: '{container="bge-m3"}'
+          stages:
+            - drop:
+                expression: '^[0-9.]+ I '
+                drop_counter_reason: bge_m3_info_noise
+      # Traefik access logs: drop internal health/probe traffic — requests
+      # with an empty user-agent ("-" "-") to a Docker-discovered router.
+      # Real browser/API traffic carries a UA, so this keeps user-facing
+      # access logs and all of Traefik's own runtime logs (logfmt, no UA
+      # field) while dropping the uptime/blackbox probe spam.
+      - match:
+          selector: '{container="traefik"}'
+          stages:
+            - drop:
+                expression: '.* "-" "-" \d+ "[^"]*@docker"'
+                drop_counter_reason: traefik_internal_probe
 
   # ---- Host systemd journal ----
   - job_name: journal

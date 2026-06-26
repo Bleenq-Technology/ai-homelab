@@ -135,6 +135,9 @@ services:
     networks: [monitoring]
     volumes:
       - loki_data:/loki
+      # Vendored stock config + bumped limits_config (ingestion rate/burst).
+      # Single-file mount so it doesn't shadow the rest of the image's /etc/loki.
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
     command: -config.file=/etc/loki/local-config.yaml
 
   # ---- Promtail (log shipper) ---------------------------------------------
