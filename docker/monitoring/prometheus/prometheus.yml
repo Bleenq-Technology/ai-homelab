@@ -27,6 +27,8 @@ scrape_configs:
   - job_name: 'node'
     static_configs:
       - targets: ['node-exporter:9100']          # jarvis host (container, --path.rootfs=/host)
+        labels:
+          instance: jarvis
       # heimdall — sole Samba AD DC (192.168.2.2). Native prometheus-node-exporter
       # on the trusted LAN; systemd collector exports samba-ad-dc unit health.
       - targets: ['192.168.2.2:9100']
@@ -54,11 +56,15 @@ scrape_configs:
   - job_name: 'nvidia-gpu'
     static_configs:
       - targets: ['nvidia-gpu-exporter:9835']
+        labels:
+          instance: jarvis
 
   # Drive SMART health / wear / temperature (NVMe 990 PRO + SATA 870 EVO)
   - job_name: 'smartctl'
     static_configs:
       - targets: ['smartctl-exporter:9633']      # jarvis drives
+        labels:
+          instance: jarvis
       # heimdall SSD (PNY CS900 SATA) — same exporter v0.14.0, native on the DC.
       - targets: ['192.168.2.2:9633']
         labels:

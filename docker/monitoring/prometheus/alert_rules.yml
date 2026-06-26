@@ -82,7 +82,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "GPU temperature high ({{ $value | printf \"%.0f\" }} C)"
+          summary: "GPU temperature high on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }} C)"
           description: "RTX 3090 has been above 80 C for 5 minutes (throttles around 83 C). Check airflow / sustained load."
 
       - alert: GPUTempCritical
@@ -91,25 +91,25 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "GPU temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
+          summary: "GPU temperature CRITICAL on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }} C)"
           description: "RTX 3090 has been above 87 C for 2 minutes — sustained throttling / thermal risk. Investigate cooling now."
 
       - alert: CPUTempHigh
-        expr: max(node_hwmon_temp_celsius{chip=~"pci.*18_3"}) > 80
+        expr: max by (instance) (node_hwmon_temp_celsius{chip=~"pci.*18_3"}) > 80
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "CPU temperature high ({{ $value | printf \"%.0f\" }} C)"
+          summary: "CPU temperature high on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }} C)"
           description: "AMD CPU (k10temp) has been above 80 C for 5 minutes. Check cooling / sustained load."
 
       - alert: CPUTempCritical
-        expr: max(node_hwmon_temp_celsius{chip=~"pci.*18_3"}) > 90
+        expr: max by (instance) (node_hwmon_temp_celsius{chip=~"pci.*18_3"}) > 90
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "CPU temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
+          summary: "CPU temperature CRITICAL on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }} C)"
           description: "AMD CPU (k10temp) has been above 90 C for 2 minutes — approaching thermal throttle. Investigate now."
 
   # ---- Disk ---------------------------------------------------------------
@@ -121,7 +121,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Disk {{ $labels.mountpoint }} over 80% full ({{ $value | printf \"%.0f\" }}%)"
+          summary: "Disk {{ $labels.mountpoint }} on {{ $labels.instance }} over 80% full ({{ $value | printf \"%.0f\" }}%)"
           description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} has been over 80% full for 10 minutes. Free space or it will fill."
 
       - alert: DiskSpaceCritical
@@ -130,7 +130,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Disk {{ $labels.mountpoint }} over 90% full ({{ $value | printf \"%.0f\" }}%)"
+          summary: "Disk {{ $labels.mountpoint }} on {{ $labels.instance }} over 90% full ({{ $value | printf \"%.0f\" }}%)"
           description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.device }} is over 90% full — imminent out-of-space. Clean up now (you hit 90% once before)."
 
   # ---- mdadm RAID + NAS services (stor) -----------------------------------
@@ -170,7 +170,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "SMART overall-health FAILED on {{ $labels.device }}"
+          summary: "SMART overall-health FAILED on {{ $labels.device }} ({{ $labels.instance }})"
           description: "smartctl reports the SMART self-assessment FAILED for {{ $labels.device }} — the drive is predicting its own failure. Back up and replace it."
 
       - alert: NVMeWearHigh
@@ -179,7 +179,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.device }} at {{ $value | printf \"%.0f\" }}% of rated life"
+          summary: "{{ $labels.device }} on {{ $labels.instance }} at {{ $value | printf \"%.0f\" }}% of rated life"
           description: "NVMe endurance used has exceeded 80% on {{ $labels.device }}. Plan a replacement before it reaches 100% (this is the wear signal we lacked when the old 256G drive aged out)."
 
       - alert: NVMeSpareLow
@@ -188,7 +188,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "{{ $labels.device }} available spare critically low ({{ $value | printf \"%.0f\" }}%)"
+          summary: "{{ $labels.device }} on {{ $labels.instance }} available spare critically low ({{ $value | printf \"%.0f\" }}%)"
           description: "NVMe reserved spare blocks below 10% on {{ $labels.device }} — failure is imminent. Replace now."
 
       - alert: DriveMediaErrors
@@ -197,7 +197,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.device }} reported {{ $value | printf \"%.0f\" }} media/integrity errors"
+          summary: "{{ $labels.device }} on {{ $labels.instance }} reported {{ $value | printf \"%.0f\" }} media/integrity errors"
           description: "smartctl logged media errors on {{ $labels.device }} — uncorrected data-integrity events. Investigate; this often precedes failure."
 
       - alert: DriveTempHigh
@@ -206,7 +206,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Drive {{ $labels.device }} temperature high ({{ $value | printf \"%.0f\" }} C)"
+          summary: "Drive {{ $labels.device }} on {{ $labels.instance }} temperature high ({{ $value | printf \"%.0f\" }} C)"
           description: "{{ $labels.device }} has been above 70 C for 10 minutes (the nvme sits in the 3090's airflow path). Check cooling / sustained write load."
 
       - alert: DriveTempCritical
@@ -215,20 +215,37 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Drive {{ $labels.device }} temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
+          summary: "Drive {{ $labels.device }} on {{ $labels.instance }} temperature CRITICAL ({{ $value | printf \"%.0f\" }} C)"
           description: "{{ $labels.device }} above 80 C — thermal-throttle / wear-acceleration territory. Investigate cooling now (heat-related NVMe death is the failure mode we're guarding against)."
 
   # ---- Host memory pressure (ties into OOM risk) --------------------------
+  # Host-scoped thresholds: real servers (jarvis, heimdall) warn at <10% available,
+  # but stor is a small 3.8 GB Asustor NAS appliance that runs structurally near-full
+  # under ADM + its Docker apps (~1-2% available is its NORMAL baseline, not
+  # actionable), so it gets a far looser, longer-window floor of its own.
   - name: memory-pressure
     rules:
       - alert: HostMemoryLow
-        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
+        expr: node_memory_MemAvailable_bytes{instance!="stor"} / node_memory_MemTotal_bytes{instance!="stor"} * 100 < 10
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: "Host memory low ({{ $value | printf \"%.0f\" }}% available)"
-          description: "Less than 10% of host RAM has been available for 10 minutes — OOM-kill risk rising."
+          summary: "Host memory low on {{ $labels.instance }} ({{ $value | printf \"%.0f\" }}% available)"
+          description: "{{ $labels.instance }}: less than 10% of host RAM has been available for 10 minutes — OOM-kill risk rising."
+
+      # stor runs structurally near-full on RAM (0.6-5% available is its NORMAL
+      # baseline), so a MemAvailable% threshold just flaps. The real "NAS is out of
+      # memory" signal is swap exhaustion — it already spills to swap in normal
+      # operation, so alert only when swap headroom itself collapses.
+      - alert: NASMemoryLow
+        expr: node_memory_SwapFree_bytes{instance="stor"} / node_memory_SwapTotal_bytes{instance="stor"} * 100 < 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "NAS memory low on {{ $labels.instance }} (swap {{ $value | printf \"%.0f\" }}% free)"
+          description: "{{ $labels.instance }} (small NAS appliance): swap free under 10% for 15 minutes — it has spilled to swap and swap is nearly exhausted (RAM available runs ~1% normally, so swap headroom is the real OOM signal). Check ADM / its Docker apps."
 
   # ---- Containers: OOM kills + restart loops ------------------------------
   - name: containers
