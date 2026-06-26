@@ -16,8 +16,8 @@ identity, data services, full observability, and a GPU-accelerated AI/automation
 all defined as modular Docker Compose and fronted by Traefik with automatic wildcard TLS.
 
 ![Status](https://img.shields.io/badge/status-operational-brightgreen)
-![Containers](https://img.shields.io/badge/containers-40%20running-blue)
-![Web routes](https://img.shields.io/badge/web%20routes-26-blue)
+![Containers](https://img.shields.io/badge/containers-42%20running-blue)
+![Web routes](https://img.shields.io/badge/web%20routes-27-blue)
 ![Images](https://img.shields.io/badge/images-pinned-success)
 ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-v2-2496ED?logo=docker&logoColor=white)
 ![Traefik](https://img.shields.io/badge/Traefik-v3.7-24A1C1?logo=traefikproxy&logoColor=white)
@@ -26,7 +26,7 @@ all defined as modular Docker Compose and fronted by Traefik with automatic wild
 ![Host](https://img.shields.io/badge/host-jarvis%20·%20Ubuntu-E95420?logo=ubuntu&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Status:** Operational on `jarvis` — last verified **2026-06-16**. 40 containers, 26 web
+> **Status:** Operational on `jarvis` — last verified **2026-06-25**. 42 containers, 27 web
 > routes behind the wildcard cert, GPU passthrough confirmed, Open WebUI wired to a local
 > unsloth LLM + ComfyUI. **All images pinned to stable/secure versions** (audited for CVEs/EOL;
 > no mutable `:latest`/`:main` tags). Metric alerting → Discord is live.
@@ -84,6 +84,7 @@ flowchart TB
         CH[("ClickHouse")]
         NEO[("Neo4j")]
         QDB[("QuestDB · time-series")]
+        RP[("Redpanda · event spine")]
     end
     subgraph MON["Monitoring · cross-cutting"]
         PR["Prometheus + exporters"]
@@ -111,6 +112,8 @@ flowchart TB
     INF & NB & BR & SX & OW --> RD
     LF --> PG & CH & RD & MIN
     MLF --> MIN
+    TE -. "events" .-> RP
+    RP -. "sinks" .-> QDB
     TE -. "market data" .-> QDB
 
     %% monitoring spans the whole stack
@@ -155,6 +158,7 @@ All web services are at `https://<name>.lab.example`. **Auth** legend:
 | **MinIO** | `minio.…` / `s3.…` | S3 object storage (console / API) | 🔒 |
 | **ClickHouse** | `clickhouse.…` | OLAP DB (Langfuse backend); native Prom metrics | 🔒 |
 | **QuestDB** | `questdb.…` | Time-series DB — market/markets data (PG-wire) | 🛡️ console · 🎟️ PG-wire |
+| **Redpanda** | `redpanda.…` (console) | Kafka-API event/streaming spine (broker internal-only) | 🛡️ console · 🔓 broker (LAN-internal) |
 | **Neo4j** | `neo4j.…` | Graph database | 🔒 |
 | **Baserow** | `baserow.…` | No-code database + REST API | 🔒 |
 | **pgAdmin** | `pgadmin.…` | Postgres admin UI | 🔒 |
@@ -253,6 +257,9 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - [x] Hardening — strong creds verified; QuestDB PG-wire/ILP pulled off the LAN (internal-only)
 - [x] **Off-host backup replication** — restic → append-only REST server on the Asustor NAS
       (`stor.lab.example`); wired into the nightly `backup.sh`. See [docs/off-host-backup.md](docs/off-host-backup.md)
+- [x] **Redpanda event/streaming spine** — Kafka-API broker on the `data` net (durable buffering,
+      replay, multi-consumer fan-out) for the example-app ingestion backbone + other data projects;
+      production mode, SSD-backed, Console behind SSO, Prometheus/Grafana wired (see [docker/data/redpanda/](docker/data/redpanda/README.md))
 - [ ] Optional Kubernetes migration (`kubernetes/`)
 
 ## Known / deferred
