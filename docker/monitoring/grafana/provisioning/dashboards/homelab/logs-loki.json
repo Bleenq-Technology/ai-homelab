@@ -23,7 +23,7 @@
         "sort": 1,
         "multi": true,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": ".+",
         "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
       },
       {
@@ -65,6 +65,6 @@
       "targets": [ { "datasource": { "type": "loki", "uid": "loki" }, "expr": "{container=~\"$service\"} |~ \"(?i)(error|fatal|panic|traceback|exception)\"", "queryType": "range", "refId": "A" } ] },
 
     { "type": "text", "title": "Tips", "gridPos": { "h": 4, "w": 24, "x": 0, "y": 31 },
-      "options": { "mode": "markdown", "content": "**Filters:** pick one/many services in **Service / container** (All = `.*`); type a regex in **Text filter** (empty = everything). For ad-hoc queries use **Explore → Loki**. LogQL line ops: `|=` contains · `!=` not · `|~` regex · `!~` not-regex · `| json`/`| logfmt` to parse fields. Other label sets: `{job=\"systemd-journal\", unit=\"docker.service\"}`, `{job=\"varlogs\"}`." } }
+      "options": { "mode": "markdown", "content": "**Filters:** pick one/many services in **Service / container** (All = `.+`); type a regex in **Text filter** (empty = everything). For ad-hoc queries use **Explore → Loki**. LogQL line ops: `|=` contains · `!=` not · `|~` regex · `!~` not-regex · `| json`/`| logfmt` to parse fields. Other label sets: `{job=\"systemd-journal\", unit=\"docker.service\"}`, `{job=\"varlogs\"}`." } }
   ]
 }
