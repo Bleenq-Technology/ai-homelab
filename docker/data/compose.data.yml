@@ -12,7 +12,9 @@ networks:
 
 volumes:
   postgres_data:
-  questdb_data:
+  # NOTE: questdb is bind-mounted to the 870 EVO SSD market-data tier
+  # (/srv/ai-data/marketdata/questdb) — it's the market-data firehose; see
+  # docs/storage-tiering-plan.md. No named volume needed.
   # Redpanda log — bind-backed on the 870 EVO SSD (heavy-write tier, see
   # docs/storage-tiering-plan.md). Fails loud if the SSD isn't mounted: the dir
   # exists only on the mounted disk, so the container won't start rather than
@@ -111,7 +113,8 @@ services:
     # keeping it off the LAN is the security boundary. Console/REST (:9000) is exposed
     # solely via Traefik + Keycloak SSO (labels below).
     volumes:
-      - questdb_data:/var/lib/questdb
+      # SSD market-data tier (heavy-write / bulk). Owned 10001:10001 (the image's user).
+      - /srv/ai-data/marketdata/questdb:/var/lib/questdb
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.questdb.rule=Host(`questdb.${DOMAIN}`)"
@@ -238,7 +241,9 @@ services:
       MINIO_IDENTITY_OPENID_ROLE_POLICY: consoleAdmin
       TZ: ${TZ}
     volumes:
-      - ./minio/data:/data
+      # SSD bulk object tier (artifacts, backups, MLflow/Langfuse blobs; see
+      # docs/storage-tiering-plan.md). Owned 0:1003 (root:homelab).
+      - /srv/ai-data/object-store:/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -294,7 +299,8 @@ services:
         soft: 262144
         hard: 262144
     volumes:
-      - ./clickhouse/data:/var/lib/clickhouse
+      # SSD telemetry tier (continuous-write OLAP, see docs/storage-tiering-plan.md). Owned 101:101.
+      - /srv/ai-data/telemetry/clickhouse:/var/lib/clickhouse
       - ./clickhouse/config/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
       - ./clickhouse/config/prometheus.xml:/etc/clickhouse-server/config.d/prometheus.xml:ro
     healthcheck:

@@ -1,6 +1,29 @@
 # Storage tiering plan — jarvis (nvme + SATA SSD)
 
-**Status:** proposed (2026-06-24). Review before executing; migration is staged and reversible.
+**Status:** proposed 2026-06-24 · **data stores executed 2026-06-28** (see Execution log). Migration
+is staged and reversible.
+
+## Execution log
+- **2026-06-28 — QuestDB, ClickHouse, MinIO moved NVMe → `/srv/ai-data` (SATA SSD).** Method per
+  this doc (stop → `rsync -aHAX` → repoint bind → recreate → verify), each verified
+  **checksum-identical** + functionally (QuestDB ready; ClickHouse all Langfuse tables; MinIO serves
+  objects). Compose: [`docker/data/compose.data.yml`](../docker/data/compose.data.yml). New paths:
+  - QuestDB → `/srv/ai-data/marketdata/questdb` (named vol `homelab_questdb_data` → bind; owner 10001)
+  - ClickHouse → `/srv/ai-data/telemetry/clickhouse` (owner 101)
+  - MinIO → `/srv/ai-data/object-store` (owner 0:1003 root:homelab)
+  - **QuestDB promoted from "Phase 3 optional" to done-first** — it's the market-data firehose for the
+    `markets-backtesting` / market-data buildout; ingest now lands on the 2 TB SSD from the start.
+  - **Old NVMe sources kept for a grace period** — removal commands in host
+    `local-notes/STORAGE-TIERING-CLEANUP.md` (run after a few days healthy).
+- Already on SSD (greenfield): **Redpanda** (`/srv/ai-data/streaming/redpanda`).
+- **Not yet moved (lower priority):** models (Phase 1), backups dir, Prometheus/Loki TSDBs (Phase 3).
+- **Follow-ups:** Prometheus alert on `/srv/ai-data` fill; `backup.sh` path updates (questdb
+  vol→bind, clickhouse/minio dirs); QuestDB time-partition TTLs once ingest begins.
+
+> Note: the host doc `local-notes/SSD-2TB-EXPANSION-PLAN.md` (2026-06-17) is **superseded** — it
+> assumed a 238 GB NVMe and a separate `/mnt/marketdata` disk. Reality after the drive clone + SSD
+> add: one 990 PRO 1 TB (`/`) + the 870 EVO 2 TB (`/srv/ai-data`). Its good ideas (QuestDB TTLs,
+> ClickHouse tiered hot/cold, the `/srv/ai-data` alert) are folded into the follow-ups above.
 
 ## The two drives
 | Drive | Device → mount | Size / used | Speed | Endurance | Role |

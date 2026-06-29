@@ -67,9 +67,11 @@ SSD. Full rationale + the migration plan: [docs/storage-tiering-plan.md](storage
 | **SATA** | Samsung **870 EVO 2 TB** (`S6PNNM0TA21899N`) | SATA | `sda1` ext4 **`/srv/ai-data`** (by-UUID, `nofail`) |
 
 - **`/`** (NVMe): 913 G, ~21 % used. OS, `/var/lib/docker`, hot DBs (Postgres, Redis, Qdrant).
-- **`/srv/ai-data`** (SATA): 1.8 T, ~1 % used. The heavy-write / bulk tier — backups, MinIO, ClickHouse,
-  and the **Redpanda** event-spine log (`/srv/ai-data/streaming/redpanda`). The NVMe sits in the 3090's
-  airflow path, so moving sustained **writes** here is a write-wear + thermal win (see the tiering plan).
+- **`/srv/ai-data`** (SATA): 1.8 T, ~2 % used. The heavy-write / bulk tier — **QuestDB** (market-data,
+  `marketdata/questdb`), **MinIO** (`object-store`), **ClickHouse** (`telemetry/clickhouse`), and the
+  **Redpanda** event-spine log (`streaming/redpanda`), all relocated here 2026-06-28 (backups + model
+  caches still pending — see the tiering plan). The NVMe sits in the 3090's airflow path, so moving
+  sustained **writes** here is a write-wear + thermal win (see the tiering plan).
 - The 990 PRO is high-endurance (~600 TBW); the 870 EVO ~1200 TBW.
 
 ## Network
