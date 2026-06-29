@@ -20,3 +20,28 @@
 ## Secrets
 - `.env` keys: `POSTGRES_SUPERUSER`, `POSTGRES_PASSWORD`, and the per-service role passwords `KEYCLOAK_DB_PASSWORD`, `NETBOX_DB_PASSWORD`, `INFISICAL_DB_PASSWORD`, `BASEROW_DB_PASSWORD`, `LANGFUSE_DB_PASSWORD`, `FIREZONE_DB_PASSWORD`. Also `TZ`.
 - Real values live only in `/opt/homelab/.env` on jarvis (gitignored). Nothing sensitive is committed; `docker/.env.example` holds placeholders.
+
+## `exampleapp` — the example-app DB (provisioned out-of-band)
+
+The `example-app` product (sibling repo) gets a dedicated DB **`exampleapp`** with **two
+least-privilege login roles**, provisioned by the idempotent
+[`provision-exampleapp.sh`](provision-exampleapp.sh) — **not** the init script:
+
+- **Why not `init/01-init-databases.sh`?** That only runs on a *first, empty* volume (ours is
+  long populated), and the role passwords live in the **example-app Infisical project** (prod),
+  not the homelab `.env` the init script sources. So `exampleapp` is provisioned separately;
+  passwords are passed to the helper at run time and never baked into this repo (nothing for
+  `docker/.env.example`).
+- **The two roles** (deliberately bare — schema/grants/RLS are the example-app deploy's job via
+  its `db.apply`/Alembic, **not** ours):
+  - **`exampleapp_migrate`** — owns the DB, runs DDL/Alembic (the migration role). DDL-capable;
+    not the role the running app connects as.
+  - **`exampleapp_app`** — the runtime connect role. **NON-superuser AND NON-`BYPASSRLS`** so
+    Row-Level Security actually binds it (the app sets `app.current_account_ids` per request).
+    `db/apply.py` **refuses to deploy** if this role is `SUPERUSER`/`BYPASSRLS` — it would silently
+    skip every `account_isolation` policy. The helper asserts `NOSUPERUSER NOBYPASSRLS` defensively.
+- **Run:** `EXAMPLEAPP_MIGRATE_DB_PASSWORD=… EXAMPLEAPP_APP_DB_PASSWORD=… ./data/postgres/provision-exampleapp.sh`
+- **Secrets home:** the **example-app** Infisical project (`prod`) — app role pw as
+  `POSTGRES_PASSWORD`, migrate role pw as `MIGRATION_DB_PASSWORD` (+ `MIGRATION_DATABASE_URL`).
+  The example-app deploy pulls them via its own `pull-secrets.sh`. (ai-homelab-infra todos #20.)
+- The DB is picked up by the nightly `pg_dumpall` automatically.
