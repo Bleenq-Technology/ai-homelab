@@ -105,6 +105,34 @@ give OIDC the secure context/correct redirect URLs it needs.
 > the client (steps 1–5), remove `sso@file`/`secure-sso@file` from its router and set
 > `secure-chain@file`, recreate. Nothing else in the stack changes.
 
+## example-app artifacts (realm `homelab`)
+
+The `example-app` product (sibling repo) uses **app-level OIDC + in-app RBAC** (ADR-0003/0008).
+Its realm artifacts are provisioned by the idempotent
+[`provision-example-clients.sh`](provision-example-clients.sh) and baked into
+[`realm-homelab.json`](realm-homelab.json) (ai-homelab-infra todos #21):
+
+- **`example-api`** — **confidential** client; the API validates bearer JWTs and runs RBAC
+  server-side (the execution gate is the crown-jewel control). Secret → **example-app** Infisical
+  (`prod`, key `OIDC_CLIENT_SECRET`), `REPLACE_AFTER_IMPORT` in the realm export. Edge posture
+  (applied by the example-app compose, **not** here): **`secure-chain@file`** — Bearer-friendly,
+  **no** SSO redirect; `secure-sso@file` would 302 the native cockpit/PWA.
+- **`example-cockpit`** — **public** client (native Windows cockpit + PWA): Auth Code + **PKCE
+  (S256)** *and* **Device Authorization Grant**, **no secret**, loopback redirect
+  `http://127.0.0.1:*/callback` for the system-browser/AppAuth flow.
+- **Realm roles:** `trader` (money path), `viewer` (read-only), `curator` (watchlist promote/demote
+  only — no order/money path), `analyst`, `developer`. Names must match the app exactly — it calls
+  `require_role("<name>")` and the role token is an audit correlation key. Verified: a token carries
+  `realm_access.roles` with the assigned roles.
+
+> **Deferred (pre-live-markets — tracked in todos #21), NOT yet applied:** the realm-wide
+> **refresh-token rotation + reuse detection** and the **step-up/LoA `acr` authentication flow +
+> MFA-for-`trader`/`developer`**. Both touch the **shared** login for every homelab/family user, and
+> the app's `acr` value / ≤15-min-window contract isn't implemented yet (it runs paper/read-only at
+> E0, so the execution gate isn't exercised). The later **`example-dashboard`** browser client
+> (redirect `https://markets.lab.example/api/auth/callback/keycloak`, `secure-sso@file`) is
+> also deferred to the dashboard slice.
+
 ## Reproducing the realm
 
 [`realm-homelab.json`](realm-homelab.json) is a sanitized export (client secrets
