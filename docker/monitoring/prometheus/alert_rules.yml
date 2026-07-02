@@ -49,7 +49,8 @@ groups:
           summary: "Endpoint {{ $labels.instance }} is failing its HTTPS probe"
           description: "Blackbox exporter reports {{ $labels.instance }} has not returned a healthy response for 2 minutes."
 
-  # ---- Active Directory (heimdall, sole DC) -------------------------------
+  # ---- Active Directory (mimir = PRIMARY/FSMO, heimdall = DC#2/replica) ----
+  # Rules are instance-agnostic and fire per-DC; both DCs are scraped.
   - name: active-directory
     rules:
       # Cleanest DC-down signal: the samba-ad-dc systemd unit isn't active.
@@ -60,7 +61,7 @@ groups:
           severity: critical
         annotations:
           summary: "Samba AD DC (samba-ad-dc) is not active on {{ $labels.instance }}"
-          description: "The sole domain controller's service has been non-active for 2 minutes — Kerberos/LDAP auth, SMB on stor, and Keycloak federation are all affected."
+          description: "This DC's samba-ad-dc has been non-active for 2 minutes. With two DCs the other still serves Kerberos/LDAP/DNS, but redundancy is lost — if this is mimir (FSMO holder), restore it promptly or seize roles onto heimdall."
 
       # Per-port reachability. Catches the boot-bind failure class where the unit
       # is 'active' but the KDC (88) never bound — Kerberos down while LDAPS stays up.
@@ -70,8 +71,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "heimdall AD port for {{ $labels.svc }} ({{ $labels.instance }}) is not answering"
-          description: "TCP probe to the {{ $labels.svc }} port has failed for 2 minutes. If samba-ad-dc shows active, this is the KDC-rebind class — restart samba-ad-dc."
+          summary: "{{ $labels.host }} AD port for {{ $labels.svc }} is not answering"
+          description: "TCP probe to {{ $labels.host }}'s {{ $labels.svc }} port has failed for 2 minutes. If samba-ad-dc shows active, this is the KDC-rebind class — restart samba-ad-dc on {{ $labels.host }}."
 
   # ---- Temperatures (top priority: GPU + CPU) -----------------------------
   - name: temperatures

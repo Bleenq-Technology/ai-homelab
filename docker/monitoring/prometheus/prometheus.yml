@@ -29,11 +29,17 @@ scrape_configs:
       - targets: ['node-exporter:9100']          # jarvis host (container, --path.rootfs=/host)
         labels:
           instance: jarvis
-      # heimdall — sole Samba AD DC (192.168.2.2). Native prometheus-node-exporter
-      # on the trusted LAN; systemd collector exports samba-ad-dc unit health.
+      # heimdall — Samba AD DC #2 / HA replica (192.168.2.2). Native
+      # prometheus-node-exporter on the trusted LAN; systemd collector exports
+      # samba-ad-dc unit health.
       - targets: ['192.168.2.2:9100']
         labels:
           instance: heimdall
+      # mimir — Samba AD DC #1 / PRIMARY, holds all FSMO (192.168.2.4). Same
+      # native node_exporter + systemd collector as heimdall.
+      - targets: ['192.168.2.4:9100']
+        labels:
+          instance: mimir
       # stor — Asustor NAS (192.168.2.11). Containerized node-exporter (ADM is
       # busybox); mdadm (RAID5 md1) + btrfs (/volume1) collectors included.
       - targets: ['192.168.2.11:9100']
@@ -69,6 +75,10 @@ scrape_configs:
       - targets: ['192.168.2.2:9633']
         labels:
           instance: heimdall
+      # mimir SSD (Samsung 870 EVO SATA) — same exporter v0.14.0, native on the DC.
+      - targets: ['192.168.2.4:9633']
+        labels:
+          instance: mimir
       # stor — 3× NVMe (RAID5). Same exporter v0.14.0, containerized.
       - targets: ['192.168.2.11:9633']
         labels:
@@ -146,26 +156,41 @@ scrape_configs:
       - target_label: __address__
         replacement: blackbox-exporter:9115
 
-  # heimdall AD DC port reachability (TCP connect). A failed KDC/LDAP probe here
-  # is exactly the boot-bind class of fault that broke Kerberos after the hardware
-  # migration — this catches it. `port`/`svc` labels drive the dashboard + alerts.
+  # AD DC port reachability (TCP connect) for BOTH DCs. A failed KDC/LDAP probe
+  # here is exactly the boot-bind class of fault that broke Kerberos after the
+  # hardware migration — this catches it. `svc`/`host` labels drive the generic
+  # AD Domain Controller dashboard (host dropdown) + the blackbox-ad alerts.
   - job_name: 'blackbox-ad'
     metrics_path: /probe
     params:
       module: [tcp_connect]
     static_configs:
+      # heimdall (DC#2 / replica)
       - targets: ['192.168.2.2:53']
-        labels: { svc: dns }
+        labels: { svc: dns, host: heimdall }
       - targets: ['192.168.2.2:88']
-        labels: { svc: kerberos-kdc }
+        labels: { svc: kerberos-kdc, host: heimdall }
       - targets: ['192.168.2.2:389']
-        labels: { svc: ldap }
+        labels: { svc: ldap, host: heimdall }
       - targets: ['192.168.2.2:464']
-        labels: { svc: kpasswd }
+        labels: { svc: kpasswd, host: heimdall }
       - targets: ['192.168.2.2:636']
-        labels: { svc: ldaps }
+        labels: { svc: ldaps, host: heimdall }
       - targets: ['192.168.2.2:3268']
-        labels: { svc: global-catalog }
+        labels: { svc: global-catalog, host: heimdall }
+      # mimir (DC#1 / PRIMARY, holds FSMO)
+      - targets: ['192.168.2.4:53']
+        labels: { svc: dns, host: mimir }
+      - targets: ['192.168.2.4:88']
+        labels: { svc: kerberos-kdc, host: mimir }
+      - targets: ['192.168.2.4:389']
+        labels: { svc: ldap, host: mimir }
+      - targets: ['192.168.2.4:464']
+        labels: { svc: kpasswd, host: mimir }
+      - targets: ['192.168.2.4:636']
+        labels: { svc: ldaps, host: mimir }
+      - targets: ['192.168.2.4:3268']
+        labels: { svc: global-catalog, host: mimir }
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
