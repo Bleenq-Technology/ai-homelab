@@ -7,3 +7,11 @@
 *.xml text eol=lf
 *.env text eol=lf
 *.env.example text eol=lf
+
+# PRIVATE operational docs — describe live credential/provisioning state; must NOT
+# ship in the public open-source snapshot (see todos.md #14). `export-ignore` drops
+# them from `git archive`; whoever cuts the release must also exclude them if using
+# any other mechanism. Keep this list in sync with the "PRIVATE — do not include"
+# header carried by each such doc.
+docs/web-app-chat-provisioning.md export-ignore
+docs/todo-24-secrets-resync-runbook.md export-ignore
