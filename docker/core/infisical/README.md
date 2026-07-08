@@ -73,9 +73,17 @@ quotes at interpolation, so services kept working — but every *raw* reader bro
 `grep|cut` scripts, `docker run --env-file`, and curl tests all treated the quotes as part of the
 value. This manufactured the TODO #24 "three clocks drift" (all keys were in fact in sync and
 alive). **Fix:** `pull-secrets.sh` now strips the wrapping quotes so `.env` stays raw values.
-Two related CLI gotchas found the same day: `secrets delete` fails on our 0.38 CLI (use the raw
-API `DELETE /api/v3/secrets/raw/<KEY>` with the same token), and don't trust `secrets get`
-read-backs alone to conclude export state — compare against `infisical export` itself.
+Two related CLI gotchas found the same day: `secrets delete` under a **machine-identity** token
+defaults to `--type=personal` and 400s ("Must be user to delete personal secret") — pass
+**`--type=shared`** (or use the raw API `DELETE /api/v3/secrets/raw/<KEY>`); and don't trust
+`secrets get` read-backs alone to conclude export state — compare against `infisical export`.
+
+**CLI install (2026-07-08):** upgraded 0.38.0 → **0.43.101** from Infisical's own apt repo
+(`https://artifacts-cli.infisical.com` via their `setup.deb.sh`); the old Cloudsmith source is
+frozen at 0.38 (left disabled at `sources.list.d/infisical-infisical-cli.list.disabled`).
+0.43.101 **still single-quotes export values**, so the `pull-secrets.sh` strip stays. Verified
+post-upgrade: `pull-secrets.sh` reproduced a byte-identical `.env` (103 secrets) and the master
+key tested 200 through the gateway.
 
 Earlier: adoption itself went cleanly (54/54 secrets imported, `infisical export` reproduced
 `.env` with zero value mismatches — on the pre-0.38, unquoted CLI).
