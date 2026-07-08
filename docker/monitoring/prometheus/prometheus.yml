@@ -40,6 +40,11 @@ scrape_configs:
       - targets: ['192.168.2.4:9100']
         labels:
           instance: mimir
+      # hoenir — Samba AD DC #2 / HA replica, Raspberry Pi 5 arm64 (192.168.2.5).
+      # Permanent replacement for heimdall. Same native node_exporter + systemd collector.
+      - targets: ['192.168.2.5:9100']
+        labels:
+          instance: hoenir
       # stor — Asustor NAS (192.168.2.11). Containerized node-exporter (ADM is
       # busybox); mdadm (RAID5 md1) + btrfs (/volume1) collectors included.
       - targets: ['192.168.2.11:9100']
@@ -79,6 +84,10 @@ scrape_configs:
       - targets: ['192.168.2.4:9633']
         labels:
           instance: mimir
+      # hoenir NVMe (Samsung 256 GB) — same exporter v0.14.0, native arm64 on the Pi DC.
+      - targets: ['192.168.2.5:9633']
+        labels:
+          instance: hoenir
       # stor — 3× NVMe (RAID5). Same exporter v0.14.0, containerized.
       - targets: ['192.168.2.11:9633']
         labels:
@@ -191,6 +200,19 @@ scrape_configs:
         labels: { svc: ldaps, host: mimir }
       - targets: ['192.168.2.4:3268']
         labels: { svc: global-catalog, host: mimir }
+      # hoenir (DC#2 / HA replica, Pi5 — heimdall's replacement)
+      - targets: ['192.168.2.5:53']
+        labels: { svc: dns, host: hoenir }
+      - targets: ['192.168.2.5:88']
+        labels: { svc: kerberos-kdc, host: hoenir }
+      - targets: ['192.168.2.5:389']
+        labels: { svc: ldap, host: hoenir }
+      - targets: ['192.168.2.5:464']
+        labels: { svc: kpasswd, host: hoenir }
+      - targets: ['192.168.2.5:636']
+        labels: { svc: ldaps, host: hoenir }
+      - targets: ['192.168.2.5:3268']
+        labels: { svc: global-catalog, host: hoenir }
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
