@@ -66,4 +66,16 @@ Backup + `INFISICAL_ENCRYPTION_KEY` together = restorable; either alone is usele
 5. `./pull-secrets.sh` → full `.env` → `docker compose up -d` → full stack.
 
 ## Issues & Fixes
-**Symptom:** none yet — Infisical adoption went cleanly (54/54 secrets imported, `infisical export` reproduced `.env` with zero value mismatches).
+**Symptom (2026-07-08): phantom "credential drift" — `.env` values fail auth (401) while the
+same keys work inside containers.** Root cause: Infisical CLI ≥ 0.38 changed `infisical export
+--format=dotenv` to wrap every value in **single quotes** (`KEY='value'`). Docker compose strips
+quotes at interpolation, so services kept working — but every *raw* reader broke silently:
+`grep|cut` scripts, `docker run --env-file`, and curl tests all treated the quotes as part of the
+value. This manufactured the TODO #24 "three clocks drift" (all keys were in fact in sync and
+alive). **Fix:** `pull-secrets.sh` now strips the wrapping quotes so `.env` stays raw values.
+Two related CLI gotchas found the same day: `secrets delete` fails on our 0.38 CLI (use the raw
+API `DELETE /api/v3/secrets/raw/<KEY>` with the same token), and don't trust `secrets get`
+read-backs alone to conclude export state — compare against `infisical export` itself.
+
+Earlier: adoption itself went cleanly (54/54 secrets imported, `infisical export` reproduced
+`.env` with zero value mismatches — on the pre-0.38, unquoted CLI).

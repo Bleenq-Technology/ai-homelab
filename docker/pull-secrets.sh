@@ -21,8 +21,17 @@ TOKEN=$(infisical login --method=universal-auth \
   --domain="$INFISICAL_DOMAIN" --plain --silent)
 
 umask 077
+# Infisical CLI >= 0.38 wraps every exported value in single quotes
+# (KEY='value'). docker compose strips them at interpolation, so containers
+# keep working — but every RAW reader breaks silently: grep|cut scripts,
+# `docker run --env-file`, and curl auth tests all see the quotes as part of
+# the value (this manufactured the phantom "credential drift" of TODO #24).
+# Strip the wrapping quotes so .env stays raw values, as everything expects.
+# (Caveat: a secret whose value itself starts AND ends with a single quote
+# would be over-stripped — don't create those.)
 infisical export --format=dotenv \
   --projectId="$INFISICAL_PROJECT_ID" --env="${INFISICAL_ENV:-prod}" \
-  --domain="$INFISICAL_DOMAIN" --token="$TOKEN" > .env
+  --domain="$INFISICAL_DOMAIN" --token="$TOKEN" \
+  | sed -E "s/^([A-Za-z_][A-Za-z0-9_]*)='(.*)'$/\1=\2/" > .env
 
 echo "pulled $(grep -cE '^[A-Za-z_]' .env) secrets from Infisical (${INFISICAL_ENV:-prod}) -> .env"
