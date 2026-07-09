@@ -42,7 +42,7 @@
     { "type": "gauge", "title": "Root Disk Used", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 4, "y": 7 },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
       "options": { "showThresholdLabels": false, "showThresholdMarkers": true },
-      "targets": [ { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"} * 100)", "refId": "A" } ] },
+      "targets": [ { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * 100)", "refId": "A" } ] },
 
     { "type": "stat", "title": "GPU Temp", "datasource": "Prometheus", "gridPos": { "h": 4, "w": 4, "x": 8, "y": 7 },
       "fieldConfig": { "defaults": { "unit": "celsius", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 83 } ] } }, "overrides": [] },
@@ -89,19 +89,67 @@
       "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "datasource": "Prometheus", "expr": "sum(rate(node_disk_read_bytes_total{device!~\"dm-.*|loop.*\"}[5m]))", "legendFormat": "Read", "refId": "A" },
-        { "datasource": "Prometheus", "expr": "sum(rate(node_disk_written_bytes_total{device!~\"dm-.*|loop.*\"}[5m]))", "legendFormat": "Write", "refId": "B" } ] },
+        { "datasource": "Prometheus", "expr": "sum(rate(node_disk_read_bytes_total{instance=\"jarvis\",device!~\"dm-.*|loop.*\"}[5m]))", "legendFormat": "Read", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "sum(rate(node_disk_written_bytes_total{instance=\"jarvis\",device!~\"dm-.*|loop.*\"}[5m]))", "legendFormat": "Write", "refId": "B" } ] },
 
-    { "type": "row", "title": "GPU — RTX 3090", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 }, "collapsed": false },
+    { "type": "row", "title": "Storage — drives", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 }, "collapsed": false },
 
-    { "type": "timeseries", "title": "GPU Utilization %", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
+    { "type": "gauge", "title": "Root / Used (990 PRO nvme)", "datasource": "Prometheus", "gridPos": { "h": 6, "w": 4, "x": 0, "y": 29 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [ { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * 100)", "refId": "A" } ] },
+
+    { "type": "gauge", "title": "/srv/ai-data Used (870 EVO)", "datasource": "Prometheus", "gridPos": { "h": 6, "w": 4, "x": 4, "y": 29 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [ { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance=\"jarvis\",mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"} * 100)", "refId": "A" } ] },
+
+    { "type": "stat", "title": "Root / Free", "datasource": "Prometheus", "gridPos": { "h": 6, "w": 4, "x": 8, "y": 29 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 50000000000 }, { "color": "green", "value": 100000000000 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "/srv/ai-data Free", "datasource": "Prometheus", "gridPos": { "h": 6, "w": 4, "x": 12, "y": 29 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 100000000000 }, { "color": "green", "value": 200000000000 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Life Used", "datasource": "Prometheus", "gridPos": { "h": 6, "w": 4, "x": 16, "y": 29 },
+      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_percentage_used{instance=\"jarvis\",device=\"nvme0\"}", "refId": "A" } ] },
+
+    { "type": "stat", "title": "NVMe Total Written", "datasource": "Prometheus", "gridPos": { "h": 6, "w": 4, "x": 20, "y": 29 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "fixed", "fixedColor": "text" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [ { "datasource": "Prometheus", "expr": "smartctl_device_bytes_written{instance=\"jarvis\",device=\"nvme0\"}", "refId": "A" } ] },
+
+    { "type": "timeseries", "title": "Filesystem Used %", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance=\"jarvis\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * 100)", "legendFormat": "/ (990 PRO nvme)", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "100 - (node_filesystem_avail_bytes{instance=\"jarvis\",mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"} / node_filesystem_size_bytes{instance=\"jarvis\",mountpoint=\"/srv/ai-data\",fstype=~\"ext4|xfs\"} * 100)", "legendFormat": "/srv/ai-data (870 EVO)", "refId": "B" } ] },
+
+    { "type": "timeseries", "title": "Disk Throughput (per drive)", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "datasource": "Prometheus", "expr": "rate(node_disk_written_bytes_total{instance=\"jarvis\",device=\"nvme0n1\"}[5m])", "legendFormat": "nvme write", "refId": "A" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_read_bytes_total{instance=\"jarvis\",device=\"nvme0n1\"}[5m])", "legendFormat": "nvme read", "refId": "B" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_written_bytes_total{instance=\"jarvis\",device=\"sda\"}[5m])", "legendFormat": "sda write", "refId": "C" },
+        { "datasource": "Prometheus", "expr": "rate(node_disk_read_bytes_total{instance=\"jarvis\",device=\"sda\"}[5m])", "legendFormat": "sda read", "refId": "D" } ] },
+
+    { "type": "row", "title": "GPU — RTX 3090", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 }, "collapsed": false },
+
+    { "type": "timeseries", "title": "GPU Utilization %", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         { "datasource": "Prometheus", "expr": "nvidia_smi_utilization_gpu_ratio * 100", "legendFormat": "GPU", "refId": "A" },
         { "datasource": "Prometheus", "expr": "nvidia_smi_utilization_memory_ratio * 100", "legendFormat": "Mem ctrl", "refId": "B" } ] },
 
-    { "type": "timeseries", "title": "VRAM Used / Total", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+    { "type": "timeseries", "title": "VRAM Used / Total", "datasource": "Prometheus", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
       "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 20, "showPoints": "never" } }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
