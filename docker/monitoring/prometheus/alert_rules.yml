@@ -369,3 +369,47 @@ groups:
         annotations:
           summary: "ClickHouse system log tables over 20 GB ({{ $value | humanize1024 }}B)"
           description: "The system.*_log TTLs in config.d/logs-ttl.xml are not taking effect (they once grew to 5.65 GiB unbounded, 97% of ClickHouse's footprint). Check that the config is mounted and that TTL merges are running."
+
+  # ---- Backups ------------------------------------------------------------
+  # Fed by backup.sh via node-exporter's textfile collector. The gap this closes: on
+  # 2026-07-04 jarvis was powered off at 02:00, so the nightly never ran — and a run that
+  # never happened is indistinguishable from a healthy one unless something watches the
+  # clock. `absent()` covers the case where the metric file was never written at all
+  # (cron removed, script moved, textfile dir gone).
+  - name: backup
+    rules:
+      - alert: BackupStale
+        expr: time() - homelab_backup_last_success_timestamp_seconds > 30 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No fully-successful homelab backup in over 30h"
+          description: "backup.sh last completed with every component OK more than 30 hours ago (nightly runs at 02:00). Check /srv/ai-data/backups/backup.log — and whether jarvis was powered off."
+
+      - alert: BackupVeryStale
+        expr: time() - homelab_backup_last_success_timestamp_seconds > 50 * 3600
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "No fully-successful homelab backup in over 50h"
+          description: "Two nightly windows have passed without a clean backup. The off-host restic copy to the NAS is also stale — this is the DR copy. Investigate now."
+
+      - alert: BackupMetricsMissing
+        expr: absent(homelab_backup_last_success_timestamp_seconds)
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup metrics absent — backup.sh may not be running at all"
+          description: "node-exporter is not exposing homelab_backup_* from its textfile collector. Either backup.sh never ran since this alert was added, its cron entry is gone, or /var/lib/node_exporter/textfile is missing."
+
+      - alert: BackupComponentFailed
+        expr: homelab_backup_component_success == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup component {{ $labels.component }} failed on the last run"
+          description: "backup.sh completed but the {{ $labels.component }} datastore did not back up. Other components may be fine. See /srv/ai-data/backups/backup.log."

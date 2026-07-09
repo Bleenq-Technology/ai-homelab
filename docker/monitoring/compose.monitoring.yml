@@ -196,6 +196,12 @@ services:
       # nice-to-have. Other opt-ins if ever needed: --collector.tcpstat,
       # --collector.ethtool, --collector.softirqs.
       - '--collector.processes'
+      # Textfile collector: backup.sh writes homelab_backup.prom here after each nightly
+      # run, so Prometheus can alert on a STALE or missing backup (see the `backup` alert
+      # group). Read through the existing rootfs mount — no extra volume needed. The host
+      # dir must exist (root-owned; backup.sh runs from root's cron), else the collector
+      # logs an error every scrape.
+      - '--collector.textfile.directory=/host/var/lib/node_exporter/textfile'
     pid: host
     volumes:
       - /:/host:ro,rslave

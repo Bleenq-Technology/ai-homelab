@@ -141,13 +141,56 @@ backup_offhost(){
   unset RESTIC_REPOSITORY RESTIC_PASSWORD
 }
 
+# Publish results to Prometheus via node-exporter's textfile collector. Without this a
+# backup that never RAN (host powered off at 02:00 — happened 2026-07-04) looks exactly
+# like one that ran fine: the only evidence is an absent file nobody is watching. The
+# `BackupStale` alert keys off last_success_timestamp; `absent()` covers "never wrote".
+# Written atomically (write + mv) so a scrape never reads a half-file.
+TEXTFILE_DIR="${TEXTFILE_DIR:-/var/lib/node_exporter/textfile}"
+declare -A COMPONENT_OK
+run_component(){  # $1 = name, $2 = function
+  if "$2"; then COMPONENT_OK[$1]=1; else COMPONENT_OK[$1]=0; log "[ERROR] $1 backup FAILED"; fi
+}
+publish_metrics(){
+  [ -d "$TEXTFILE_DIR" ] || { log "metrics: SKIP (no $TEXTFILE_DIR)"; return 0; }
+  local tmp="$TEXTFILE_DIR/.homelab_backup.prom.$$" out="$TEXTFILE_DIR/homelab_backup.prom" all=1
+  {
+    echo "# HELP homelab_backup_component_success Whether each datastore's backup succeeded on the last run (1=ok)."
+    echo "# TYPE homelab_backup_component_success gauge"
+    for c in "${!COMPONENT_OK[@]}"; do
+      echo "homelab_backup_component_success{component=\"$c\"} ${COMPONENT_OK[$c]}"
+      [ "${COMPONENT_OK[$c]}" = 1 ] || all=0
+    done
+    echo "# HELP homelab_backup_last_run_timestamp_seconds Unix time the last backup run finished."
+    echo "# TYPE homelab_backup_last_run_timestamp_seconds gauge"
+    echo "homelab_backup_last_run_timestamp_seconds $END_EPOCH"
+    echo "# HELP homelab_backup_duration_seconds Wall-clock duration of the last backup run."
+    echo "# TYPE homelab_backup_duration_seconds gauge"
+    echo "homelab_backup_duration_seconds $((END_EPOCH - START_EPOCH))"
+    echo "# HELP homelab_backup_last_success_timestamp_seconds Unix time of the last run where EVERY component succeeded."
+    echo "# TYPE homelab_backup_last_success_timestamp_seconds gauge"
+    if [ "$all" = 1 ]; then
+      echo "homelab_backup_last_success_timestamp_seconds $END_EPOCH"
+    else
+      # Preserve the previous success time — a failed run must not reset the clock.
+      local prev
+      prev=$(grep -h '^homelab_backup_last_success_timestamp_seconds ' "$out" 2>/dev/null | awk '{print $2}' | tail -1)
+      echo "homelab_backup_last_success_timestamp_seconds ${prev:-0}"
+    fi
+  } > "$tmp" && mv -f "$tmp" "$out" && chmod 644 "$out"
+  log "metrics: wrote $out (all_ok=$all)"
+}
+
+START_EPOCH=$(date +%s)
 log "===== homelab backup $TS start ====="
-backup_postgres   || log "[ERROR] postgres backup FAILED"
-backup_clickhouse || log "[ERROR] clickhouse backup FAILED"
-backup_questdb    || log "[ERROR] questdb backup FAILED"
-backup_minio      || log "[ERROR] minio backup FAILED"
-backup_homarr     || log "[ERROR] homarr backup FAILED"
-backup_offhost    || log "[ERROR] off-host (restic->NAS) FAILED"
+run_component postgres   backup_postgres
+run_component clickhouse backup_clickhouse
+run_component questdb    backup_questdb
+run_component minio      backup_minio
+run_component homarr     backup_homarr
+run_component offhost    backup_offhost
+END_EPOCH=$(date +%s)
+publish_metrics
 
 # prune local copies older than RETAIN_DAYS
 find "$BK" -type f \( -name 'postgres-all-*.sql.gz' -o -name 'clickhouse-*.zip' \

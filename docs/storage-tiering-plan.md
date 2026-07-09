@@ -1,7 +1,8 @@
 # Storage tiering plan — jarvis (nvme + SATA SSD)
 
-**Status:** proposed 2026-06-24 · **data stores executed 2026-06-28** (see Execution log). Migration
-is staged and reversible.
+**Status:** proposed 2026-06-24 · **data stores executed 2026-06-28**; **backups dir 2026-07-09**;
+**Phases 1 & 3 measured and declined 2026-07-09** (see Execution log + the verdict below). The
+plan is effectively **closed** — reopen only if root fills. Migration was staged and reversible.
 
 ## Execution log
 - **2026-06-28 — QuestDB, ClickHouse, MinIO moved NVMe → `/srv/ai-data` (SATA SSD).** Method per
@@ -29,12 +30,53 @@ is staged and reversible.
 - **2026-07-09 — ClickHouse footprint cut 6.4 G → 544 M.** Its `system.*_log` tables had **no TTL**
   and had grown to 5.65 GiB (97% of its data). Bounded via `data/clickhouse/config/logs-ttl.xml`;
   Langfuse traces given a 14-day TTL. Nightly ClickHouse dump: **3.3 G → 45 M**.
-- **Not yet moved (lower priority):** models (Phase 1), Prometheus/Loki TSDBs (Phase 3).
-- **Follow-ups:** ~~Prometheus alert on `/srv/ai-data` fill~~ (generic `DiskSpaceLow` covers it;
-  ClickHouse-specific tripwires added 2026-07-09); ~~`backup.sh` path updates~~ (done);
-  QuestDB time-partition TTLs once ingest begins. **MinIO object store is now the biggest thing
-  on the SSD (20 G)** — Langfuse event blobs aren't removed by the ClickHouse trace TTL; worth a
-  look at its own retention.
+- **2026-07-09 — MinIO's `backups` bucket pruned 20 GiB → 2 GiB.** It was holding the same fat
+  legacy `clickhouse-*.zip` copies (`backup.sh` mirrors each dump into the bucket). Note MinIO
+  deletes asynchronously via `.minio.sys/tmp/.trash` — `df` doesn't move for a few minutes.
+  Langfuse's event blobs turned out to be only **947 M**, not the bulk. `/srv/ai-data`: 34 G → 17 G.
+- **2026-07-09 — backup freshness is now alerted.** `backup.sh` publishes `homelab_backup_*`
+  through node-exporter's textfile collector (`/var/lib/node_exporter/textfile`); rules
+  `BackupStale` / `BackupVeryStale` / `BackupMetricsMissing` / `BackupComponentFailed`. This closes
+  the hole the 2026-07-04 power cycle exposed: a backup that never *ran* looked identical to a
+  healthy one.
+- **2026-07-09 — orphan `homelab_questdb_data` named volume removed** (QuestDB has been on a bind
+  since 2026-06-28; the volume was 13 M of stale data attached to nothing).
+
+## Phases 1 & 3 — measured, and DECLINED (2026-07-09)
+
+Both phases existed to serve two goals: nvme **write-wear** and **thermal** relief. Measured on
+jarvis, neither goal is real, so **don't do this work** — it would trade live risk for nothing.
+
+| Evidence | Value |
+|---|---|
+| nvme `smartctl_device_percentage_used` | **0 %** |
+| nvme lifetime written | **0.93 TB** of a **600 TBW** rating (~0.15 % consumed) |
+| nvme write rate | **~35 GB/day** (172.6 GB over 4.9 d uptime, `/proc/diskstats`) |
+| → projected endurance | **~47 years** (≈15 even at 3× write amplification) |
+| nvme temperature | **37 °C** (SATA SSD: 29 °C) — cool despite the 3090's airflow |
+| root free space | **666 GB** (24 % used) |
+
+- **Phase 1 (models, ~23 G) — no.** Reads don't wear flash, so by this doc's own logic the
+  endurance gain is *zero*; the only gain is 23 G on a drive with 666 G free. The cost is real:
+  nvme ~7 GB/s vs SATA ~550 MB/s, so every cold load (ComfyUI's 6.9 G SDXL ckpt, the Qwen3-8B
+  GGUF) gets ~13× slower. And it walks straight into two known landmines — ComfyUI's
+  `1001:1001` ownership crash-loop and the unsloth `HF_HOME` override. Risk for no benefit.
+  *This flips only if root fills* — then it's a pure space play and models are the right target.
+- **Phase 3 (Prometheus 1.9 G + Loki 1.1 G) — no, and for a sharper reason.** They are genuine
+  continuous writers, but a rounding error against an endurance budget 0.15 % consumed. Worse,
+  binding them to `/srv/ai-data` makes **monitoring depend on that mount**. jarvis has no UPS yet
+  and takes unplanned power cycles; a bad mount after a reboot would take out exactly the
+  Prometheus/Loki that tell you something is wrong. Redpanda and `backup.sh` fail loud on that
+  mount *by design* — silently writing to the wrong disk is worse than not running — but
+  monitoring should degrade, not die. (Phase 3's QuestDB item was done in June; its orphan volume
+  is now removed.)
+
+The two moves that actually mattered — **ClickHouse** (2026-06-28) and the **backups dir**
+(2026-07-09) — are already banked. That was the whole win.
+
+- **Remaining follow-ups:** ~~Prometheus alert on `/srv/ai-data` fill~~ (generic `DiskSpaceLow`
+  covers it; ClickHouse tripwires added 2026-07-09); ~~`backup.sh` path updates~~ (done);
+  ~~backup freshness alert~~ (done); QuestDB time-partition TTLs once ingest begins.
 
 > Note: the host doc `local-notes/SSD-2TB-EXPANSION-PLAN.md` (2026-06-17) is **superseded** — it
 > assumed a 238 GB NVMe and a separate `/mnt/marketdata` disk. Reality after the drive clone + SSD
@@ -151,9 +193,9 @@ sudo systemctl daemon-reload && sudo systemctl start unsloth-studio
   - Fix the **stale fstab line** `UUID=  /srv/ai-data …` (empty UUID — remove it; the real `UUID=984657ba…` line stays).
   - Set base perms: `sudo chown root:homelab /srv/ai-data && sudo chmod 2775 /srv/ai-data` (group-manageable, setgid — matches the homelab convention; service subdirs keep their own uid/gid).
   - (Optional) stop ComfyUI's per-boot pip churn (it wrote 6.3 G to the nvme overlay across today's restarts) — pin `USE_PIPUPGRADE`/clone behavior in its compose env.
-- **Phase 1 — models (read-mostly, lowest risk):** ComfyUI, unsloth HF cache, bge-m3, Piper, Whisper. Frees ~22 G off nvme; zero write-wear concern.
-- **Phase 2 — heavy writers (the longevity win):** backups dir, MinIO, ClickHouse. Removes the largest nightly write burst + continuous trace writes from the nvme. *(After moving backups, the nightly `backup.sh` writes land on the SSD; off-host restic copy is unaffected.)*
-- **Phase 3 — optional telemetry:** Prometheus, Loki, QuestDB (named-volume conversions) for maximum nvme write/thermal relief. Lower priority given the 990 PRO's endurance.
+- **Phase 1 — models (read-mostly, lowest risk):** ComfyUI, unsloth HF cache, bge-m3, Piper, Whisper. Frees ~22 G off nvme; zero write-wear concern. → **DECLINED 2026-07-09**, see the verdict above.
+- **Phase 2 — heavy writers (the longevity win):** backups dir, MinIO, ClickHouse. Removes the largest nightly write burst + continuous trace writes from the nvme. → **DONE** (ClickHouse + MinIO 2026-06-28; backups dir 2026-07-09).
+- **Phase 3 — optional telemetry:** Prometheus, Loki, QuestDB (named-volume conversions) for maximum nvme write/thermal relief. Lower priority given the 990 PRO's endurance. → **QuestDB done 2026-06-28; Prometheus/Loki DECLINED 2026-07-09**, see the verdict above.
 
 ## Stays on nvme (and why)
 OS · `/var/lib/docker` · **Postgres** (OLTP latency, app-critical) · **Redis** · **Qdrant** (RAG latency). These are latency-sensitive with only moderate write volume; nvme is the right home.
