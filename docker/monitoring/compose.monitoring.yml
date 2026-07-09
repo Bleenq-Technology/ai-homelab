@@ -112,6 +112,11 @@ services:
       # QuestDB datasource creds (Postgres wire) — see provisioning/datasources
       QUESTDB_PG_USER: ${QUESTDB_PG_USER:-admin}
       QUESTDB_PG_PASSWORD: ${QUESTDB_PG_PASSWORD}
+      # ClickHouse `scanner` research DB — read-only user, see docker/data/clickhouse/README.md
+      CLICKHOUSE_SCANNER_RO_USER: ${CLICKHOUSE_SCANNER_RO_USER:-scanner_ro}
+      CLICKHOUSE_SCANNER_RO_PASSWORD: ${CLICKHOUSE_SCANNER_RO_PASSWORD}
+      # ClickHouse datasource isn't bundled with Grafana; pull it at boot.
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
       # Shared Mailjet SMTP creds (referenced by grafana.ini via $__env{}); from Infisical
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}

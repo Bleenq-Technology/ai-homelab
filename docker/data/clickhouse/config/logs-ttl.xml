@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<!-- Bound ClickHouse's own system log tables. Mounted at
+     /etc/clickhouse-server/config.d/logs-ttl.xml.
+
+     Why: none of these tables ship with a TTL in this build, so they grew without
+     limit. By 2026-07-09 `system` was 5.65 GiB — 97% of ClickHouse's entire on-disk
+     footprint — against 194 MB of actual user data (Langfuse + scanner). trace_log
+     alone held 136 M rows / 2.95 GiB of query-profiler samples; asynchronous_metric_log
+     held 727 M rows. That noise was also being zipped into the nightly backup, copied
+     to MinIO and shipped off-host to the NAS every night (see backup.sh, which now
+     excludes `system` from BACKUP ALL).
+
+     Retention rationale: keep what we'd actually read during an incident (query_log,
+     part_log, error_log) for a useful window; keep the high-cardinality sampling
+     firehoses (trace_log, text_log, asynchronous_metric_log) only long enough to debug
+     something that happened this week.
+
+     GOTCHA — only add a section for a log table that ALREADY EXISTS. Declaring a
+     <foo_log> section here *enables* that log; several (e.g. query_thread_log) are off
+     by default and adding them would create new tables and new writes. The <ttl> child
+     deep-merges into the section the base config.xml already defines.
+
+     GOTCHA — opentelemetry_span_log is the ONE log whose section in the stock
+     config.xml declares an explicit <engine>. ClickHouse then rejects a sibling <ttl>
+     with "If 'engine' is specified for system table, TTL parameters should be specified
+     directly inside 'engine'" (BAD_ARGUMENTS) and refuses to start — it crash-loops.
+     So its retention goes inside a replaced <engine> below. It also has no `event_date`
+     column; it partitions on `finish_date`. Every other log section here has no engine,
+     so the plain <ttl> child is correct for them. -->
+<clickhouse>
+    <!-- Sampling firehoses — short window, huge volume. -->
+    <trace_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </trace_log>
+    <text_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </text_log>
+    <asynchronous_metric_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </asynchronous_metric_log>
+    <opentelemetry_span_log>
+        <engine replace="replace">
+            engine MergeTree
+            partition by toYYYYMM(finish_date)
+            order by (finish_date, finish_time_us)
+            ttl finish_date + INTERVAL 7 DAY DELETE
+        </engine>
+    </opentelemetry_span_log>
+    <background_schedule_pool_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </background_schedule_pool_log>
+
+    <!-- Metrics — a fortnight is enough; Prometheus is the real long-term store. -->
+    <metric_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </metric_log>
+    <query_metric_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </query_metric_log>
+
+    <!-- Diagnostics we actually read after the fact. Two weeks: by Paul's call these
+         are "only marginally interesting for about a week", and one extra week covers
+         a vacation before anyone looks. -->
+    <query_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </query_log>
+    <part_log>
+        <ttl>event_date + INTERVAL 14 DAY DELETE</ttl>
+    </part_log>
+
+    <!-- Tiny + audit value: keep long. -->
+    <error_log>
+        <ttl>event_date + INTERVAL 90 DAY DELETE</ttl>
+    </error_log>
+    <backup_log>
+        <ttl>event_date + INTERVAL 365 DAY DELETE</ttl>
+    </backup_log>
+</clickhouse>

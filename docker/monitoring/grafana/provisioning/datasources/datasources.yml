@@ -50,3 +50,24 @@ datasources:
       postgresVersion: 1200
     secureJsonData:
       password: ${QUESTDB_PG_PASSWORD}
+
+  # ClickHouse — the `scanner` ML research store (example-scanner). Reached over the
+  # shared `proxy` network on the HTTP port. Scoped to a read-only SQL user that can
+  # SELECT `scanner` only: it cannot see Langfuse's tables in `default`, cannot read
+  # system.query_log, and cannot write. Provisioned via CLICKHOUSE_SCANNER_RO_* env
+  # (Infisical -> .env -> grafana). Requires the grafana-clickhouse-datasource plugin
+  # (GF_INSTALL_PLUGINS on the grafana service).
+  - name: ClickHouse-scanner
+    type: grafana-clickhouse-datasource
+    uid: clickhouse_scanner
+    access: proxy
+    editable: true
+    jsonData:
+      host: clickhouse
+      port: 8123
+      protocol: http
+      secure: false
+      username: ${CLICKHOUSE_SCANNER_RO_USER}
+      defaultDatabase: scanner
+    secureJsonData:
+      password: ${CLICKHOUSE_SCANNER_RO_PASSWORD}

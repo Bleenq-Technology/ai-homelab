@@ -303,6 +303,7 @@ services:
       - /srv/ai-data/telemetry/clickhouse:/var/lib/clickhouse
       - ./clickhouse/config/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml:ro
       - ./clickhouse/config/prometheus.xml:/etc/clickhouse-server/config.d/prometheus.xml:ro
+      - ./clickhouse/config/logs-ttl.xml:/etc/clickhouse-server/config.d/logs-ttl.xml:ro
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
       interval: 10s

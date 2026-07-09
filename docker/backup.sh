@@ -3,7 +3,7 @@
 # Nightly homelab backup — ALL stateful datastores.
 #   * Postgres   — pg_dumpall (Keycloak, NetBox, Infisical store, Baserow,
 #                  Langfuse metadata, MLflow, n8n, ...) -> .sql.gz
-#   * ClickHouse — native online `BACKUP ALL` (Langfuse traces) -> .zip
+#   * ClickHouse — native online `BACKUP ALL EXCEPT ...` (Langfuse traces) -> .zip
 #   * QuestDB    — CHECKPOINT CREATE + tar of the data volume -> .tar.gz
 #   * MinIO      — tar of the object store (MLflow artifacts, Langfuse, ...) -> .tar.gz
 #   * Homarr     — tar of the appdata SQLite dir (dashboard config) -> .tar.gz
@@ -13,7 +13,7 @@
 # BACKUP and QuestDB CHECKPOINT are online-consistent; MinIO objects are immutable).
 #
 # Cron (installed on jarvis):
-#   0 2 * * *  /opt/homelab/backup.sh >> /opt/homelab/backups/backup.log 2>&1
+#   0 2 * * *  /opt/homelab/backup.sh >> /srv/ai-data/backups/backup.log 2>&1
 #
 # OFF-HOST replica: after the local/MinIO copies, the whole backups dir is pushed
 # to the Asustor NAS (stor.lab.example) via restic to an append-only REST
@@ -23,12 +23,28 @@
 # ============================================================================
 set -uo pipefail            # NOT -e: one datastore failing must not skip the others
 cd "$(dirname "$0")"
-BK="$(pwd)/backups"; mkdir -p "$BK"
+# Backups land on the 870 EVO SSD (heavy-write tier — see docs/storage-tiering-plan.md).
+# This is the single largest nightly write on the box; keeping it off the nvme root is
+# the whole point of the tiering. Fail LOUD if the SSD isn't mounted rather than
+# silently refilling the nvme (same guard-rail as the redpanda bind).
+BK="${BACKUP_DIR:-/srv/ai-data/backups}"
+mountpoint -q /srv/ai-data || { echo "[FATAL] /srv/ai-data is not mounted — refusing to write backups to the nvme root"; exit 1; }
+mkdir -p "$BK"
 TS=$(date +%Y%m%d-%H%M%S)
 RETAIN_DAYS="${RETAIN_DAYS:-7}"
 MC_IMAGE="minio/mc:RELEASE.2025-04-03T17-07-56Z"
 QDB_VOLUME="homelab_questdb_data"
 MINIO_DATA="/opt/homelab/data/minio/data"
+# Databases excluded from the nightly ClickHouse backup:
+#   system/information_schema — ClickHouse's own telemetry. Was ~97% of the dump
+#     (trace_log alone was 2.9 GiB); worthless to restore. Excluding it took the
+#     nightly zip from 3.3 G -> 71 M.
+#   scanner — example-scanner' research store. Large (tape backfill: tens of GB)
+#     and reproducible: bars_1m/trades reload idempotently (ReplacingMergeTree)
+#     from the market-data source. Backing it up nightly would push tens of GB
+#     into MinIO and off-host restic every night. See docker/data/clickhouse/README.md
+#     for the on-demand `BACKUP DATABASE scanner` command + re-backfill runbook.
+CH_EXCLUDE_DBS="system, information_schema, scanner"
 
 log(){ echo "[$(date '+%F %T')] $*"; }
 # Infisical exports .env values single-quoted; strip surrounding quotes.
@@ -56,8 +72,9 @@ backup_postgres(){
 
 backup_clickhouse(){
   local name="ch-$TS.zip" out="$BK/clickhouse-$TS.zip"
-  log "clickhouse: BACKUP ALL -> $name"
-  docker exec clickhouse clickhouse-client --query "BACKUP ALL TO File('$name')" >/dev/null || return 1
+  log "clickhouse: BACKUP ALL EXCEPT DATABASES $CH_EXCLUDE_DBS -> $name"
+  docker exec clickhouse clickhouse-client --query \
+    "BACKUP ALL EXCEPT DATABASES $CH_EXCLUDE_DBS TO File('$name')" >/dev/null || return 1
   docker cp "clickhouse:/var/lib/clickhouse/backups/$name" "$out" || return 1
   docker exec clickhouse rm -f "/var/lib/clickhouse/backups/$name" 2>/dev/null || true
   [ -s "$out" ] || return 1

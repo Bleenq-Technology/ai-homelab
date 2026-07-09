@@ -16,9 +16,25 @@ is staged and reversible.
   - **Old NVMe sources kept for a grace period** — removal commands in host
     `local-notes/STORAGE-TIERING-CLEANUP.md` (run after a few days healthy).
 - Already on SSD (greenfield): **Redpanda** (`/srv/ai-data/streaming/redpanda`).
-- **Not yet moved (lower priority):** models (Phase 1), backups dir, Prometheus/Loki TSDBs (Phase 3).
-- **Follow-ups:** Prometheus alert on `/srv/ai-data` fill; `backup.sh` path updates (questdb
-  vol→bind, clickhouse/minio dirs); QuestDB time-partition TTLs once ingest begins.
+- **2026-07-09 — backups dir moved `/opt/homelab/backups` → `/srv/ai-data/backups`** (the last
+  Phase-2 item; it was the single largest nightly write still landing on the nvme). `backup.sh`
+  now defaults `BK=/srv/ai-data/backups` and **refuses to run if `/srv/ai-data` isn't mounted**
+  rather than silently refilling the root. `/opt/homelab/backups` is a **symlink** to the new
+  path so any stale reference keeps working; the `sanctioned` crontab log path was updated.
+  Old tree left at `/opt/homelab/backups.old` (24 G) for a grace period — delete once healthy.
+  - Verified by a full `backup.sh` run: pg 306 M, ch 45 M, questdb 3.7 M, minio 54 M, homarr
+    2.4 M, restic → NAS OK.
+  - The 20 G of legacy `clickhouse-*.zip` were **not** copied: 97% of each was ClickHouse's own
+    `system` log tables, now excluded from `BACKUP ALL` (see below). Restic still holds the history.
+- **2026-07-09 — ClickHouse footprint cut 6.4 G → 544 M.** Its `system.*_log` tables had **no TTL**
+  and had grown to 5.65 GiB (97% of its data). Bounded via `data/clickhouse/config/logs-ttl.xml`;
+  Langfuse traces given a 14-day TTL. Nightly ClickHouse dump: **3.3 G → 45 M**.
+- **Not yet moved (lower priority):** models (Phase 1), Prometheus/Loki TSDBs (Phase 3).
+- **Follow-ups:** ~~Prometheus alert on `/srv/ai-data` fill~~ (generic `DiskSpaceLow` covers it;
+  ClickHouse-specific tripwires added 2026-07-09); ~~`backup.sh` path updates~~ (done);
+  QuestDB time-partition TTLs once ingest begins. **MinIO object store is now the biggest thing
+  on the SSD (20 G)** — Langfuse event blobs aren't removed by the ClickHouse trace TTL; worth a
+  look at its own retention.
 
 > Note: the host doc `local-notes/SSD-2TB-EXPANSION-PLAN.md` (2026-06-17) is **superseded** — it
 > assumed a 238 GB NVMe and a separate `/mnt/marketdata` disk. Reality after the drive clone + SSD

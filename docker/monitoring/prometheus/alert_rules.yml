@@ -340,3 +340,32 @@ groups:
         annotations:
           summary: "Consumer group {{ $labels.redpanda_group }} lag high on {{ $labels.redpanda_topic }} ({{ $value | printf \"%.0f\" }})"
           description: "A consumer group has been more than 100k messages behind on a topic for 15 minutes — a sink (e.g. the QuestDB sink) is not keeping up with ingestion. Check the consumer."
+
+  # ---- ClickHouse ---------------------------------------------------------
+  # Capacity tripwires for the `scanner` research store (todos.md #25). `/srv/ai-data`
+  # is 1.8 T, so the generic DiskSpaceLow (>80%) would only fire after ~1.4 T — far too
+  # late to be a useful signal about one database. These watch ClickHouse's own data
+  # instead. TotalBytesOfMergeTreeTables is all databases; the ...System variant is
+  # ClickHouse's internal log tables, so the difference is real user data (Langfuse +
+  # scanner), and scanner dominates it.
+  - name: clickhouse
+    rules:
+      - alert: ClickHouseUserDataLarge
+        expr: |
+          ClickHouseAsyncMetrics_TotalBytesOfMergeTreeTables
+          - ClickHouseAsyncMetrics_TotalBytesOfMergeTreeTablesSystem > 300e9
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClickHouse user data over 300 GB ({{ $value | humanize1024 }}B)"
+          description: "Mostly the `scanner` research DB (trades tape backfill). Not urgent — /srv/ai-data is 1.8 T — but this is the agreed point to revisit retention: apply a TTL or drop old monthly partitions. See docker/data/clickhouse/README.md."
+
+      - alert: ClickHouseSystemLogsBloated
+        expr: ClickHouseAsyncMetrics_TotalBytesOfMergeTreeTablesSystem > 20e9
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClickHouse system log tables over 20 GB ({{ $value | humanize1024 }}B)"
+          description: "The system.*_log TTLs in config.d/logs-ttl.xml are not taking effect (they once grew to 5.65 GiB unbounded, 97% of ClickHouse's footprint). Check that the config is mounted and that TTL merges are running."
