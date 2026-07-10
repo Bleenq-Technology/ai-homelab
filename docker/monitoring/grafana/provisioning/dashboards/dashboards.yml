@@ -10,3 +10,13 @@ providers:
     editable: true
     options:
       path: /etc/grafana/provisioning/dashboards/homelab
+
+  # Markets dashboards (scanner scanner — data via ClickHouse-scanner datasource)
+  - name: 'Markets'
+    orgId: 1
+    folder: 'Markets'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/markets
