@@ -1,0 +1,93 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "title": "Markets — Model Scorecard",
+  "uid": "markets-model-scorecard",
+  "tags": ["markets", "scanner", "clickhouse", "pnl"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "time": { "from": "now-90d", "to": "now" },
+  "refresh": "5m",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "table", "title": "Scorecard — live, per model (dashboard range)",
+      "description": "W/L and win% count one representative row per trade (chunk0). Net $ sums every fill. R uses the trigger's ORIGINAL stop; rows with unknowable risk (no stop, wz/rotation) carry r=0 and are excluded from R stats.",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
+        "rawSql": "SELECT model, countIf(chunk0=1) AS trades, countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0) AS wins, countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0) AS losses, round(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)/greatest(countIf(chunk0=1 AND outcome='closed' AND pnl_usd!=0),1)*100) AS win_pct, round(sum(pnl_usd)) AS net_usd, round(sumIf(r, chunk0=1),1) AS net_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, countIf(chunk0=1 AND outcome='open') AS open FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY model ORDER BY net_usd DESC" } ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "net_usd" }, "properties": [
+          { "id": "unit", "value": "currencyUSD" },
+          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] },
+        { "matcher": { "id": "byName", "options": "net_r" }, "properties": [
+          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] }
+      ] }
+    },
+    {
+      "type": "timeseries", "title": "Daily $ P&L by model (live)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sum(pnl_usd) AS pnl FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
+    },
+    {
+      "type": "timeseries", "title": "Daily net R by model (live)",
+      "description": "Signal quality in risk units — divergence from the $ panel means sizing, not signal.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sumIf(r, chunk0=1) AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
+    },
+    {
+      "type": "timeseries", "title": "Daily wins (up) / losses (down) by model (live)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT toStartOfDay(ts) AS time, model, toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)) AS wins, -toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0)) AS losses FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
+    },
+    {
+      "type": "timeseries", "title": "Weekly net R by model (live) — the honest cadence",
+      "description": "Daily is noise for skewed strategies (most days small red, the week made by 1-2 runners). Judge on weeks / trade counts, not days.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT toDateTime(toMonday(ts)) AS time, model, sumIf(r, chunk0=1) AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
+    },
+    {
+      "type": "timeseries", "title": "Cumulative R — backtest path (pre-arming) vs live (since arming)",
+      "description": "Same units (R per trade, brackets) on both sides. The backtest slope is what we funded; the live tail should look like a continuation of it. Zoom out for cameron's 3-year path.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 23 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toStartOfDay(ts) AS day, concat(model, ' \\u00b7 ', source) AS series, sumIf(r, chunk0=1) AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "custom": { "spanNulls": true, "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": ".*backtest.*" }, "properties": [
+            { "id": "custom.lineStyle", "value": { "dash": [6, 4], "fill": "dash" } },
+            { "id": "custom.lineWidth", "value": 1 } ] }
+        ] }
+    },
+    {
+      "type": "table", "title": "Calibration — backtest vs live, per model (all history, ignores range)",
+      "description": "Does what we witness match what we backtested? win% here = share of R-scored trades with r>0. Small live n — judge at n>=20 per the probation gates.",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 33 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
+        "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(avgIf(r, chunk0=1 AND r!=0),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sumIf(r, chunk0=1),1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source" } ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "avg_r" }, "properties": [
+          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] }
+      ] }
+    }
+  ]
+}
