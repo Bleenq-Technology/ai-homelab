@@ -101,9 +101,18 @@
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
+      "type": "timeseries", "title": "ALL models, same start — normalized backtest equity (100 = 2026-02-01)",
+      "description": "One common window for the whole fleet. R-models (cameron/bohen/smb/squeeze/lw/orb) from the unified backtest150 replay at 2%/R ($200 risk on a $10k nominal sleeve); weitzel/rotation/rsi2 are simulated %-return equity curves (frictionless, comparison-grade). Sleeves and brackets on one axis — read slopes and drawdowns, not absolute levels.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT time, series, idx FROM (SELECT toDateTime(d) AS time, series, idx FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 100 + 2.0 * sum(day_r) OVER (PARTITION BY model ORDER BY day ROWS UNBOUNDED PRECEDING) AS idx FROM (SELECT model, toStartOfDay(ts) AS day, sumIf(r, chunk0=1) AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' GROUP BY model, day)) ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "custom": { "spanNulls": true, "lineWidth": 2 } } }
+    },
+    {
       "type": "table", "title": "Calibration — backtest vs live, per model (all history, ignores range)",
       "description": "Does what we witness match what we backtested? win% here = share of R-scored trades with r>0. Small live n — judge at n>=20 per the probation gates.",
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 58 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 68 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
         "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(avgIf(r, chunk0=1 AND r!=0),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sumIf(r, chunk0=1),1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source" } ],
