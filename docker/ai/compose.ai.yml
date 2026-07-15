@@ -175,6 +175,9 @@ services:
       # web-app public chat: shared BFF<->n8n token checked by the workflow
       # auth-gate Code nodes via $env (the BFF sends it as the x-app-token header).
       WEB_APP_BFF_TOKEN: ${WEB_APP_BFF_TOKEN}
+      # example-site public chat: its OWN shared BFF<->n8n token (distinct from
+      # WEB_APP_BFF_TOKEN) — same x-app-token gate, separate isolated workflow.
+      EXAMPLE_SITE_BFF_TOKEN: ${EXAMPLE_SITE_BFF_TOKEN}
       # Postgres backend (shared instance) — gets workflows/credentials into the
       # nightly pg_dumpall and supports concurrency/queue-mode, unlike SQLite.
       DB_TYPE: postgresdb

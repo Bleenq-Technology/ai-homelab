@@ -23,7 +23,10 @@
   Existing keys: **`assistant-app`** (Assistant voice-assistant project, 2026-06-17) — scoped to
   `unsloth/Qwen3-8B-GGUF` + `bge-m3` (chat + embeddings); **`web-app`** (public chat BFF +
   its n8n node, 2026-06-22) — same scope, stored in Infisical as `WEB_APP_LLM_KEY` (revoke
-  via `/key/delete` to instantly kill the public bot); **`home-assistant`** (the HA hub *friday*'s
+  via `/key/delete` to instantly kill the public bot); **`example-site`** (the second public
+  chat — The Example Playbook™ site, 2026-07-15) — same chat + `bge-m3` scope, a **separate**
+  key from `web-app` (one scoped key per public surface), stored in Infisical as
+  `EXAMPLE_SITE_LLM_KEY`; **`home-assistant`** (the HA hub *friday*'s
   Assist conversation agent, 2026-06-26) — **chat-only** scope (`unsloth/Qwen3-8B-GGUF`, no
   embeddings), stored in Infisical as `HOME_ASSISTANT_LLM_KEY`. HA is off-box on the IoT VLAN, so
   it reaches the gateway at `https://litellm.lab.example/v1` (not `http://litellm:4000`).
