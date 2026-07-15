@@ -77,9 +77,33 @@
         ] }
     },
     {
+      "type": "table", "title": "Signal R — ALL models incl. alert-only (forward-scored triggers)",
+      "description": "Every trigger's bracket replayed with slippage — the P&L of trigger-only algos (bohenfast/cameronfast/etc) and the signal-vs-execution comparison for armed ones. Fed by backtest.journal --ch.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
+        "rawSql": "SELECT model, setup, count() AS n, round(countIf(r > 0)/count()*100) AS win_pct, round(avg(r),3) AS avg_r, round(sum(r),1) AS total_r, round(medianExact(r),2) AS med_r, max(toDate(ts)) AS latest FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY model, setup ORDER BY model, setup" } ],
+      "fieldConfig": { "defaults": {}, "overrides": [
+        { "matcher": { "id": "byName", "options": "avg_r" }, "properties": [
+          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] },
+        { "matcher": { "id": "byName", "options": "total_r" }, "properties": [
+          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] }
+      ] }
+    },
+    {
+      "type": "timeseries", "title": "Daily signal R by model (forward-scored, incl. alert-only)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 50 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
+      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
+        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sum(r) AS signal_r FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
+    },
+    {
       "type": "table", "title": "Calibration — backtest vs live, per model (all history, ignores range)",
       "description": "Does what we witness match what we backtested? win% here = share of R-scored trades with r>0. Small live n — judge at n>=20 per the probation gates.",
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 33 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 58 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
         "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(avgIf(r, chunk0=1 AND r!=0),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sumIf(r, chunk0=1),1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source" } ],
