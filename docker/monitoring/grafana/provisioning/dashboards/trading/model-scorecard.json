@@ -101,13 +101,14 @@
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
-      "type": "timeseries", "title": "ALL models, same start — normalized backtest equity (100 = 2026-02-01)",
-      "description": "One common window for the whole fleet. R-models (cameron/bohen/smb/squeeze/lw/orb) from the unified backtest150 replay at 2%/R ($200 risk on a $10k nominal sleeve); weitzel/rotation/rsi2 are simulated %-return equity curves (frictionless, comparison-grade). Sleeves and brackets on one axis — read slopes and drawdowns, not absolute levels.",
+      "type": "timeseries", "title": "ALL models, $50k each, same window — backtest equity (Feb–Jul 2026)",
+      "description": "Every model starts with $50,000. R-models (cameron/bohen/smb/lw/orb) from the unified backtest150 replay: fixed $200 risk per trade, additive ($50k + 200·cumR). Sleeves (weitzel/rotation/rsi2) are simulated %-return curves scaled to $50k (frictionless). SQUEEZE IS DELIBERATELY EXCLUDED: its short-interest fuel gate cannot be replayed (no historical short-volume data), so its backtest rows are the UNGATED superset (8,759 fires, −0.25R/fire) — a curve that would show losses the live gated model never takes. Its rows remain queryable under source='backtest150'. Coverage: popper models from 2026-03-04, LW from 2026-04-29, ORB from 2026-02-09 — starts differ where candidate data starts, flat lines before a model's first trade are real absence, not zero performance.",
+      "timeFrom": "1y",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT time, series, idx FROM (SELECT toDateTime(d) AS time, series, idx FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 100 + 2.0 * sum(day_r) OVER (PARTITION BY model ORDER BY day ROWS UNBOUNDED PRECEDING) AS idx FROM (SELECT model, toStartOfDay(ts) AS day, sumIf(r, chunk0=1) AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' GROUP BY model, day)) ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "custom": { "spanNulls": true, "lineWidth": 2 } } }
+        "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toStartOfDay(ts) AS day, sumIf(r, chunk0=1) AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time" } ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "spanNulls": true, "lineWidth": 2 } } }
     },
     {
       "type": "table", "title": "Calibration — backtest vs live, per model (all history, ignores range)",
