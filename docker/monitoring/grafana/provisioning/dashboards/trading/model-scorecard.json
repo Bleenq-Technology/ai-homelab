@@ -33,7 +33,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sum(pnl_usd) AS pnl FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(pnl_usd) AS pnl FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -42,7 +42,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -50,7 +50,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, model, toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)) AS wins, -toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0)) AS losses FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)) AS wins, -toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0)) AS losses FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -59,7 +59,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toMonday(ts)) AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toMonday(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -68,7 +68,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 23 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toStartOfDay(ts) AS day, concat(model, ' \\u00b7 ', source) AS series, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time" } ],
+        "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS day, concat(model, ' \\u00b7 ', source) AS series, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "spanNulls": true, "lineWidth": 2 } },
         "overrides": [
           { "matcher": { "id": "byRegexp", "options": ".*backtest.*" }, "properties": [
@@ -97,7 +97,7 @@
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 50 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sum(r) AS signal_r FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r) AS signal_r FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -107,7 +107,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toStartOfDay(ts) AS day, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time" } ],
+        "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS day, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time" } ],
       "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "spanNulls": true, "lineWidth": 2 } } }
     },
     {

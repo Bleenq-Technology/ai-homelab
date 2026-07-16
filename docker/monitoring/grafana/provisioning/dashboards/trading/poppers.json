@@ -67,14 +67,14 @@
       "type": "timeseries", "title": "Fires per day by model", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, model, toFloat64(count()) AS fires FROM scanner.events WHERE $__timeFilter(ts) AND type = 'trigger' GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, toFloat64(count()) AS fires FROM scanner.events WHERE $__timeFilter(ts) AND type = 'trigger' GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
       "type": "timeseries", "title": "Fires per day by runner bucket (anti-crowd read)", "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, if(bucket = '', 'unscored', bucket) AS bucket, toFloat64(count()) AS fires FROM scanner.events WHERE $__timeFilter(ts) AND type = 'trigger' GROUP BY time, bucket ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, if(bucket = '', 'unscored', bucket) AS bucket, toFloat64(count()) AS fires FROM scanner.events WHERE $__timeFilter(ts) AND type = 'trigger' GROUP BY time, bucket ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } },
         "overrides": [
           { "matcher": { "id": "byName", "options": "quiet" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } } ] },
@@ -85,7 +85,7 @@
       "type": "timeseries", "title": "Order lifecycle per day", "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, kind, toFloat64(count()) AS n FROM scanner.events WHERE $__timeFilter(ts) AND type = 'order' AND kind != '' GROUP BY time, kind ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, kind, toFloat64(count()) AS n FROM scanner.events WHERE $__timeFilter(ts) AND type = 'order' AND kind != '' GROUP BY time, kind ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
