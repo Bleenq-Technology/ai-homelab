@@ -13,11 +13,11 @@
   "panels": [
     {
       "type": "table", "title": "Scorecard — live, per model (dashboard range)",
-      "description": "W/L and win% count one representative row per trade (chunk0). Net $ sums every fill. R uses the trigger's ORIGINAL stop; rows with unknowable risk (no stop, wz/rotation) carry r=0 and are excluded from R stats.",
+      "description": "W/L and win% count one representative row per trade (chunk0). Net $ sums every fill. R is RISK-WEIGHTED (2026-07-16 audit fix): every chunk row weighted by qty*(entry-stop) so BE-runner legs count — chunk0-only averaging overstated live R ~0.5-0.8R under partial50@2R. Units = $200-risk R (dollar-true).",
       "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
-        "rawSql": "SELECT model, countIf(chunk0=1) AS trades, countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0) AS wins, countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0) AS losses, round(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)/greatest(countIf(chunk0=1 AND outcome='closed' AND pnl_usd!=0),1)*100) AS win_pct, round(sum(pnl_usd)) AS net_usd, round(sumIf(r, chunk0=1),1) AS net_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, countIf(chunk0=1 AND outcome='open') AS open FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY model ORDER BY net_usd DESC" } ],
+        "rawSql": "SELECT model, countIf(chunk0=1) AS trades, countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0) AS wins, countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0) AS losses, round(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)/greatest(countIf(chunk0=1 AND outcome='closed' AND pnl_usd!=0),1)*100) AS win_pct, round(sum(pnl_usd)) AS net_usd, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200,1) AS net_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, countIf(chunk0=1 AND outcome='open') AS open FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY model ORDER BY net_usd DESC" } ],
       "fieldConfig": { "defaults": {}, "overrides": [
         { "matcher": { "id": "byName", "options": "net_usd" }, "properties": [
           { "id": "unit", "value": "currencyUSD" },
@@ -42,7 +42,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sumIf(r, chunk0=1) AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toStartOfDay(ts) AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -59,7 +59,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toMonday(ts)) AS time, model, sumIf(r, chunk0=1) AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
+        "rawSql": "SELECT toDateTime(toMonday(ts)) AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
     },
     {
@@ -68,7 +68,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 23 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toStartOfDay(ts) AS day, concat(model, ' \\u00b7 ', source) AS series, sumIf(r, chunk0=1) AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time" } ],
+        "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toStartOfDay(ts) AS day, concat(model, ' \\u00b7 ', source) AS series, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time" } ],
       "fieldConfig": { "defaults": { "custom": { "spanNulls": true, "lineWidth": 2 } },
         "overrides": [
           { "matcher": { "id": "byRegexp", "options": ".*backtest.*" }, "properties": [
@@ -107,7 +107,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toStartOfDay(ts) AS day, sumIf(r, chunk0=1) AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time" } ],
+        "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toStartOfDay(ts) AS day, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time" } ],
       "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "spanNulls": true, "lineWidth": 2 } } }
     },
     {
@@ -116,7 +116,7 @@
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 68 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
-        "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(avgIf(r, chunk0=1 AND r!=0),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sumIf(r, chunk0=1),1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source" } ],
+        "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px AND r!=0, qty*(entry_px-stop_px), chunk0=1 AND r!=0, 200.0, 0.0))/greatest(sum(multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px AND r!=0, qty*(entry_px-stop_px), chunk0=1 AND r!=0, 200.0, 0.0)),0.01),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200,1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source" } ],
       "fieldConfig": { "defaults": {}, "overrides": [
         { "matcher": { "id": "byName", "options": "avg_r" }, "properties": [
           { "id": "custom.cellOptions", "value": { "type": "color-text" } },
