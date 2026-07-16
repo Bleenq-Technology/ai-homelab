@@ -103,7 +103,7 @@
     {
       "type": "timeseries", "title": "ALL models, $50k each, same window — backtest equity (Feb–Jul 2026)",
       "description": "Every model starts with $50,000. R-models (cameron/bohen/smb/lw/orb) from the unified backtest150 replay: fixed $200 risk per trade, additive ($50k + 200·cumR). Sleeves (weitzel/rotation/rsi2) are simulated %-return curves scaled to $50k (frictionless). SQUEEZE IS DELIBERATELY EXCLUDED: its short-interest fuel gate cannot be replayed (no historical short-volume data), so its backtest rows are the UNGATED superset (8,759 fires, −0.25R/fire) — a curve that would show losses the live gated model never takes. Its rows remain queryable under source='backtest150'. Coverage: popper models from 2026-03-04, LW from 2026-04-29, ORB from 2026-02-09 — starts differ where candidate data starts, flat lines before a model's first trade are real absence, not zero performance.",
-      "timeFrom": "1y",
+      "timeFrom": "6M",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
       "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
