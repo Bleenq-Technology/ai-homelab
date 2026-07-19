@@ -258,51 +258,6 @@ services:
               count: all
               capabilities: [gpu]
 
-  # ---- Uncensored chat LLM — llama.cpp server (GPU), OpenAI-compatible -----
-  # A second, *additive* chat model alongside the host unsloth LLM — it does NOT
-  # replace it. unsloth stays the lab default (assistant-app, content-curator, the kb_*
-  # n8n flows and the model-scoped LiteLLM virtual keys all pin its model name);
-  # this one is reached explicitly by name through LiteLLM and is invisible to
-  # anything not re-scoped for it. Same llama.cpp image/digest as bge-m3.
-  #
-  # Model is a "Heretic"-decensored Qwen3.5-9B. Heretic (norm-preserving
-  # directional ablation over a narrow tensor set) benchmarks better than classic
-  # abliteration — notably it's the only method that held GSM8K math steady in
-  # head-to-head tests. Qwen3.5 arch is deliberate: same family as the unsloth
-  # Qwen3-8B, so tokenizer/chat-template/llama.cpp code paths are already known
-  # good here. Caveat inherent to ALL refusal removal: factual calibration
-  # (TruthfulQA-style) degrades ~13%. Fine for chat; don't lean on it for facts.
-  #
-  # VRAM: ~7.5 GB weights + ~2.4 GB q8_0 KV @ 32k ctx. The 3090 has ~11.5 GB free
-  # once unsloth + bge-m3 are up, so this effectively CLAIMS the ComfyUI headroom
-  # — stop this container before a ComfyUI generation or it will OOM.
-  llm-uncensored:
-    image: ghcr.io/ggml-org/llama.cpp@sha256:8d9129ac859493c23e0db914c6940a729a33d6fe42d9e5ec9ee8a5c667f10e7a
-    container_name: llm-uncensored
-    restart: unless-stopped
-    networks: [ai]
-    command: [
-      "-m", "/models/Qwythos-9B-heretic-Q6_K.gguf",
-      "--alias", "llm-uncensored",       # served model id; decouples API name from filename
-      "-c", "32768",                     # NOT the declared 1M — that would blow the VRAM budget many times over
-      "-ngl", "99",
-      "--flash-attn", "on",              # required by the q8_0 KV cache below
-      "--cache-type-k", "q8_0",          # 8-bit KV ~halves cache VRAM; lossless in practice for chat
-      "--cache-type-v", "q8_0",
-      "--jinja",                         # use the GGUF's embedded chat template (tool-call formatting)
-      "--reasoning", "off",              # template defaults thinking ON; this build DEPRECATES unsloth's --chat-template-kwargs form
-      "--host", "0.0.0.0", "--port", "8080"
-    ]
-    volumes:
-      - ./llm-uncensored/models:/models
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-
   # ---- Wyoming Piper — TTS (Wyoming protocol, TCP — not HTTP) --------------
   # Consumed by Home Assistant etc. over the Wyoming TCP protocol, so it is
   # published as a raw TCP port rather than routed through Traefik.
