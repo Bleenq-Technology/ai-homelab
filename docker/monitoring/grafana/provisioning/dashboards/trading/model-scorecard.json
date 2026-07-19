@@ -1,127 +1,566 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "graphTooltip": 1,
-  "title": "Markets — Model Scorecard",
+  "title": "Markets \u2014 Model Scorecard",
   "uid": "markets-model-scorecard",
-  "tags": ["markets", "scanner", "clickhouse", "pnl"],
+  "tags": [
+    "markets",
+    "scanner",
+    "clickhouse",
+    "pnl"
+  ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "time": { "from": "now-90d", "to": "now" },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
   "refresh": "5m",
-  "templating": { "list": [] },
+  "templating": {
+    "list": []
+  },
   "panels": [
     {
-      "type": "table", "title": "Scorecard — live, per model (dashboard range)",
-      "description": "W/L and win% count one representative row per trade (chunk0). Net $ sums every fill. R is RISK-WEIGHTED (2026-07-16 audit fix): every chunk row weighted by qty*(entry-stop) so BE-runner legs count — chunk0-only averaging overstated live R ~0.5-0.8R under partial50@2R. Units = $200-risk R (dollar-true).",
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
-        "rawSql": "SELECT model, countIf(chunk0=1) AS trades, countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0) AS wins, countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0) AS losses, round(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)/greatest(countIf(chunk0=1 AND outcome='closed' AND pnl_usd!=0),1)*100) AS win_pct, round(sum(pnl_usd)) AS net_usd, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200,1) AS net_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, countIf(chunk0=1 AND outcome='open') AS open FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY model ORDER BY net_usd DESC" } ],
-      "fieldConfig": { "defaults": {}, "overrides": [
-        { "matcher": { "id": "byName", "options": "net_usd" }, "properties": [
-          { "id": "unit", "value": "currencyUSD" },
-          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] },
-        { "matcher": { "id": "byName", "options": "net_r" }, "properties": [
-          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] }
-      ] }
-    },
-    {
-      "type": "timeseries", "title": "Daily $ P&L by model (live)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(pnl_usd) AS pnl FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
-    },
-    {
-      "type": "timeseries", "title": "Daily net R by model (live)",
-      "description": "Signal quality in risk units — divergence from the $ panel means sizing, not signal.",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
-    },
-    {
-      "type": "timeseries", "title": "Daily wins (up) / losses (down) by model (live)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)) AS wins, -toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0)) AS losses FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
-    },
-    {
-      "type": "timeseries", "title": "Weekly net R by model (live) — the honest cadence",
-      "description": "Daily is noise for skewed strategies (most days small red, the week made by 1-2 runners). Judge on weeks / trade counts, not days.",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toMonday(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
-    },
-    {
-      "type": "timeseries", "title": "Cumulative R — backtest path (pre-arming) vs live (since arming)",
-      "description": "Same units (R per trade, brackets) on both sides. The backtest slope is what we funded; the live tail should look like a continuation of it. Zoom out for cameron's 3-year path.",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 23 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS day, concat(model, ' \\u00b7 ', source) AS series, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "custom": { "spanNulls": true, "lineWidth": 2 } },
+      "type": "table",
+      "title": "Scorecard \u2014 live, per model (dashboard range)",
+      "description": "W/L and win% count one representative row per trade (chunk0). Net $ sums every fill. R is RISK-WEIGHTED (2026-07-16 audit fix): every chunk row weighted by qty*(entry-stop) so BE-runner legs count \u2014 chunk0-only averaging overstated live R ~0.5-0.8R under partial50@2R. Units = $200-risk R (dollar-true).",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 1,
+          "rawSql": "SELECT model, countIf(chunk0=1) AS trades, countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0) AS wins, countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0) AS losses, round(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)/greatest(countIf(chunk0=1 AND outcome='closed' AND pnl_usd!=0),1)*100) AS win_pct, round(sum(pnl_usd)) AS net_usd, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200,1) AS net_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, countIf(chunk0=1 AND outcome='open') AS open FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY model ORDER BY net_usd DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": ".*backtest.*" }, "properties": [
-            { "id": "custom.lineStyle", "value": { "dash": [6, 4], "fill": "dash" } },
-            { "id": "custom.lineWidth", "value": 1 } ] }
-        ] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "net_usd"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "net_r"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
     },
     {
-      "type": "table", "title": "Signal R — ALL models incl. alert-only (forward-scored triggers)",
-      "description": "Every trigger's bracket replayed with slippage — the P&L of trigger-only algos (bohenfast/cameronfast/etc) and the signal-vs-execution comparison for armed ones. Fed by backtest.journal --ch.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
-        "rawSql": "SELECT model, setup, count() AS n, round(countIf(r > 0)/count()*100) AS win_pct, round(avg(r),3) AS avg_r, round(sum(r),1) AS total_r, round(medianExact(r),2) AS med_r, max(toDate(ts)) AS latest FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY model, setup ORDER BY model, setup" } ],
-      "fieldConfig": { "defaults": {}, "overrides": [
-        { "matcher": { "id": "byName", "options": "avg_r" }, "properties": [
-          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] },
-        { "matcher": { "id": "byName", "options": "total_r" }, "properties": [
-          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] }
-      ] }
+      "type": "timeseries",
+      "title": "Daily $ P&L by model (live)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(pnl_usd) AS pnl FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        }
+      }
     },
     {
-      "type": "timeseries", "title": "Daily signal R by model (forward-scored, incl. alert-only)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 50 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r) AS signal_r FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY time, model ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" }, "fillOpacity": 80 } } }
+      "type": "timeseries",
+      "title": "Daily net R by model (live)",
+      "description": "Signal quality in risk units \u2014 divergence from the $ panel means sizing, not signal.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        }
+      }
     },
     {
-      "type": "timeseries", "title": "ALL models, $50k each, same window — backtest equity (Feb–Jul 2026)",
-      "description": "Every model starts with $50,000. R-models (cameron/bohen/smb/lw/orb) from the unified backtest150 replay: fixed $200 risk per trade, additive ($50k + 200·cumR). Sleeves (weitzel/rotation/rsi2) are simulated %-return curves scaled to $50k (frictionless). SQUEEZE IS DELIBERATELY EXCLUDED: its short-interest fuel gate cannot be replayed (no historical short-volume data), so its backtest rows are the UNGATED superset (8,759 fires, −0.25R/fire) — a curve that would show losses the live gated model never takes. Its rows remain queryable under source='backtest150'. Coverage: popper models from 2026-03-04, LW from 2026-04-29, ORB from 2026-02-09 — starts differ where candidate data starts, flat lines before a model's first trade are real absence, not zero performance.",
+      "type": "timeseries",
+      "title": "Daily wins (up) / losses (down) by model (live)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd>0)) AS wins, -toFloat64(countIf(chunk0=1 AND outcome='closed' AND pnl_usd<0)) AS losses FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Weekly net R by model (live) \u2014 the honest cadence",
+      "description": "Daily is noise for skewed strategies (most days small red, the week made by 1-2 runners). Judge on weeks / trade counts, not days.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT toDateTime(toMonday(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS net_r FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cumulative R \u2014 backtest path (pre-arming) vs live (since arming)",
+      "description": "Same units (R per trade, brackets) on both sides. The backtest slope is what we funded; the live tail should look like a continuation of it. Zoom out for cameron's 3-year path.",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT day AS time, series, sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS cum_r FROM (SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS day, concat(model, ' \\u00b7 ', source) AS series, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE $__timeFilter(ts) GROUP BY day, series) ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "spanNulls": true,
+            "lineWidth": 2
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*backtest.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "title": "Signal R \u2014 ALL models incl. alert-only (forward-scored triggers)",
+      "description": "Every trigger's bracket replayed with slippage \u2014 the P&L of trigger-only algos (bohenfast/cameronfast/etc) and the signal-vs-execution comparison for armed ones. Fed by backtest.journal --ch.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 1,
+          "rawSql": "SELECT model, setup, count() AS n, round(countIf(r > 0)/count()*100) AS win_pct, round(avg(r),3) AS avg_r, round(sum(r),1) AS total_r, round(medianExact(r),2) AS med_r, max(toDate(ts)) AS latest FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY model, setup ORDER BY model, setup"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_r"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total_r"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Daily signal R by model (forward-scored, incl. alert-only)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r) AS signal_r FROM scanner.signal_r FINAL WHERE $__timeFilter(ts) GROUP BY time, model ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "ALL models, $50k each, same window \u2014 backtest equity (Feb\u2013Jul 2026)",
+      "description": "Every model starts with $50,000. R-models (cameron/bohen/smb/lw/orb) from the unified backtest150 replay: fixed $200 risk per trade, additive ($50k + 200\u00b7cumR). Sleeves (weitzel/rotation/rsi2) are simulated %-return curves scaled to $50k (frictionless). SQUEEZE IS DELIBERATELY EXCLUDED: its short-interest fuel gate cannot be replayed (no historical short-volume data), so its backtest rows are the UNGATED superset (8,759 fires, \u22120.25R/fire) \u2014 a curve that would show losses the live gated model never takes. Its rows remain queryable under source='backtest150'. Coverage: popper models from 2026-03-04, LW from 2026-04-29, ORB from 2026-02-09 \u2014 starts differ where candidate data starts, flat lines before a model's first trade are real absence, not zero performance.",
       "timeFrom": "6M",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 0,
-        "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS day, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time" } ],
-      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "spanNulls": true, "lineWidth": 2 } } }
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT time, series, eq FROM (SELECT toDateTime(d) AS time, series, 500.0 * idx AS eq FROM scanner.bt_equity FINAL UNION ALL SELECT day AS time, concat(model, ' \\u00b7 backtest150') AS series, 50000 + 200.0 * sum(day_r) OVER (PARTITION BY series ORDER BY day ROWS UNBOUNDED PRECEDING) AS eq FROM (SELECT concat(model, '') AS series, model, toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS day, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200 AS day_r FROM scanner.round_trips FINAL WHERE source = 'backtest150' AND model != 'squeeze' GROUP BY model, day)) ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "spanNulls": true,
+            "lineWidth": 2
+          }
+        }
+      }
     },
     {
-      "type": "table", "title": "Calibration — backtest vs live, per model (all history, ignores range)",
-      "description": "Does what we witness match what we backtested? win% here = share of R-scored trades with r>0. Small live n — judge at n>=20 per the probation gates.",
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 68 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "clickhouse_scanner" },
-      "targets": [ { "refId": "A", "editorType": "sql", "format": 1,
-        "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px AND r!=0, qty*(entry_px-stop_px), chunk0=1 AND r!=0, 200.0, 0.0))/greatest(sum(multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px AND r!=0, qty*(entry_px-stop_px), chunk0=1 AND r!=0, 200.0, 0.0)),0.01),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200,1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source" } ],
-      "fieldConfig": { "defaults": {}, "overrides": [
-        { "matcher": { "id": "byName", "options": "avg_r" }, "properties": [
-          { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-          { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0 } ] } } ] }
-      ] }
+      "type": "table",
+      "title": "Calibration \u2014 backtest vs live, per model (all history, ignores range)",
+      "description": "Does what we witness match what we backtested? win% here = share of R-scored trades with r>0. Small live n \u2014 judge at n>=20 per the probation gates.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 68
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 1,
+          "rawSql": "SELECT model, source, countIf(chunk0=1) AS n, round(countIf(chunk0=1 AND r>0)/greatest(countIf(chunk0=1 AND r!=0),1)*100) AS win_pct, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px AND r!=0, qty*(entry_px-stop_px), chunk0=1 AND r!=0, 200.0, 0.0))/greatest(sum(multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px AND r!=0, qty*(entry_px-stop_px), chunk0=1 AND r!=0, 200.0, 0.0)),0.01),3) AS avg_r, round(medianIf(r, chunk0=1 AND r!=0),2) AS med_r, round(sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0))/200,1) AS total_r, min(toDate(ts)) AS from_d, max(toDate(ts)) AS to_d FROM scanner.round_trips FINAL WHERE r != 0 OR source='backtest' GROUP BY model, source ORDER BY model, source"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_r"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Execution wedge \u2014 live avg R minus signal avg R, per model/day (0 = executing what we signal; negative = pipeline destroying edge)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse_scanner"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "editorType": "sql",
+          "format": 0,
+          "rawSql": "SELECT s.time AS time, s.model AS model, l.live_avg - s.sig_avg AS wedge_r FROM (SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, avg(r) AS sig_avg FROM scanner.signal_r WHERE $__timeFilter(ts) GROUP BY time, model) s INNER JOIN (SELECT toDateTime(toDate(toTimeZone(ts, 'America/New_York')), 'America/Los_Angeles') AS time, model, sum(r * multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0)) / nullIf(sum(multiIf(qty>0 AND stop_px>0 AND entry_px>stop_px, qty*(entry_px-stop_px), chunk0=1, 200.0, 0.0)), 0) AS live_avg FROM scanner.round_trips FINAL WHERE source='live' AND $__timeFilter(ts) GROUP BY time, model) l ON s.time = l.time AND s.model = l.model ORDER BY time"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }
