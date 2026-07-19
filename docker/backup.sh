@@ -153,6 +153,13 @@ run_component(){  # $1 = name, $2 = function
 }
 publish_metrics(){
   [ -d "$TEXTFILE_DIR" ] || { log "metrics: SKIP (no $TEXTFILE_DIR)"; return 0; }
+  # Writability is checked SEPARATELY from existence: the dir existing but being
+  # unwritable is the dangerous case — the stale .prom keeps being scraped, so
+  # BackupStale fires forever against an old timestamp while backups are actually
+  # fine. That is exactly what happened 2026-07-09..18 (dir was root:root 0755 but
+  # cron runs as a homelab user), and it went unnoticed for 9 days because the
+  # "metrics: wrote" line below used to log unconditionally. See docs/off-host-backup.md.
+  [ -w "$TEXTFILE_DIR" ] || { log "[ERROR] metrics: $TEXTFILE_DIR NOT WRITABLE by $(id -un) — Prometheus will keep alerting on a STALE timestamp; fix: sudo chgrp homelab $TEXTFILE_DIR && sudo chmod 2775 $TEXTFILE_DIR"; return 1; }
   local tmp="$TEXTFILE_DIR/.homelab_backup.prom.$$" out="$TEXTFILE_DIR/homelab_backup.prom" all=1
   {
     echo "# HELP homelab_backup_component_success Whether each datastore's backup succeeded on the last run (1=ok)."
@@ -177,7 +184,11 @@ publish_metrics(){
       prev=$(grep -h '^homelab_backup_last_success_timestamp_seconds ' "$out" 2>/dev/null | awk '{print $2}' | tail -1)
       echo "homelab_backup_last_success_timestamp_seconds ${prev:-0}"
     fi
-  } > "$tmp" && mv -f "$tmp" "$out" && chmod 644 "$out"
+  } > "$tmp" && mv -f "$tmp" "$out" && chmod 644 "$out" || {
+    rm -f "$tmp" 2>/dev/null
+    log "[ERROR] metrics: FAILED to write $out — backups may be FINE but Prometheus will alert on a stale timestamp"
+    return 1
+  }
   log "metrics: wrote $out (all_ok=$all)"
 }
 

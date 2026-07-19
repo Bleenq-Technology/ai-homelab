@@ -132,3 +132,34 @@ snapshots intact.
   abort the other backups.
 - Sundays the job also runs `restic check` against the repo.
 - restic on jarvis: installed via apt then `restic self-update` (0.18.1+).
+
+## Monitoring the backups themselves — and the trap in it (2026-07-18)
+
+`backup.sh` publishes `homelab_backup_*` metrics into node-exporter's **textfile collector**
+(`/var/lib/node_exporter/textfile/homelab_backup.prom`); Prometheus alerts `BackupStale` (>30h),
+`BackupVeryStale` (>50h), `BackupMetricsMissing` (`absent()`) and `BackupComponentFailed` key off them.
+
+**The failure mode this monitoring can itself produce — and did.** The textfile dir was `root:root
+0755` while cron runs `backup.sh` as a **`homelab` user**, so the metric write failed with *Permission
+denied* every night from **2026-07-09 to 07-18**. The `.prom` file kept its Jul 9 timestamp and kept
+being scraped, so `BackupStale` + `BackupVeryStale` fired **daily for nine days while the backups were
+entirely healthy** (snapshots saved nightly, weekly `restic check` clean across 33 snapshots).
+
+Two things made it silent for so long, both now fixed in `backup.sh`:
+- `publish_metrics()` only tested `[ -d ]`, not `[ -w ]`. An unwritable-but-present dir is the
+  *dangerous* case: `absent()` never trips (the stale file is still there and still scraped), so the
+  alert points at the wrong thing entirely.
+- The `} > "$tmp" && mv … && chmod …` chain short-circuited on failure, but the following
+  `log "metrics: wrote …(all_ok=1)"` ran **unconditionally** — the log actively asserted success it had
+  never verified. It now logs `[ERROR] metrics: FAILED to write …` and returns non-zero.
+
+**Required host state** (survives a node-exporter or host rebuild — re-apply if you rebuild):
+```bash
+sudo chgrp homelab /var/lib/node_exporter/textfile
+sudo chmod 2775   /var/lib/node_exporter/textfile   # setgid: both devs' cron can write
+```
+
+**Reading the alert correctly:** `BackupStale` means *"the metric is old"*, which is **not** the same
+as *"the backup failed"*. Check in this order — (1) `tail /srv/ai-data/backups/backup.log` for an
+actual run and a `snapshot … saved` line; (2) `ls -la /var/lib/node_exporter/textfile/` for the
+`.prom` mtime. A recent log plus a stale `.prom` means the metric pipeline broke, not the backup.
