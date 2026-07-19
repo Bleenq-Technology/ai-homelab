@@ -33,8 +33,12 @@ mkdir -p "$BK"
 TS=$(date +%Y%m%d-%H%M%S)
 RETAIN_DAYS="${RETAIN_DAYS:-7}"
 MC_IMAGE="minio/mc:RELEASE.2025-04-03T17-07-56Z"
-QDB_VOLUME="homelab_questdb_data"
-MINIO_DATA="/opt/homelab/data/minio/data"
+# NOTE: questdb/minio sources are NOT hardcoded — they're resolved from the running
+# container at backup time (see resolve_mount below). Both used to be literals here and
+# both silently rotted: QDB_VOLUME pointed at a docker volume the service stopped using
+# (so every nightly archive was an EMPTY 87-byte tar), and MINIO_DATA pointed at the
+# pre-storage-tiering path (so MinIO backups were a 3-week-stale copy). Discovered
+# 2026-07-18; both had been reporting component_success=1 the whole time.
 # Databases excluded from the nightly ClickHouse backup:
 #   system/information_schema — ClickHouse's own telemetry. Was ~97% of the dump
 #     (trace_log alone was 2.9 GiB); worthless to restore. Excluding it took the
@@ -82,29 +86,54 @@ backup_clickhouse(){
   push_minio "$out" && log "clickhouse: -> MinIO" || log "clickhouse: WARN MinIO upload failed"
 }
 
+# Ask Docker where a service ACTUALLY stores its data, instead of trusting a literal
+# path in this script. A hardcoded path keeps "working" after the service is re-pointed
+# — the tar succeeds against a stale or empty directory and the component reports OK.
+# That is not hypothetical: it hid an empty QuestDB backup and a 3-week-stale MinIO
+# backup simultaneously (2026-07-18). Resolving at run time means the backup follows
+# the service, and a rename/removal becomes a hard failure instead of a silent one.
+resolve_mount(){  # $1 = container, $2 = destination path inside the container
+  docker inspect "$1" --format \
+    "{{range .Mounts}}{{if eq .Destination \"$2\"}}{{.Source}}{{end}}{{end}}" 2>/dev/null
+}
+
+# Tar a host directory via a throwaway alpine, then PROVE the archive isn't trivially
+# empty. `[ -s "$out" ]` is useless here: gzip of an empty dir is a valid ~87-byte file,
+# which is precisely how the QuestDB breakage passed its check every night for weeks.
+tar_host_dir(){  # $1 = host src dir, $2 = out file, $3.. = extra tar args (e.g. --exclude)
+  local src="$1" out="$2" label; shift 2
+  label=$(basename "$out")
+  [ -n "$src" ]  || { log "[ERROR] $label: could not resolve the source mount from Docker"; return 1; }
+  [ -d "$src" ]  || { log "[ERROR] $label: resolved source '$src' does not exist on the host"; return 1; }
+  docker run --rm -v "$src:/data:ro" alpine tar czf - -C /data "$@" . > "$out" 2>/dev/null || return 1
+  local n; n=$(tar tzf "$out" 2>/dev/null | head -5 | wc -l)
+  [ "${n:-0}" -ge 2 ] || { log "[ERROR] $label: archive holds $n entries — source '$src' is EMPTY"; return 1; }
+}
+
 backup_questdb(){
-  local out="$BK/questdb-$TS.tar.gz" qexec="http://localhost:9000/exec"
+  local out="$BK/questdb-$TS.tar.gz" qexec="http://localhost:9000/exec" src
+  src=$(resolve_mount questdb /var/lib/questdb)
   log "questdb: CHECKPOINT CREATE"
   docker exec questdb curl -sf -G "$qexec" --data-urlencode "query=CHECKPOINT CREATE" >/dev/null || return 1
-  # Tar the data volume while the checkpoint is held (consistent snapshot).
-  docker run --rm -v "$QDB_VOLUME:/data:ro" alpine tar czf - -C /data . > "$out" 2>/dev/null
+  # Tar the live data dir while the checkpoint is held (consistent snapshot).
+  tar_host_dir "$src" "$out"
   local rc=$?
   docker exec questdb curl -sf -G "$qexec" --data-urlencode "query=CHECKPOINT RELEASE" >/dev/null \
     && log "questdb: CHECKPOINT RELEASE" || log "questdb: WARN CHECKPOINT RELEASE failed"
-  [ $rc -eq 0 ] && [ -s "$out" ] || return 1
-  log "questdb: wrote $(du -h "$out" | cut -f1)"
+  [ $rc -eq 0 ] || return 1
+  log "questdb: wrote $(du -h "$out" | cut -f1) (src $src)"
   push_minio "$out" && log "questdb: -> MinIO" || log "questdb: WARN MinIO upload failed"
 }
 
 backup_minio(){
   # Tar the whole object store. NOT pushed back into MinIO (circular / same disk).
-  local out="$BK/minio-$TS.tar.gz"
+  local out="$BK/minio-$TS.tar.gz" src
+  src=$(resolve_mount minio /data)
   log "minio: tar object store -> $(basename "$out") (local only — see OFF-HOST note)"
   # Exclude the 'backups' bucket: it holds the PG/CH/QuestDB dumps we just uploaded
   # (already captured as their own files) — including it would be circular and bloat the tar.
-  docker run --rm -v "$MINIO_DATA:/data:ro" alpine tar czf - -C /data --exclude='./backups' . > "$out" 2>/dev/null || return 1
-  [ -s "$out" ] || return 1
-  log "minio: wrote $(du -h "$out" | cut -f1)"
+  tar_host_dir "$src" "$out" --exclude='./backups' || return 1
+  log "minio: wrote $(du -h "$out" | cut -f1) (src $src)"
 }
 
 backup_homarr(){

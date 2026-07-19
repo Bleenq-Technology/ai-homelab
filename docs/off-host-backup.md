@@ -163,3 +163,48 @@ sudo chmod 2775   /var/lib/node_exporter/textfile   # setgid: both devs' cron ca
 as *"the backup failed"*. Check in this order — (1) `tail /srv/ai-data/backups/backup.log` for an
 actual run and a `snapshot … saved` line; (2) `ls -la /var/lib/node_exporter/textfile/` for the
 `.prom` mtime. A recent log plus a stale `.prom` means the metric pipeline broke, not the backup.
+
+## Backup sources are resolved from Docker, not hardcoded (2026-07-18)
+
+While fixing the alerting bug above, two backup **sources** turned out to have silently rotted —
+both reporting `component_success=1` every night:
+
+| component | script pointed at | service actually used | effect |
+|---|---|---|---|
+| questdb | docker volume `homelab_questdb_data` | bind `/srv/ai-data/marketdata/questdb` | **every nightly archive was an empty 87-byte tar** — 47 MB of market data had never been backed up, locally *or* off-host |
+| minio | `/opt/homelab/data/minio/data` | bind `/srv/ai-data/object-store` | archived a **pre-storage-tiering copy frozen at 2026-06-29** (54 MB) instead of the live store (133 MB) |
+
+QuestDB's is the nastier of the two: `docker run -v <name>:/data` **silently creates** a missing
+volume rather than failing, so `backup.sh` manufactured its own empty volume (created
+`2026-07-10T02:00:42Z` — a backup-run timestamp) and dutifully archived nothing thereafter.
+
+**The fix — `resolve_mount()`.** Sources now come from `docker inspect` at run time, so the backup
+follows the service instead of drifting from it:
+
+```bash
+resolve_mount(){  # container, destination-inside-container
+  docker inspect "$1" --format "{{range .Mounts}}{{if eq .Destination \"$2\"}}{{.Source}}{{end}}{{end}}"
+}
+```
+
+**And a real emptiness guard — `tar_host_dir()`.** The old check was `[ -s "$out" ]`, which proves
+nothing: **gzip of an empty directory is a valid ~87-byte file**, so the broken QuestDB backup passed
+its own check every single night. The archive must now contain **≥2 entries**, and an unresolvable
+or non-existent source is a hard failure. Both paths are negative-tested.
+
+**Verified after the fix:** questdb `87 B → 3.7 MB` (219 entries, real `conf/` + `db/`), minio
+`54 MB → 133 MB` (183,220 entries), both from the correct live sources.
+
+### Leftovers
+
+- The empty orphan volume `homelab_questdb_data` was removed (0 files, referenced by no compose file
+  and attached to no container).
+- ⚠️ **`/opt/homelab/data/minio/data` (16 GB) is still on disk** — the stale pre-tiering object store,
+  untouched since 2026-06-29. Deliberately **not** deleted: it is 16 GB of old objects that nobody has
+  confirmed is redundant. Verify it against `/srv/ai-data/object-store` before reclaiming the space.
+
+### Lesson for any new component
+
+Never hardcode a host path or volume name in `backup.sh`. Resolve it from the running container, and
+make the archive prove it captured something. A backup that reports success while containing nothing
+is strictly worse than one that fails loudly — it consumes the trust you'd otherwise spend checking.
