@@ -299,29 +299,7 @@ services:
               capabilities: [gpu]
 
   # Jupyter removed (dropped for now).
-
-  # ---- Flowise — LLM workflow builder (DEPRECATED/parked — prefer n8n) -----
-  # See flowise/README.md: superseded by n8n for automation + AI/RAG; kept only
-  # for quick visual prototyping. Candidate for removal.
-  flowise:
-    image: flowiseai/flowise:3.1.2
-    container_name: flowise
-    restart: unless-stopped
-    networks: [proxy, ai]
-    environment:
-      FLOWISE_USERNAME: ${FLOWISE_USERNAME}
-      FLOWISE_PASSWORD: ${FLOWISE_PASSWORD}
-      FLOWISE_SECRETKEY_OVERWRITE: ${FLOWISE_SECRETKEY}
-      TZ: ${TZ}
-    volumes:
-      - ./flowise/data:/root/.flowise
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.flowise.rule=Host(`flowise.${DOMAIN}`)"
-      - "traefik.http.routers.flowise.entrypoints=websecure"
-      - "traefik.http.routers.flowise.tls=true"
-      - "traefik.http.routers.flowise.middlewares=secure-chain@file"
-      - "traefik.http.services.flowise.loadbalancer.server.port=3000"
+  # Flowise removed 2026-07-20 (deprecated — superseded by n8n; todos #9).
 
   # ---- Qdrant — vector database -------------------------------------------
   qdrant:

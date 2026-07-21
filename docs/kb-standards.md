@@ -4,9 +4,8 @@ The contract every app/agent follows so **one set of KBs is shared, consistent, 
 across OpenWebUI, Assistant, the markets code, n8n flows, and anything we add later. Platform-layer
 standard — apps reference it; they don't reinvent it.
 
-> **Status:** agreed 2026-06-18. Tooling: **n8n** is the primary ingestion/orchestration engine
-> (Flowise is deprecated/parked — see `docker/ai/flowise/README.md`). Shared access layer: the
-> **Qdrant MCP** (`todos.md` #4) — not yet built.
+> **Status:** agreed 2026-06-18. Tooling: **n8n** is the primary ingestion/orchestration engine.
+> Shared access layer: the **Qdrant MCP** (`todos.md` #4) — not yet built.
 
 ---
 
@@ -75,7 +74,7 @@ KBs are useless if agents can't find them. The **shared access layer** is one MC
 > text. **Contract + examples: [`kb-access-layer.md`](kb-access-layer.md).** The Qdrant MCP just
 > re-exposes these over MCP later.
 
-Every MCP-capable agent (n8n, Assistant, OpenWebUI tool servers, future Flowise/agents) gets the **same
+Every MCP-capable agent (n8n, Assistant, OpenWebUI tool servers, future agents) gets the **same
 list + search** instead of each siloing its own RAG. **Caveat:** OpenWebUI's built-in *Knowledge*
 feature manages its own `open-webui_*` collections and won't natively see a `kb_*` collection — to
 give OpenWebUI shared KBs, wire it to the MCP tool rather than its Knowledge UI.

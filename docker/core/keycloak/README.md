@@ -21,7 +21,7 @@ the OIDC clients; `master` is kept for Keycloak admin only.
   router's middleware to `secure-sso@file` — **no per-host redirect URI needed**, since every
   app shares the single callback `https://auth.${DOMAIN}/oauth2/callback`.
 - The **Traefik dashboard** stays on basic-auth as a deliberate break-glass.
-- **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth
+- **n8n** gates OIDC behind a paid tier; **NetBox** needs a remote-auth
   plugin — these keep local logins (or can be forward-auth gated later).
 - **Social login** (Google / LinkedIn) via identity brokering — see
   [`social-login.md`](social-login.md).

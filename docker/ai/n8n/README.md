@@ -1,5 +1,5 @@
 # n8n
-**Purpose:** Workflow automation — our **primary** automation + AI/RAG orchestration engine (Flowise is deprecated).
+**Purpose:** Workflow automation — our **primary** automation + AI/RAG orchestration engine.
 **URL:** https://n8n.lab.example
 **Auth:** local login (n8n owner account); REST API via `X-N8N-API-KEY` header (route not SSO-gated)
 **Image:** n8nio/n8n:2.27.0

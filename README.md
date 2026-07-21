@@ -61,7 +61,6 @@ flowchart TB
             LL["LiteLLM"]
             CF["ComfyUI"]
             SX["SearXNG"]
-            FL["Flowise"]
             LF["Langfuse"]
             MLF["MLflow"]
             WY["Wyoming TTS / STT"]
@@ -170,7 +169,6 @@ All web services are at `https://<name>.lab.example`. **Auth** legend:
 | **LiteLLM** | `litellm.…` | LLM gateway → unsloth, auto-traces to Langfuse | 🎟️ master key |
 | **ComfyUI** | `comfyui.…` | Image generation (GPU) | 🛡️ |
 | **SearXNG** | `searxng.…` | Privacy meta-search (web-search fallback) | 🛡️ |
-| **Flowise** | `flowise.…` | LLM workflow builder | 🔒 (OIDC = paid) |
 | **n8n** | `n8n.…` | Workflow automation | 🔒 (OIDC = paid) |
 | **Langfuse** | `langfuse.…` | LLM observability / tracing | 🔑 OIDC |
 | **MLflow** | `mlflow.…` | ML experiment tracking + model registry | 🛡️ (UI) |
@@ -279,7 +277,7 @@ docker compose -f compose.yml logs -f traefik   # watch wildcard cert issuance
 - **Forward-auth is now oauth2-proxy** (Keycloak OIDC, `homelab` realm), replacing the archived
   `thomseddon/traefik-forward-auth`. Central auth domain `auth.${DOMAIN}`, Redis-backed sessions,
   a single `/oauth2/callback` redirect URI, and `--cookie-csrf-per-request` (see Known issues).
-- **n8n / Flowise** gate OIDC behind paid tiers; **NetBox** needs a remote-auth plugin — these
+- **n8n** gates OIDC behind a paid tier; **NetBox** needs a remote-auth plugin — these
   keep local logins (can be forward-auth gated later). Traefik dashboard keeps break-glass basic-auth.
 
 ## Authors
