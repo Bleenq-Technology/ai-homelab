@@ -35,3 +35,19 @@ infisical export --format=dotenv \
   | sed -E "s/^([A-Za-z_][A-Za-z0-9_]*)='(.*)'$/\1=\2/" > .env
 
 echo "pulled $(grep -cE '^[A-Za-z_]' .env) secrets from Infisical (${INFISICAL_ENV:-prod}) -> .env"
+
+# Keep this host's GHCR pull credential in sync with the rolled read-only PAT
+# (todos #35). `.env` alone does NOT authenticate docker — the daemon reads the
+# invoking user's ~/.docker/config.json — so log in here from the just-pulled
+# values. Read-only PAT (pull, not push) is the right hygiene for a host cred.
+# Rolling the key is now: push-secret.sh GHCR_READONLY_PAT <new> && ./pull-secrets.sh.
+# NON-FATAL: a login blip must not fail the secrets pull (set -e is active), so || warn.
+if command -v docker >/dev/null 2>&1 && grep -q '^GHCR_READONLY_PAT=' .env; then
+  ghcr_pat=$(grep -E '^GHCR_READONLY_PAT=' .env | head -1 | cut -d= -f2-)
+  ghcr_user=$(grep -E '^GHCR_USERNAME=' .env | head -1 | cut -d= -f2-)
+  if [[ -n "$ghcr_pat" ]] && printf '%s' "$ghcr_pat" | docker login ghcr.io -u "${ghcr_user:-bleenq-paulv}" --password-stdin >/dev/null 2>&1; then
+    echo "ghcr.io docker login refreshed (user ${ghcr_user:-bleenq-paulv})"
+  else
+    echo "WARN: ghcr.io docker login skipped/failed — 'docker pull ghcr.io/...' may need a manual login" >&2
+  fi
+fi
