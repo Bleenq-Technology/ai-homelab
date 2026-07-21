@@ -64,6 +64,53 @@ services:
       timeout: 5s
       retries: 10
 
+  # ---- Neo4j (research-app graph, DEDICATED) -----------------------
+  # The research desk's graph store (todos #31 item 2). A SEPARATE instance
+  # from the lab's shared `neo4j` (compose.ai.yml) on purpose: jarvis runs Neo4j
+  # *Community* 5.26, which has no multi-database, no per-database users, and no
+  # RBAC (all Enterprise-only). "Isolated + scoped" is therefore impossible on the
+  # shared instance (its single db already holds ~600 nodes for other use), so the
+  # isolation boundary here is the CONTAINER: this whole instance is the
+  # research namespace, and its `neo4j` superuser IS the app credential.
+  #
+  # Internal-only: no published ports, no Traefik route. The desk app reaches it
+  # on the `data` network as bolt://neo4j-example:7687. Ad-hoc browsing is
+  # `docker exec -it neo4j-example cypher-shell -u neo4j -p <pw>`.
+  #
+  # Neo4j here is a REBUILDABLE PROJECTION of the Postgres graph SoR (ADR-0002 /
+  # data-architecture §3.2 — replay graph.edges), so the nightly volume tar is a
+  # crash-consistent convenience copy; authoritative recovery is a rebuild.
+  # Sized small (phase-1 graph ~1k nodes): 512M pagecache, 512M–1G heap.
+  neo4j-example:
+    image: neo4j:5.26.27
+    container_name: neo4j-example
+    restart: unless-stopped
+    networks: [data]
+    environment:
+      NEO4J_AUTH: neo4j/${RESEARCH_NEO4J_PASSWORD}
+      NEO4J_server_memory_pagecache_size: 512M
+      NEO4J_server_memory_heap_initial__size: 512M
+      NEO4J_server_memory_heap_max__size: 1G
+      TZ: ${TZ}
+    volumes:
+      # Bind-mounted to the 870 EVO SSD tier (like questdb/redpanda), NOT a named
+      # volume nor the nvme root. Two reasons: (1) keeps DB data off the nvme root
+      # per docs/storage-tiering-plan.md; (2) a named volume lands under
+      # /var/lib/docker/volumes (root 0700), which the nightly backup — running as
+      # the non-root `homelab` user — cannot stat, so tar_host_dir's [ -d ] guard
+      # hard-fails. A /srv/ai-data path is group-traversable, so the backup works.
+      # The container runs as root, so the dir may be root-owned; host dir must be
+      # pre-created (root:homelab, setgid) — see docs/off-host-backup.md.
+      - /srv/ai-data/graph/neo4j-example:/data
+    healthcheck:
+      # Bolt-up check; the password is parsed from NEO4J_AUTH (in-container, no
+      # outside argv). cypher-shell ships in the image (curl/wget do not).
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
   # ---- Redis (shared cache / queues) --------------------------------------
   redis:
     image: redis:7.4.9-alpine

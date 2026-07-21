@@ -7,6 +7,10 @@
 #   * QuestDB    — CHECKPOINT CREATE + tar of the data volume -> .tar.gz
 #   * MinIO      — tar of the object store (MLflow artifacts, Langfuse, ...) -> .tar.gz
 #   * Homarr     — tar of the appdata SQLite dir (dashboard config) -> .tar.gz
+#   * Neo4j-intel— tar of the research-app graph volume -> .tar.gz
+#                  (a REBUILDABLE PROJECTION of the Postgres graph SoR — this tar
+#                   is a fast-restore convenience; authoritative recovery is a
+#                   replay of graph.edges. See docker/data/compose.data.yml.)
 #
 # Each logical dump (PG/CH/QuestDB/Homarr) is also copied to the MinIO "backups"
 # bucket. Local copies rotate after RETAIN_DAYS. Backups are crash-consistent (CH
@@ -151,6 +155,21 @@ backup_homarr(){
   push_minio "$out" && log "homarr: -> MinIO" || log "homarr: WARN MinIO upload failed"
 }
 
+backup_neo4j_research(){
+  # The research-app graph store (todos #31). Dedicated Community instance
+  # (no online/enterprise backup available), so we tar the data volume live. Neo4j
+  # is a rebuildable PROJECTION of the Postgres graph SoR here, so a crash-consistent
+  # copy is acceptable — neo4j replays its own tx log on restart, and the true
+  # recovery path is a graph.edges replay. Source (an SSD-tier bind mount) resolved
+  # from the running container — never hardcoded (same lesson as questdb/minio).
+  local out="$BK/neo4j-example-$TS.tar.gz" src
+  src=$(resolve_mount neo4j-example /data)
+  log "neo4j-example: tar graph volume -> $(basename "$out") (src $src)"
+  tar_host_dir "$src" "$out" || return 1
+  log "neo4j-example: wrote $(du -h "$out" | cut -f1)"
+  push_minio "$out" && log "neo4j-example: -> MinIO" || log "neo4j-example: WARN MinIO upload failed"
+}
+
 # Off-host: encrypted + deduped replica of the whole backups dir to the Asustor NAS
 # via the restic REST server (append-only). Repo + REST creds come from .env
 # (Infisical: ASUSTOR_* / RESTIC_*). See docs/off-host-backup.md.
@@ -228,16 +247,18 @@ run_component clickhouse backup_clickhouse
 run_component questdb    backup_questdb
 run_component minio      backup_minio
 run_component homarr     backup_homarr
+run_component neo4j_research backup_neo4j_research
 run_component offhost    backup_offhost
 END_EPOCH=$(date +%s)
 publish_metrics
 
 # prune local copies older than RETAIN_DAYS
 find "$BK" -type f \( -name 'postgres-all-*.sql.gz' -o -name 'clickhouse-*.zip' \
-  -o -name 'questdb-*.tar.gz' -o -name 'minio-*.tar.gz' -o -name 'homarr-*.tar.gz' \) -mtime +"$RETAIN_DAYS" -delete
+  -o -name 'questdb-*.tar.gz' -o -name 'minio-*.tar.gz' -o -name 'homarr-*.tar.gz' \
+  -o -name 'neo4j-example-*.tar.gz' \) -mtime +"$RETAIN_DAYS" -delete
 # prune the MinIO "backups" bucket too — the find above only touches local disk, so
 # without this the bucket grows unbounded.
 docker run --rm --network data --entrypoint sh "$MC_IMAGE" -c "
   mc alias set m http://minio:9000 '$MUSER' '$MPW' >/dev/null &&
   mc rm --recursive --force --older-than ${RETAIN_DAYS}d m/backups/ >/dev/null 2>&1" || true
-log "===== backup done — sets present: pg=$(ls "$BK"/postgres-all-*.sql.gz 2>/dev/null | wc -l) ch=$(ls "$BK"/clickhouse-*.zip 2>/dev/null | wc -l) qdb=$(ls "$BK"/questdb-*.tar.gz 2>/dev/null | wc -l) minio=$(ls "$BK"/minio-*.tar.gz 2>/dev/null | wc -l) homarr=$(ls "$BK"/homarr-*.tar.gz 2>/dev/null | wc -l) ====="
+log "===== backup done — sets present: pg=$(ls "$BK"/postgres-all-*.sql.gz 2>/dev/null | wc -l) ch=$(ls "$BK"/clickhouse-*.zip 2>/dev/null | wc -l) qdb=$(ls "$BK"/questdb-*.tar.gz 2>/dev/null | wc -l) minio=$(ls "$BK"/minio-*.tar.gz 2>/dev/null | wc -l) homarr=$(ls "$BK"/homarr-*.tar.gz 2>/dev/null | wc -l) neo4j=$(ls "$BK"/neo4j-example-*.tar.gz 2>/dev/null | wc -l) ====="

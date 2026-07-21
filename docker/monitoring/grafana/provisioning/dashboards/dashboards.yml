@@ -20,3 +20,18 @@ providers:
     editable: true
     options:
       path: /etc/grafana/provisioning/dashboards/markets
+
+  # Research dashboards (research-app desk — todos #31 item 8). Starter
+  # panels read Prometheus (the only datasource grafana can reach for this desk
+  # today). A relational datasource scoped to the read-only `research_ro` role
+  # is a documented follow-up: grafana is on [monitoring,proxy] and postgres is
+  # data-internal, so it needs grafana↔postgres networking first. The research_ro
+  # credential already exists (Infisical RESEARCH_RO_DB_PASSWORD) for when it does.
+  - name: 'Research'
+    orgId: 1
+    folder: 'Research'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/research

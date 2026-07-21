@@ -208,3 +208,26 @@ or non-existent source is a hard failure. Both paths are negative-tested.
 Never hardcode a host path or volume name in `backup.sh`. Resolve it from the running container, and
 make the archive prove it captured something. A backup that reports success while containing nothing
 is strictly worse than one that fails loudly — it consumes the trust you'd otherwise spend checking.
+
+## `neo4j-example` graph — backup + a DR prerequisite (2026-07-20)
+
+The `research-app` desk's dedicated graph store (`neo4j-example`, todos #31) is backed up
+nightly (`backup_neo4j_research` → `neo4j-example-*.tar.gz`) and restore-verified weekly
+(`verify_neo4j`). It's a **rebuildable projection** of the Postgres graph SoR, so the tar is a
+fast-restore convenience; the authoritative recovery is a `graph.edges` replay from Postgres.
+
+**Why it's a bind mount, not a named volume** — and the trap it dodges: a named volume lands under
+`/var/lib/docker/volumes` (root `0700`), which the nightly backup, running as the non-root `homelab`
+user, **cannot stat** — so `tar_host_dir`'s `[ -d "$src" ]` guard hard-fails. A `/srv/ai-data` bind
+mount is group-traversable, so the backup works (and it keeps DB data off the nvme root, per the
+tiering plan). The container runs as root, so the dir may be root-owned.
+
+**DR prerequisite:** the host dir must exist before the container starts. On a rebuild:
+```bash
+sudo mkdir -p /srv/ai-data/graph/neo4j-example
+sudo chown root:homelab /srv/ai-data/graph /srv/ai-data/graph/neo4j-example
+sudo chmod 2775 /srv/ai-data/graph /srv/ai-data/graph/neo4j-example
+```
+The `research` **Postgres** db, the `research-artifacts` **MinIO** bucket, and the
+`research_dial_*` **QuestDB** tables need no new backup component — they're captured by the existing
+`pg_dumpall` / MinIO tar / QuestDB tar respectively. Qdrant and Redis are expendable projections/cache.
