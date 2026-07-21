@@ -43,6 +43,24 @@ limits_config:
   ingestion_burst_size_mb: 32
   per_stream_rate_limit: 8MB
   per_stream_rate_limit_burst: 24MB
+  # Retention: delete log chunks older than this. Without it Loki keeps logs
+  # FOREVER — the store just grows on the SSD (was ~522 MB and climbing with no
+  # bound). 30d (720h = a whole multiple of the 24h index period, as Loki
+  # requires) is plenty for debugging; change here + recreate loki to adjust.
+  # Enforcement is the compactor below (retention_enabled) — this value alone
+  # does nothing without it.
+  retention_period: 720h
+
+# The compactor is what actually deletes expired chunks (retention_period above).
+# It also compacts the per-24h index tables into one. delete_request_store is
+# required by Loki 3.x whenever retention_enabled is true (it backs the delete
+# API); filesystem matches common.storage above.
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+  compaction_interval: 10m
+  retention_delete_delay: 2h
 
 ruler:
   alertmanager_url: http://localhost:9093
