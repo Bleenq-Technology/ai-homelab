@@ -413,3 +413,36 @@ groups:
         annotations:
           summary: "Backup component {{ $labels.component }} failed on the last run"
           description: "backup.sh completed but the {{ $labels.component }} datastore did not back up. Other components may be fine. See /srv/ai-data/backups/backup.log."
+
+  # Restore-SIDE verification (verify-backups.sh, weekly Sun 03:00). The backup group
+  # above is write-side "did it run"; this group is "did the archive actually contain
+  # restorable data" — the class of failure that hid an empty QuestDB / stale MinIO
+  # backup while every write-side check passed (2026-07-18). See docs/off-host-backup.md.
+  - name: backup-verify
+    rules:
+      - alert: BackupVerifyStale
+        expr: time() - homelab_backup_verify_last_success_timestamp_seconds > 8.5 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No fully-successful backup VERIFICATION in over 8.5 days"
+          description: "verify-backups.sh (weekly, Sun 03:00) has not passed every restore-side content check in over a week. A backup that reports success can still be empty/stale — this is the check that catches that. See /srv/ai-data/backups/verify.log."
+
+      - alert: BackupVerifyFailed
+        expr: homelab_backup_verify_success == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup verification failed for {{ $labels.component }}"
+          description: "verify-backups.sh opened the newest {{ $labels.component }} archive and its content assertion FAILED (corrupt, empty, or wrong-source). For offhost this is a restore round-trip / SHA256 mismatch. See /srv/ai-data/backups/verify.log."
+
+      - alert: BackupVerifyMetricsMissing
+        expr: absent(homelab_backup_verify_last_success_timestamp_seconds)
+        for: 8d
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup-verify metrics absent — verify-backups.sh may not be running"
+          description: "node-exporter is not exposing homelab_backup_verify_* from its textfile collector. Either the weekly verify cron is gone, or the textfile dir is unwritable. See docs/off-host-backup.md."
