@@ -63,6 +63,3 @@ you don't need them — they won't run as-is:
 |---|---|
 | No GPU | Skip `host/unsloth/` and don't start `comfyui` / `wyoming-piper` / `wyoming-faster-whisper` / `bge-m3`; point LiteLLM at a cloud model (see [DEPLOY.md → GPU](../DEPLOY.md#gpu--the-host-llm)) |
 | A different GPU | Adjust the model/VRAM in `host/unsloth/` and the GPU service tags |
-
-> Note: the `.env.example` still lists `FIREZONE_*` variables; Firezone was retired in favor of
-> WireGuard on the router and those vars are unused — safe to ignore.

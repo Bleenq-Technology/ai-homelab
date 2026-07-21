@@ -177,9 +177,9 @@ services:
             - "traefik.http.routers.infisical.middlewares=secure-chain@file"
             - "traefik.http.services.infisical.loadbalancer.server.port=8080"
 
-    # Firezone (WireGuard VPN) removed — image 0.7.x is EOL, and remote access is
-    # now provided by WireGuard on the EdgeRouter (see host/wireguard/). The unused
-    # FIREZONE_* env keys and the firezone DB in postgres/init can be cleaned later.
+    # Firezone (WireGuard VPN) removed 2026-07-20 (0.7.x EOL) — remote access is now
+    # WireGuard on the EdgeRouter (see host/wireguard/). Service, DB, env keys, and
+    # data all cleaned out (todos #10).
 
     # ---- AdGuard Home — network DNS + ad blocking ---------------------------
     adguard:

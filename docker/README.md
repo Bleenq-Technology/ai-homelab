@@ -10,7 +10,7 @@ docker/
 ├── compose.yml            # root — includes the four layers below
 ├── .env.example           # copy to .env and fill in (gitignored)
 ├── secrets/               # EasyDNS API token/key (gitignored) — see secrets/README.md
-├── core/        compose.core.yml        traefik, keycloak, portainer, infisical, firezone, adguard, netbox
+├── core/        compose.core.yml        traefik, keycloak, portainer, infisical, adguard, netbox
 ├── data/        compose.data.yml        postgres, redis, minio, clickhouse, questdb, redpanda(+console), baserow, pgadmin
 ├── monitoring/  compose.monitoring.yml  prometheus, grafana, loki, promtail, alertmanager, exporters, watchtower, uptime-kuma
 └── ai/          compose.ai.yml          openwebui, n8n, comfyui, wyoming TTS/STT, qdrant, neo4j, searxng, langfuse
@@ -72,8 +72,8 @@ docker compose -f docker/monitoring/compose.monitoring.yml restart grafana
   **traffic routing** still needs DNS pointing names at this host.
 - DNS-01 means port 80 does **not** need to be internet-reachable for certs —
   jarvis only needs outbound access to `rest.easydns.net`.
-- Published host ports: `80/443` (Traefik), `53` (AdGuard DNS), `51820/udp`
-  (Firezone WireGuard), `7687` (Neo4j Bolt), `10200`/`10300` (Wyoming TTS/STT),
+- Published host ports: `80/443` (Traefik), `53` (AdGuard DNS),
+  `7687` (Neo4j Bolt), `10200`/`10300` (Wyoming TTS/STT),
   `3000` (AdGuard first-run setup — can be closed after).
 
 ## Notes / follow-ups
@@ -86,7 +86,7 @@ docker compose -f docker/monitoring/compose.monitoring.yml restart grafana
   they are published as raw TCP ports, not routed through Traefik.
 - **SSO**: fully wired — native Keycloak OIDC (Grafana, Open WebUI, Langfuse, …) plus
   **oauth2-proxy** forward-auth (`secure-sso@file`) for the no-native-SSO apps; the Traefik
-  dashboard keeps a deliberate break-glass basic-auth. (Firezone was removed → EdgeRouter WireGuard.)
+  dashboard keeps a deliberate break-glass basic-auth.
 - **Secrets backend**: Infisical **is** the source of truth — every secret lives in the `homelab`
   project; `pull-secrets.sh` regenerates `.env` on deploy (a generated artifact).
 - **Clean shutdown / restart**: `./safe-shutdown.sh` (interactive — type `yes` to confirm; pick

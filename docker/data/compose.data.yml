@@ -51,7 +51,6 @@ services:
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD}
       LITELLM_DB_PASSWORD: ${LITELLM_DB_PASSWORD}
       CONTENT_CURATOR_DB_PASSWORD: ${CONTENT_CURATOR_DB_PASSWORD:-change_me_discord_curator}
-      FIREZONE_DB_PASSWORD: ${FIREZONE_DB_PASSWORD:-change_me_firezone_db}
       TZ: ${TZ}
     volumes:
       # Named volume (not a bind mount): the supabase/postgres image runs as a
