@@ -8,6 +8,35 @@ positions:
 clients:
   - url: http://loki:3100/loki/api/v1/push
 
+# ---- Secret redaction (applied to EVERY scrape job below) -------------------
+# Some services echo secrets to stdout/journald that we do NOT control at the
+# source — most notably the host `unsloth` systemd service, whose startup banner
+# prints its API key both as "API Key: sk-unsloth-…" and inside example
+# `curl -H "Authorization: Bearer <key>"` lines. Promtail ships journald + syslog
+# to Loki, and Loki now RETAINS 30 days (todos.md #12), so without this those
+# tokens sit searchable in Grafana for a month.
+#
+# This is defence-in-depth at the collection layer: it redacts by SHAPE, so it
+# catches this leak AND any future one from any service, not just the ones we
+# know about today. It does NOT excuse a service logging secrets — fix the source
+# too where you can — but the source is often upstream code we don't own.
+#
+# `replace` semantics (verified live — the docs are easy to misread): Promtail
+# substitutes ONLY the captured group and leaves the rest of the regex match
+# intact. There is NO ${N} templating — a literal "${1}" is stored verbatim. So
+# each rule captures the SECRET as the single group and replaces it with
+# <REDACTED>, keeping any human-readable prefix (Bearer, sk-, the DSN user)
+# OUTSIDE the group so it survives. Anchors are deliberate:
+#   \bsk-   word boundary avoids the false positives "risk-", "asterisk-",
+#           "task-" that a bare "sk-" hits (verified against real logs).
+# Tested live: a canary emitting a fake Bearer/sk-/password line was stored
+# redacted, and a benign "risk-assessment asterisk" line was left intact.
+#
+# The same seven stages are INLINED into all three scrape jobs below rather than
+# shared via a YAML anchor: Promtail strict-parses its config and rejects any
+# unknown top-level key (a `.redact_stages: &anchor` holder fails with "field
+# not found in type config.plain"). If you edit these, edit all three copies.
+
 scrape_configs:
   # ---- Host system logs (/var/log/*log) ----
   - job_name: system
@@ -17,6 +46,28 @@ scrape_configs:
           job: varlogs
           host: jarvis
           __path__: /var/log/*log
+    pipeline_stages:
+      - replace:
+          expression: '(?i)bearer\s+([A-Za-z0-9._\-]{16,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(eyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,})'
+          replace: '<REDACTED-JWT>'
+      - replace:
+          expression: '\bsk-([A-Za-z0-9][A-Za-z0-9._\-]{15,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(?i)api[_-]?key["\s:=]{1,3}([A-Za-z0-9][A-Za-z0-9._\-]{11,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(?i)password["\s:=]{1,3}([^\s"'',}]{6,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: 'gh[pousr]_([A-Za-z0-9]{16,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: 'postgres(?:ql)?://[^:\s]+:([^@\s]+)@'
+          replace: '<REDACTED>'
 
   # ---- Docker containers via the Docker API (service discovery) ----
   # Discovers every container and ships stdout/stderr to Loki with clean,
@@ -53,6 +104,30 @@ scrape_configs:
     # drop_counter_reason so the discards show up in promtail's
     # `promtail_dropped_lines_total{reason=...}` metric (already scraped).
     pipeline_stages:
+      # Redact secret-shaped tokens FIRST, before the drop stages — the drops
+      # match on structural fields (UA, level prefix) that redaction leaves
+      # untouched, and a redacted line is still droppable.
+      - replace:
+          expression: '(?i)bearer\s+([A-Za-z0-9._\-]{16,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(eyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,})'
+          replace: '<REDACTED-JWT>'
+      - replace:
+          expression: '\bsk-([A-Za-z0-9][A-Za-z0-9._\-]{15,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(?i)api[_-]?key["\s:=]{1,3}([A-Za-z0-9][A-Za-z0-9._\-]{11,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(?i)password["\s:=]{1,3}([^\s"'',}]{6,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: 'gh[pousr]_([A-Za-z0-9]{16,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: 'postgres(?:ql)?://[^:\s]+:([^@\s]+)@'
+          replace: '<REDACTED>'
       # bge-m3 (llama.cpp embeddings server) logs per-request slot churn at
       # INFO on every call — "update_slots: all slots are idle", "slot
       # release", "slot prompt_clear", "srv update: - prompt 0x..." — ~19k
@@ -77,6 +152,8 @@ scrape_configs:
                 drop_counter_reason: traefik_internal_probe
 
   # ---- Host systemd journal ----
+  # This is the OTHER path the unsloth key-banner reaches Loki by (the service
+  # logs to journald directly), so redaction here is not optional.
   - job_name: journal
     journal:
       max_age: 12h
@@ -86,3 +163,25 @@ scrape_configs:
     relabel_configs:
       - source_labels: ['__journal__systemd_unit']
         target_label: 'unit'
+    pipeline_stages:
+      - replace:
+          expression: '(?i)bearer\s+([A-Za-z0-9._\-]{16,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(eyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,})'
+          replace: '<REDACTED-JWT>'
+      - replace:
+          expression: '\bsk-([A-Za-z0-9][A-Za-z0-9._\-]{15,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(?i)api[_-]?key["\s:=]{1,3}([A-Za-z0-9][A-Za-z0-9._\-]{11,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: '(?i)password["\s:=]{1,3}([^\s"'',}]{6,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: 'gh[pousr]_([A-Za-z0-9]{16,})'
+          replace: '<REDACTED>'
+      - replace:
+          expression: 'postgres(?:ql)?://[^:\s]+:([^@\s]+)@'
+          replace: '<REDACTED>'
