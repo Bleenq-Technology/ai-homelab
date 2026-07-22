@@ -1,4 +1,7 @@
 # LiteLLM
+
+> **On LiteLLM's 2026 CVEs (the question everyone asks):** we run a **patched** build (`v1.89.1`, above the fixed `v1.83.14-stable`), the admin/proxy port `:4000` is **internal-only** (never host-published), the edge returns 401 to unauth requests, every change is CI-scanned (Trivy + AI review), and the gateway is wrapped in the scoped-key + audit governance layer. We evaluated moving to Kong and **chose to stay** — see [`docs/gateway-decision.md`](../../../docs/gateway-decision.md) (`todos.md` #5). Short version: swapping a patched, wrapped, internal gateway for a heavier one with its own advisory history is a lateral move, and our whole governance layer is LiteLLM-key-shaped.
+
 **Purpose:** OpenAI-compatible gateway in front of the local unsloth LLM that logs **every** call to Langfuse — one chokepoint for centralized LLM tracing.
 **URL:** https://litellm.lab.example (API) — in-cluster: `http://litellm:4000`
 **Auth:** LiteLLM **master key** OR a per-app **virtual key** (Bearer). **Not** SSO-gated (it's a programmatic API).

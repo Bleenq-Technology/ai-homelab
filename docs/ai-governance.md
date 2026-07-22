@@ -255,5 +255,6 @@ Prometheus and alerting via Alertmanager → Discord with a dead-man:
 | Routing, middleware chains, exposure | [`docker/core/traefik/README.md`](../docker/core/traefik/README.md) |
 | Secrets (Infisical) | [`docker/core/infisical/README.md`](../docker/core/infisical/README.md) |
 | LLM gateway + virtual keys | [`docker/ai/litellm/README.md`](../docker/ai/litellm/README.md) |
+| Gateway choice: LiteLLM vs Kong (decision) | [gateway-decision.md](gateway-decision.md) |
 | KB standards + corpus registry | [kb-standards.md](kb-standards.md) · [kb-manifest.json](kb-manifest.json) |
 | Vulnerability reporting (different thing) | [`SECURITY.md`](../SECURITY.md) |
