@@ -144,8 +144,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     },
@@ -259,8 +259,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     },
@@ -374,8 +374,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     },
@@ -489,8 +489,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     },
@@ -604,8 +604,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     },
@@ -719,8 +719,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     },
@@ -834,8 +834,8 @@
       },
       "credentials": {
         "openAiApi": {
-          "id": "hIaZztiMPUNRvEZS",
-          "name": "LiteLLM (OpenAI-compat)"
+          "id": "4dvGwVICEh5wFkML",
+          "name": "LiteLLM (n8n-kb scoped)"
         }
       }
     }

@@ -14,8 +14,80 @@ import argparse, json, os, sys
 
 # n8n credential references (id+name only — created once via the n8n API; no secrets here).
 GH_CRED  = {"id": "er4zkVl3U64gSEe2", "name": "KB GitHub (ai-homelab-infra RO)"}
-OAI_CRED = {"id": "hIaZztiMPUNRvEZS", "name": "LiteLLM (OpenAI-compat)"}
+# SCOPED key, not the master key. This was "LiteLLM (OpenAI-compat)" (id
+# hIaZztiMPUNRvEZS) — the MASTER-key credential — until 2026-07-22 (todos.md #38).
+# Leaving it pointed there would have made a routine `build && deploy` silently
+# put every KB workflow back on an admin credential that can mint and revoke
+# keys, quietly undoing the fix. A generator is a re-infection vector for
+# anything you fix by hand in the running system.
+OAI_CRED = {"id": "4dvGwVICEh5wFkML", "name": "LiteLLM (n8n-kb scoped)"}
 QDR_CRED = {"id": "scAvBp08Km3zUMqK", "name": "Qdrant (homelab)"}
+
+# ---- Corpus governance (todos.md #43) --------------------------------------
+# Fields every KB must carry. kb-standards.md section 6 specified `owner` and
+# `visibility` from the start; the manifest simply never had them, so the
+# standard and its implementation had drifted on exactly the governance fields.
+REQUIRED_GOV_FIELDS = ("owner", "visibility", "classification", "license",
+                       "retention", "contains_pii")
+VALID_VISIBILITY = ("public", "internal", "restricted")
+
+
+def validate_manifest(manifest):
+    """Refuse to generate anything from an under-specified manifest.
+
+    This is the point of the exercise: the manifest ENTRY becomes the control.
+    Documenting that corpora have owners does nothing; refusing to build
+    workflows for a corpus without one is a control.
+    """
+    problems = []
+    for kb in manifest.get("kbs", []):
+        name = kb.get("name", "(unnamed)")
+        for f in REQUIRED_GOV_FIELDS:
+            if kb.get(f) is None or kb.get(f) == "":
+                problems.append(f"{name}: missing required governance field '{f}'")
+        vis = kb.get("visibility")
+        if vis is not None and vis not in VALID_VISIBILITY:
+            problems.append(f"{name}: visibility {vis!r} not one of {VALID_VISIBILITY}")
+    if problems:
+        for p in problems:
+            print(f"  [FAIL] {p}", file=sys.stderr)
+        raise SystemExit(
+            "\nmanifest failed governance validation — refusing to generate.\n"
+            "Every KB needs owner/visibility/classification/license/retention/"
+            "contains_pii (docs/kb-standards.md section 6).")
+
+
+def select_for_surface(manifest, surface):
+    """The corpora a workflow for `surface` is ALLOWED to touch.
+
+    surface='public'   -> ONLY visibility=='public'. This is the isolation rule
+                          from todos.md #28 expressed as data instead of relying
+                          on whoever builds the workflow remembering it. A public
+                          chat surface must be structurally unable to reach an
+                          internal or restricted corpus.
+    surface='internal' -> everything EXCEPT `external` corpora, which are owned
+                          by a sibling repo's own manifest (web-app,
+                          example-site-web) and must not be ingested or
+                          re-exposed by the shared workflows.
+    """
+    kbs = [k for k in manifest["kbs"] if k.get("enabled")]
+    if surface == "public":
+        return [k for k in kbs if k.get("visibility") == "public"]
+    if surface == "internal":
+        return [k for k in kbs if not k.get("external")]
+    raise ValueError(f"unknown surface {surface!r}")
+
+
+def assert_surface_safe(kbs, surface):
+    """Hard stop if a selection would expose a non-public corpus publicly."""
+    if surface != "public":
+        return
+    leaked = [k["name"] for k in kbs if k.get("visibility") != "public"]
+    if leaked:
+        raise SystemExit(
+            f"REFUSING to build a PUBLIC-surface workflow touching non-public "
+            f"corpora: {leaked}. A public chat must be structurally unable to "
+            f"reach internal/restricted content (todos.md #28/#43).")
 
 # md-only is achieved by excluding every non-markdown extension (GitHub loader has no include filter).
 NON_MD_EXTS = [
@@ -44,8 +116,8 @@ def build_ingest(manifest):
     # Only github-sourced KBs are git-pulled+rebuilt here. Other sources (e.g. "discord-harvest")
     # are populated by their own app's flow, so they're excluded from kb-ingest but still appear in
     # kb-chat / kb-list / kb-search (those include every enabled KB).
-    kbs = [k for k in manifest["kbs"]
-           if k.get("enabled") and k.get("source", {}).get("type", "github") == "github"]
+    kbs = [k for k in select_for_surface(manifest, "internal")
+           if k.get("source", {}).get("type", "github") == "github"]
     nodes, conns = [], {}
 
     manual = {"id": "trg_manual", "name": "Manual Trigger",
@@ -118,7 +190,7 @@ def build_chat(manifest):
     """One Chat Trigger -> AI Agent with a Qdrant retrieve-as-tool per enabled KB.
     The KB catalog is baked into the system prompt so the agent can enumerate KBs
     and route to the right collection(s)."""
-    kbs = [k for k in manifest["kbs"] if k.get("enabled")]
+    kbs = select_for_surface(manifest, "internal")
     catalog = "\n".join(f"- {k['name']}: {k['description']}" for k in kbs)
     sys_msg = (
         "You are the Homelab Knowledge assistant. You answer from a library of knowledge bases (KBs), "
@@ -260,10 +332,16 @@ def main():
     args = ap.parse_args()
 
     manifest = json.load(open(args.manifest, encoding="utf-8"))
+    # Governance gate FIRST — never emit workflows from an under-specified manifest.
+    validate_manifest(manifest)
     os.makedirs(args.out, exist_ok=True)
-    enabled = [k["collection"] for k in manifest["kbs"] if k.get("enabled")]
-    ingest_kbs = [k["collection"] for k in manifest["kbs"]
-                  if k.get("enabled") and k.get("source", {}).get("type", "github") == "github"]
+    internal = select_for_surface(manifest, "internal")
+    external = [k["name"] for k in manifest["kbs"] if k.get("enabled") and k.get("external")]
+    enabled = [k["collection"] for k in internal]
+    ingest_kbs = [k["collection"] for k in internal
+                  if k.get("source", {}).get("type", "github") == "github"]
+    if external:
+        print(f"  excluded {len(external)} EXTERNAL corpora (owned by sibling repos): {external}")
     ingest = build_ingest(manifest)
     pi = os.path.join(args.out, "kb-ingest.json")
     json.dump(ingest, open(pi, "w", encoding="utf-8"), indent=2, ensure_ascii=False)

@@ -197,8 +197,18 @@ def discover_trace_liveness() -> dict[str, str] | None:
     inventory is ungoverned use, and an inventory entry with no traces is
     either dead or misattributed. Uses docker exec — ClickHouse is data-net only.
     """
-    q = ("SELECT user_id, max(timestamp) FROM default.traces "
-         "WHERE timestamp > now() - INTERVAL 30 DAY GROUP BY user_id FORMAT TSV")
+    # Attribution lives in the TAGS, not user_id: LiteLLM's langfuse_default_tags
+    # stamps `user_api_key_alias:<alias>` (todos.md #40). Reading user_id instead
+    # made this probe report every trace as unattributed even after attribution
+    # was working — the check was measuring the wrong column.
+    #
+    # Bounded to 7 days on purpose: traces predating the 2026-07-22 attribution
+    # change are genuinely unattributable and would otherwise keep this warning
+    # lit until they age out of the 14-day TTL, for nothing anyone can act on.
+    q = ("SELECT replaceOne(arrayFirst(x -> startsWith(x, 'user_api_key_alias:'), tags), "
+         "'user_api_key_alias:', '') AS who, max(timestamp) "
+         "FROM default.traces WHERE timestamp > now() - INTERVAL 7 DAY "
+         "GROUP BY who FORMAT TSV")
     try:
         r = subprocess.run(
             ["docker", "exec", "clickhouse", "clickhouse-client", "-q", q],
@@ -211,12 +221,19 @@ def discover_trace_liveness() -> dict[str, str] | None:
         print(f"  ! trace liveness probe failed: {r.stderr.strip()[:200]}", file=sys.stderr)
         return None
     out = {}
-    for line in r.stdout.strip().splitlines():
+    # strip("\n"), NOT strip(). The unattributed group comes back with an EMPTY
+    # first column, i.e. a line starting with a tab — and a bare .strip() eats
+    # that leading tab when the row sorts first, so the line no longer contains a
+    # tab and gets skipped. That silently dropped the single row this probe exists
+    # to surface: 1,890 unattributed traces read as "nothing to report".
+    for line in r.stdout.strip("\n").splitlines():
         if "\t" in line:
             who, when = line.split("\t", 1)
             # ClickHouse renders NULL as \N in TSV. Both that and "" mean the
             # trace carries no system identity at all.
-            if who in ("", "\\N"):
+            # ClickHouse renders NULL as \N in TSV, and arrayFirst returns an
+            # EMPTY STRING when no tag matches. Both mean "no system identity".
+            if who in ("", "\\N", "None"):
                 who = "(unattributed)"
             out[who] = when
     return out
@@ -348,8 +365,11 @@ def check_live(inv: dict, live: dict, f: Findings) -> None:
         for who in sorted(traces):
             if who == "(unattributed)":
                 f.add("warn", "unattributable_traces",
-                      "Langfuse holds traces with no user_id — cannot tell which "
-                      "system produced them (todos.md #40)")
+                      f"Langfuse holds traces with no user_api_key_alias tag (newest "
+                      f"{traces[who]}) — cannot tell which system produced them. "
+                      f"Traces predating 2026-07-22 are expected here and age out "
+                      f"with the 14d TTL; a RECENT timestamp means a live consumer "
+                      f"is calling without an aliased key (todos.md #40)")
             elif who not in known and who not in aliases:
                 f.add("fail", "unregistered_trace_source",
                       f"traces from '{who}' but no inventory entry — possible shadow AI")

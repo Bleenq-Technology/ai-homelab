@@ -10,77 +10,243 @@
       "enabled": true,
       "collection": "kb_homelab_docs",
       "description": "Homelab infrastructure docs — the Docker stack services, deployment on the jarvis server, networking/Traefik/SSO, monitoring/alerting, and the AI stack (LiteLLM, Qdrant, n8n, OpenWebUI, ComfyUI). Use for questions about how the homelab is built, configured, or operated.",
-      "source": { "type": "github", "repo": "your-org/ai-homelab-infra", "branch": "main", "include": ["*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/ai-homelab-infra",
+        "branch": "main",
+        "include": [
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "operational",
+      "license": "MIT (this repo)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
     },
     {
       "name": "kb_example_app_docs",
       "enabled": true,
       "collection": "kb_example_app_docs",
       "description": "Markets engine documentation and design — system architecture, per-app and library docs, migration notes, and platform-services integration for the markets system. Use for questions about the markets engine's design, components, or how it uses the Jarvis platform.",
-      "source": { "type": "github", "repo": "your-org/example-app", "branch": "main", "include": ["*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/example-app",
+        "branch": "main",
+        "include": [
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "restricted",
+      "classification": "confidential",
+      "license": "proprietary (Bleenq LLC)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
     },
     {
       "name": "kb_design_docs",
       "enabled": true,
       "collection": "kb_design_docs",
       "description": "Product and business design documentation — architecture, requirements, terminology/glossary, business and marketing material, and patents. Use for questions about product vision, requirements, business strategy, or defined terms.",
-      "source": { "type": "github", "repo": "your-org/design-documentation", "branch": "main", "include": ["*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/design-documentation",
+        "branch": "main",
+        "include": [
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "restricted",
+      "classification": "confidential",
+      "license": "proprietary (Bleenq LLC)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
     },
     {
       "name": "kb_assistant-app_docs",
       "enabled": true,
       "collection": "kb_assistant-app_docs",
       "description": "Assistant app documentation — design, architecture, and usage docs for the Assistant application (README, CLAUDE.md, and the docs/ tree of the assistant-app repo). Use for questions about how Assistant works, its components, or its memory/KB conventions.",
-      "source": { "type": "github", "repo": "your-org/assistant-app", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/assistant-app",
+        "branch": "main",
+        "include": [
+          "docs/**/*.md",
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "operational",
+      "license": "proprietary (Bleenq LLC)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
     },
     {
       "name": "kb_content_curator_docs",
       "enabled": true,
       "collection": "kb_content_curator_docs",
       "description": "content-curator app documentation — design, architecture, roadmap, setup/deploy, and the n8n harvest+ingest flow design for the Discord-to-KB curation bot (the 'Librarian'). Use for questions about how content-curator works, its pipeline, channels/links data model, or its components.",
-      "source": { "type": "github", "repo": "your-org/content-curator", "branch": "main", "include": ["*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/content-curator",
+        "branch": "main",
+        "include": [
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "operational",
+      "license": "proprietary (Bleenq LLC)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
     },
     {
       "name": "kb_topic_ai_ml",
       "enabled": true,
       "collection": "kb_topic_ai_ml",
       "description": "Curated AI/ML research — links (YouTube talks, articles, papers, repos, docs) harvested from the team's Discord AI/ML channels and credibility-filtered. Use for questions about AI/ML tools, models, agents, techniques, and notable resources the team is tracking.",
-      "source": { "type": "discord-harvest", "app": "content-curator" }
+      "source": {
+        "type": "discord-harvest",
+        "app": "content-curator"
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "third-party",
+      "license": "unverified — harvested third-party web content",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": true,
+      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
     },
     {
       "name": "kb_topic_markets",
       "enabled": true,
       "collection": "kb_topic_markets",
       "description": "Curated markets research — links harvested from the team's Discord markets channels and credibility-filtered (ephemeral 'stocks this week' content excluded). Use for questions about markets strategies, market-analysis tools, indicators, and notable markets resources the team is tracking.",
-      "source": { "type": "discord-harvest", "app": "content-curator" }
+      "source": {
+        "type": "discord-harvest",
+        "app": "content-curator"
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "third-party",
+      "license": "unverified — harvested third-party web content",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": true,
+      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
     },
     {
       "name": "kb_topic_fitness",
       "enabled": true,
       "collection": "kb_topic_fitness",
       "description": "Curated fitness & health research — links (YouTube, articles, guides) harvested from the team's Discord fitness/health channels and credibility-filtered. Use for questions about training, nutrition, health/longevity protocols, and notable fitness resources the team is tracking.",
-      "source": { "type": "discord-harvest", "app": "content-curator" }
+      "source": {
+        "type": "discord-harvest",
+        "app": "content-curator"
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "third-party",
+      "license": "unverified — harvested third-party web content",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": true,
+      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
     },
     {
       "name": "kb_topic_income",
       "enabled": true,
       "collection": "kb_topic_income",
       "description": "Curated alternate-income research — links harvested from the team's Discord income / side-income channels and credibility-filtered. Use for questions about side income, monetization, online business ideas, and notable income-stream resources the team is tracking.",
-      "source": { "type": "discord-harvest", "app": "content-curator" }
+      "source": {
+        "type": "discord-harvest",
+        "app": "content-curator"
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "third-party",
+      "license": "unverified — harvested third-party web content",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": true,
+      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
     },
     {
       "name": "kb_mddocsviewer_docs",
       "enabled": true,
       "collection": "kb_mddocsviewer_docs",
       "description": "md-docs-viewer app documentation — the docs/ tree and README for the Next.js markdown-docs viewer app. Use for questions about how md-docs-viewer works, its setup, or its components.",
-      "source": { "type": "github", "repo": "your-org/md-docs-viewer", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/md-docs-viewer",
+        "branch": "main",
+        "include": [
+          "docs/**/*.md",
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "operational",
+      "license": "proprietary (Bleenq LLC)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
     },
     {
       "name": "kb_nas_docs",
       "enabled": true,
       "collection": "kb_nas_docs",
       "description": "NAS 'stor' infrastructure-as-code — configuration and deployment definitions for the stor storage/NAS server (storage services, Nextcloud SSO, and related host setup). Use for questions about how the stor NAS is built, configured, or operated.",
-      "source": { "type": "github", "repo": "your-org/stor-nas-infra", "branch": "main", "include": ["docs/**/*.md", "*.md"] }
+      "source": {
+        "type": "github",
+        "repo": "your-org/stor-nas-infra",
+        "branch": "main",
+        "include": [
+          "docs/**/*.md",
+          "*.md"
+        ]
+      },
+      "owner": "paul",
+      "visibility": "internal",
+      "classification": "operational",
+      "license": "proprietary (Bleenq LLC)",
+      "retention": "indefinite (rebuilt from source each ingest)",
+      "contains_pii": false
+    },
+    {
+      "name": "kb_web_app_public",
+      "enabled": true,
+      "external": true,
+      "collection": "kb_web_app_public",
+      "description": "PUBLIC example.com content — the corpus behind the public chat on example.com.",
+      "managed_by": "your-org/web-app (deploy/prod kb-public-manifest.json)",
+      "owner": "paul",
+      "visibility": "public",
+      "classification": "public",
+      "license": "proprietary (Bleenq LLC) — published publicly on example.com",
+      "retention": "indefinite (rebuilt from the site + OSS repo each ingest)",
+      "contains_pii": false,
+      "_note": "external=true: ingest/generation is OWNED by the web-app repo, deliberately isolated. Registered here so the shared registry is complete and the AI-BOM does not report it as an orphan collection. Do NOT add it to the shared ingest or the internal kb-chat agent."
+    },
+    {
+      "name": "kb_example_site_public",
+      "enabled": true,
+      "external": true,
+      "collection": "kb_example_site_public",
+      "description": "PUBLIC example-site.ai content — the corpus behind that site's public chat.",
+      "managed_by": "your-org/example-site-web (deploy/prod kb-public-manifest.json)",
+      "owner": "paul",
+      "visibility": "public",
+      "classification": "public",
+      "license": "The Example Playbook™ — Bleenq LLC trademark; published publicly",
+      "retention": "indefinite (rebuilt from the playbook bundle each ingest)",
+      "contains_pii": false,
+      "_note": "external=true, as above. Isolated from kb_web_app_public by decision (2026-07-14) — the Playbook bot must not reach Bleenq's corpus; asserted by the eval case playbook-cannot-reach-web-app-corpus."
     }
-  ]
+  ],
+  "_governance": "Every KB carries owner/visibility/classification/license/retention/contains_pii. visibility is ENFORCED by docker/ai/n8n/build_kb_workflows.py: a corpus that is not `public` cannot be wired into a public-surface workflow, and an entry missing a required field fails generation. See docs/kb-standards.md section 6 and docs/ai-governance.md.",
+  "_visibility_values": "public = internet-reachable via a public chat surface | internal = homelab users/agents only | restricted = internal AND commercially sensitive (business strategy, patents, markets design)"
 }
