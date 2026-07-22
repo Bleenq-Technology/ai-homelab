@@ -72,8 +72,8 @@ control needs a fifth, that's a design smell worth arguing about.
 |---|---|---|---|
 | **1** | **Traefik + Keycloak** (middleware chains, `secure-sso@file` / `secure-chain@file`, oauth2-proxy) | *Who reaches what.* No service is exposed without an explicit chain; SSO is one label, not a per-app integration | ✅ **Operating** |
 | **2** | **Infisical** (`pull-secrets.sh` / `push-secret.sh`) | *What credentials exist.* Single source of truth; `.env` is a generated artifact; hand-editing on the host is a documented violation | ✅ **Operating** |
-| **3** | **LiteLLM gateway** (virtual keys, model scoping, Langfuse tracing) | *What may talk to a model, and every call is recorded* | ⚠️ **Partial** — scoping works and is proven; **no budgets/rate limits/expiry** ([#38](../todos.md)); and it is **not yet a chokepoint** — egress around it is open ([#39](../todos.md)) |
-| **4** | **AI inventory + AI-BOM** | *What is approved to exist.* Approval in the registry **is** the credential — an unregistered system can't authenticate | ❌ **Does not exist** ([#36](../todos.md)) — the highest-leverage gap |
+| **3** | **LiteLLM gateway** (virtual keys, model scoping, Langfuse tracing) | *What may talk to a model, and every call is recorded* | ⚠️ **Mostly operating** — scoping, budgets, rate limits and expiry all applied per tier and **429 negative-tested**; no runtime consumer holds the master key. Still **not a full chokepoint**: the host LLM is closed off, but container **egress to public providers remains open** ([#39](../todos.md)) |
+| **4** | **AI inventory + AI-BOM** | *What is approved to exist.* Approval in the registry **is** the credential — an unregistered system can't authenticate | ✅ **Operating** — `docs/ai-inventory.yml` + a generated BOM, drift-checked in CI (static) and weekly on jarvis (live), alerting via Alertmanager → Discord |
 
 Two structural principles behind these:
 
@@ -81,8 +81,8 @@ Two structural principles behind these:
   reads the inventory; a system with no entry gets no key. That's how a registry stops being a
   spreadsheet.
 - **The audit answer should be an artifact, not a memory.** "What AI systems do we run, who owns them,
-  what data do they touch, what did they do on July 8th" must be answerable by running something. Today
-  it isn't. After #36 + #40, it is.
+  what data do they touch" is now answerable by running something — `build-ai-bom.py`. **"What did it
+  do on July 8th" still is not**: traces carry no system identity and expire at 14 days ([#40](../todos.md)).
 
 **And the tension to hold:** *enablement vs. control.* Clamp down and you create shadow AI. The paved
 road has to be **faster** than the goat path — which is why #38 warns against over-tightening internal
@@ -94,7 +94,8 @@ the first and there's nothing to route around.
 ## 4. Risk tiers
 
 Controls are applied proportionally to **impact if the system goes wrong** — not to how impressive the
-model is. Provisional tiers (formalized in [#37](../todos.md)):
+model is. Defined in [`ai-risk-tiers.md`](ai-risk-tiers.md), stored as a field per system in
+[`ai-inventory.yml`](ai-inventory.yml), and enforced by the drift checker:
 
 | Tier | Meaning | Examples here |
 |---|---|---|
@@ -107,32 +108,42 @@ Required controls escalate with tier — scoped key (all) → budget + rate limi
 (T1+) → named human-oversight point (T2+) → input/output guardrails (T2+) → eval gate (T2+) → owner +
 incident runbook (T2+) → step-up or two-person approval on the consequential action (T3).
 
-**The matrix is worthless if it's prose.** It's only real once #36's drift check asserts it.
+**The matrix is worthless if it's prose** — so it's encoded as `MATRIX{}` in
+[`build-ai-bom.py`](../docker/ai/inventory/build-ai-bom.py). Four rows are mechanically enforced today
+(scoped credential, budget, rate limit, expiry, oversight); the rest still reference `todos.md` items.
+**That migration — each row moving from a backlog reference to an enforcer — is the governance program.**
 
 ---
 
 ## 5. Current posture by axis
 
-Honest, as of **2026-07-22**, verified against the live platform rather than inferred. The pattern is
-consistent: **strong where enforcement is infrastructure, absent where governance needs an artifact.**
+Honest, as of **2026-07-22**, verified against the live platform rather than inferred — and updated
+after the first implementation pass. Anything marked ✅ has a **negative test** behind it and a weekly
+job that fails loudly; anything marked ⚠️ or ❌ says what is actually missing.
 
 | Axis | Posture | Evidence / gap |
 |---|---|---|
-| **Accountability & oversight** | ⚠️ Informal | Real ownership exists (two devs, sibling-repo sessions) but no named owner per system and no documented oversight point → [#46](../todos.md) |
-| **Inventory & lifecycle** | ❌ Absent | No inventory, AI-BOM, or model card anywhere in the tree → [#36](../todos.md). **Blocks nine of the other axes** |
-| **Risk classification** | ❌ Absent | Every surface gets identical controls regardless of blast radius → [#37](../todos.md) |
+| **Accountability & oversight** | ⚠️ Partial | Every system now has a **named owner and a named human-oversight point** in the inventory, and the kill-switch is **tested** (revoke → 401). Still missing: the incident runbook and a scheduled review commitment → [#46](../todos.md) |
+| **Inventory & lifecycle** | ✅ Operating | `ai-inventory.yml` (10 systems + 6 platform components) + a generated AI-BOM; drift fails CI and alerts weekly. Caught 3 master-key consumers, 14 unbounded-key violations, and 6.9 GB of unregistered model weights |
+| **Risk classification** | ✅ Operating | T0–T3 + a control matrix **encoded as code** in the checker — tier requirements are executable, not prose → [`ai-risk-tiers.md`](ai-risk-tiers.md) |
 | **Data governance** | ⚠️ Partial | One embedding standard, a version-controlled KB registry, provenance fields in the payload schema. But `kb-manifest.json` carries **no owner/visibility/classification/license/retention** — drifted from [`kb-standards.md`](kb-standards.md) §6, which specifies owner + visibility → [#43](../todos.md) |
-| **Security** | ✅ Strong / ⚠️ one gap | Keycloak + Traefik chains, three-network segmentation, Infisical, least-privilege DB/object roles **proven by negative test**, pinned images, CI (Trivy + hadolint + AI review + push protection). Gap: no injection/output guardrails on agent surfaces, incl. an unguarded text2cypher path → [#41](../todos.md) |
+| **Security** | ✅ Strong / ⚠️ one gap | Keycloak + Traefik chains, three-network segmentation, Infisical, least-privilege DB/object roles **proven by negative test**, pinned images, CI. Now also: **model weights hash-pinned + verified weekly** (#45) and the **host LLM no longer LAN-reachable** (#39). Gap: no injection/output guardrails on agent surfaces, incl. an unguarded text2cypher path → [#41](../todos.md) |
 | **Privacy** | ❌ Absent | Discord-harvested corpora contain third-party PII with no consent record and **no delete path** (ingest clears-and-rebuilds); public prompts logged with no notice → [#44](../todos.md) |
 | **Transparency & traceability** | ⚠️ Partial | Langfuse traces every gateway call — but only **14 days**, and only for traffic that opts into the gateway → [#40](../todos.md), [#39](../todos.md) |
 | **Output safety** | ❌ Untested | No harm-category testing on the public surfaces; safety is asserted, not measured → [#42](../todos.md) |
 | **Reliability & monitoring** | ✅ Infra / ❌ AI | Prometheus, Alertmanager→Discord, Loki, Uptime Kuma, backups **restore-verified weekly** with dead-man alerts. Zero evals, zero drift detection, zero AI-failure alerting → [#42](../todos.md) |
-| **Third-party & shadow AI** | ❌ Absent | Verified: a container on the `ai` network reaches `api.openai.com` / `api.anthropic.com` (401 = reached). The gateway is a paved road, not a chokepoint → [#39](../todos.md) |
+| **Third-party & shadow AI** | ⚠️ Detected, not blocked | Weekly detection ships (`check-egress.sh`): all **8** probed provider paths are open from `ai`, plus passive DNS signal from AdGuard. Attribution is limited — AdGuard sees the router, not the container. **Blocking still needs a per-network egress proxy** → [#39](../todos.md) |
 
-**Two summary judgments.** The platform is *stronger than most on enforcement modules and weaker than
-most on inventory* — the opposite of the usual failure mode, and a much better place to start from,
-because modules are the hard part. And the single highest-leverage move is [#36](../todos.md):
-without an inventory you cannot tier, attribute, gate, or audit.
+**Summary judgment (updated 2026-07-22).** The enforcement spine — **inventory → credential →
+chokepoint** — is now largely in place: #36/#37 built the registry and made the control matrix
+executable, #38 bounded every credential and ended master-key runtime use, #45 pinned the model
+supply chain, and #39 closed the host LLM to the LAN. What remains is genuinely the harder half:
+**egress blocking** (#39), **trace attribution and retention** (#40), **agent guardrails** (#41), and
+**evals** (#42) — the axes where the control is a system to build, not a setting to apply.
+
+The pattern worth keeping: every one of those items landed with a **negative test** (a 429, a
+`connection refused`, a corrupted hash, a revoked key returning 401) and a **weekly job that fails
+loudly**. A control nobody tests is a belief.
 
 ---
 
