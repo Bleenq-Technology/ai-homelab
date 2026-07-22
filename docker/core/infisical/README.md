@@ -66,6 +66,25 @@ Backup + `INFISICAL_ENCRYPTION_KEY` together = restorable; either alone is usele
 5. `./pull-secrets.sh` → full `.env` → `docker compose up -d` → full stack.
 
 ## Issues & Fixes
+**⚠️ NEVER pipe `pull-secrets.sh` into `head` (or any short-circuiting reader).** It writes `.env`
+with `> .env`, which **truncates first**. If the downstream reader exits early (`| head -1`), the
+script takes **SIGPIPE mid-write** and you are left with a **0-byte `.env`** — with `set -euo
+pipefail` it dies without a useful error. Done exactly this on 2026-07-22.
+
+The damage is deceptively quiet: **running containers keep working** (they hold the environment they
+booted with), so nothing looks wrong until the next `docker compose up -d`, which would recreate a
+service with **no secrets at all**. Symptom to recognise: `ls -la /opt/homelab/.env` shows size **0**.
+
+Fix is simply to re-run it cleanly — `./pull-secrets.sh` (redirect to a file if you want to page the
+output). Recovery was 132 keys with zero loss, which is the whole argument for this design: Infisical
+is the source of truth and **`.env` is a disposable generated artifact**. If losing `.env` were a real
+incident, the model would be wrong.
+
+```bash
+./pull-secrets.sh > /tmp/pull.log 2>&1; tail -3 /tmp/pull.log   # safe
+./pull-secrets.sh | head -1                                     # DESTROYS .env
+```
+
 **Symptom (2026-07-08): phantom "credential drift" — `.env` values fail auth (401) while the
 same keys work inside containers.** Root cause: Infisical CLI ≥ 0.38 changed `infisical export
 --format=dotenv` to wrap every value in **single quotes** (`KEY='value'`). Docker compose strips

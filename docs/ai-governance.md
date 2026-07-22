@@ -81,8 +81,9 @@ Two structural principles behind these:
   reads the inventory; a system with no entry gets no key. That's how a registry stops being a
   spreadsheet.
 - **The audit answer should be an artifact, not a memory.** "What AI systems do we run, who owns them,
-  what data do they touch" is now answerable by running something — `build-ai-bom.py`. **"What did it
-  do on July 8th" still is not**: traces carry no system identity and expire at 14 days ([#40](../todos.md)).
+  what data do they touch" is answerable by running `build-ai-bom.py`, and **"what did system X do on
+  a given day" is now answerable too** — `SELECT * FROM ai_governance.daily_by_system` — because traces
+  carry the key alias and a slim record outlives the 14-day trace TTL.
 
 **And the tension to hold:** *enablement vs. control.* Clamp down and you create shadow AI. The paved
 road has to be **faster** than the goat path — which is why #38 warns against over-tightening internal
@@ -129,9 +130,9 @@ job that fails loudly; anything marked ⚠️ or ❌ says what is actually missi
 | **Data governance** | ⚠️ Partial | One embedding standard, a version-controlled KB registry, provenance fields in the payload schema. But `kb-manifest.json` carries **no owner/visibility/classification/license/retention** — drifted from [`kb-standards.md`](kb-standards.md) §6, which specifies owner + visibility → [#43](../todos.md) |
 | **Security** | ✅ Strong / ⚠️ one gap | Keycloak + Traefik chains, three-network segmentation, Infisical, least-privilege DB/object roles **proven by negative test**, pinned images, CI. Now also: **model weights hash-pinned + verified weekly** (#45) and the **host LLM no longer LAN-reachable** (#39). Gap: no injection/output guardrails on agent surfaces, incl. an unguarded text2cypher path → [#41](../todos.md) |
 | **Privacy** | ❌ Absent | Discord-harvested corpora contain third-party PII with no consent record and **no delete path** (ingest clears-and-rebuilds); public prompts logged with no notice → [#44](../todos.md) |
-| **Transparency & traceability** | ⚠️ Partial | Langfuse traces every gateway call — but only **14 days**, and only for traffic that opts into the gateway → [#40](../todos.md), [#39](../todos.md) |
-| **Output safety** | ❌ Untested | No harm-category testing on the public surfaces; safety is asserted, not measured → [#42](../todos.md) |
-| **Reliability & monitoring** | ✅ Infra / ❌ AI | Prometheus, Alertmanager→Discord, Loki, Uptime Kuma, backups **restore-verified weekly** with dead-man alerts. Zero evals, zero drift detection, zero AI-failure alerting → [#42](../todos.md) |
+| **Transparency & traceability** | ✅ Mostly | Traces now carry `user_api_key_alias`, so every call is **attributable to an inventory system**; a slim **13-month** audit record (hashes, no bodies) survives Langfuse's 14-day TTL. Remaining: still only covers traffic that goes through the gateway ([#39](../todos.md)), and nothing prevents `DELETE` on the audit table |
+| **Output safety** | ⚠️ Partial | The text2cypher path is now guarded (auth + write-verb denylist + clause allowlist + LIMIT cap + every statement logged) and regression-tested. Still missing: harm-category refusal testing on the public surfaces → [#41](../todos.md)/[#42](../todos.md) |
+| **Reliability & monitoring** | ✅ Operating | Infra monitoring as before, plus a **9-case eval suite** (7 blocking) running daily and **negative-tested** — widening a key's scope makes it fail. 15 AI-specific alert rules across 5 groups, every one with a dead-man |
 | **Third-party & shadow AI** | ⚠️ Detected, not blocked | Weekly detection ships (`check-egress.sh`): all **8** probed provider paths are open from `ai`, plus passive DNS signal from AdGuard. Attribution is limited — AdGuard sees the router, not the container. **Blocking still needs a per-network egress proxy** → [#39](../todos.md) |
 
 **Summary judgment (updated 2026-07-22).** The enforcement spine — **inventory → credential →
