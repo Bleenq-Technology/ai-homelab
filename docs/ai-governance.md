@@ -10,10 +10,10 @@ new external-facing AI surface.
 
 > **Implementation status (2026-07-22).** The backlog #36–#46 has been **largely built**, not just
 > filed — each item landed with a live negative test and a scheduled check. What's genuinely still open
-> is small and named in §5: **egress *blocking*** (detection ships; the block needs a per-network
-> proxy — [#39](../todos.md)), a scheduled **public-transcript review** ([#46](../todos.md)), the public
-> **AI-use notice** handed to the sibling repos ([#44](../todos.md)), and **harm-category refusal
-> testing** ([#42](../todos.md)). Everything else on the ten axes is enforced and tested.
+> is small: a scheduled **public-transcript review** ([#46](../todos.md)), the public **AI-use notice**
+> handed to the sibling repos ([#44](../todos.md)), and **harm-category refusal testing** ([#42](../todos.md)).
+> Egress *blocking* was evaluated and **closed by decision** (detect + policy; IP-blocking rejected as it
+> breaks CDN-shared traffic — [#39/#39b](../todos.md)). Everything else on the ten axes is enforced and tested.
 
 ---
 
@@ -79,7 +79,7 @@ control needs a fifth, that's a design smell worth arguing about.
 |---|---|---|---|
 | **1** | **Traefik + Keycloak** (middleware chains, `secure-sso@file` / `secure-chain@file`, oauth2-proxy) | *Who reaches what.* No service is exposed without an explicit chain; SSO is one label, not a per-app integration | ✅ **Operating** |
 | **2** | **Infisical** (`pull-secrets.sh` / `push-secret.sh`) | *What credentials exist.* Single source of truth; `.env` is a generated artifact; hand-editing on the host is a documented violation | ✅ **Operating** |
-| **3** | **LiteLLM gateway** (virtual keys, model scoping, Langfuse tracing) | *What may talk to a model, and every call is recorded* | ⚠️ **Mostly operating** — scoping, budgets, rate limits and expiry all applied per tier and **429 negative-tested**; no runtime consumer holds the master key. Still **not a full chokepoint**: the host LLM is closed off, but container **egress to public providers remains open** ([#39](../todos.md)) |
+| **3** | **LiteLLM gateway** (virtual keys, model scoping, Langfuse tracing) | *What may talk to a model, and every call is recorded* | ✅ **Operating** — scoping, budgets, rate limits, expiry all applied per tier and **429 negative-tested**; no runtime consumer holds the master key; the host LLM is closed to the LAN. Container egress to cloud providers is **detected + policy-gated** (IP-blocking rejected on evidence, SNI proxy filed [#39b](../todos.md)) — and moot today, no cloud provider is configured |
 | **4** | **AI inventory + AI-BOM** | *What is approved to exist.* Approval in the registry **is** the credential — an unregistered system can't authenticate | ✅ **Operating** — `docs/ai-inventory.yml` + a generated BOM, drift-checked in CI (static) and weekly on jarvis (live), alerting via Alertmanager → Discord |
 
 A fifth surface, **the log pipeline (Promtail → Loki)**, is where governance is *un-done* if unattended:
@@ -148,7 +148,7 @@ job that fails loudly; anything marked ⚠️ or ❌ says what is actually missi
 | **Transparency & traceability** | ✅ Operating | Traces carry `user_api_key_alias`, so every call is **attributable to an inventory system**; a slim **13-month** audit record (hashes, no bodies) survives Langfuse's 14-day TTL, and it's now **append-only** — the writer role is denied DELETE/DROP (negative-tested). Remaining: covers only traffic through the gateway ([#39](../todos.md)) |
 | **Output safety** | ⚠️ Partial | The text2cypher path is guarded (auth + write-verb denylist + clause allowlist + LIMIT cap + every statement logged) and **regression-tested** — asked to delete the graph, the model emits `DETACH DELETE` and the guard refuses it. Still missing: harm-category refusal testing on the public surfaces → [#41](../todos.md)/[#42](../todos.md) |
 | **Reliability & monitoring** | ✅ Operating | Infra monitoring as before, plus a **9-case eval suite** (7 blocking) running daily and **negative-tested** — widening a key's scope makes it fail. **15 AI-specific alert rules across 5 groups** (`ai-governance`, `ai-egress`, `ai-model-integrity`, `ai-audit`, `ai-evals`), every group with a dead-man |
-| **Third-party & shadow AI** | ⚠️ Detected, not blocked | Weekly detection ships (`check-egress.sh`): all **8** probed provider paths are open from `ai`, plus passive DNS signal from AdGuard. Attribution is limited — AdGuard sees the router, not the container. **Blocking still needs a per-network egress proxy** → [#39](../todos.md). This is the one substantial gap left |
+| **Third-party & shadow AI** | ✅ Detect + policy (block deferred, by decision) | Hostname-accurate **detection** ships (`check-egress.sh` + AdGuard, weekly, dead-man); **no cloud provider is configured** in LiteLLM (local-only, verified) so nothing legit reaches one; the acceptable-use policy names it; the inventory drift-check flags a new provider consumer. IP-level *blocking* was evaluated and **rejected on evidence** — providers sit on Cloudflare/Google **shared anycast IPs**, so dropping them collaterally breaks legit web fetch + the public tunnels ([`egress-decision.md`](egress-decision.md)). The real block (an SNI proxy) is filed [#39b](../todos.md), trigger-gated |
 
 **Summary judgment (updated 2026-07-22, after the implementation pass).** The enforcement spine —
 **inventory → credential → chokepoint** — is built and tested: #36/#37 made the registry and control
@@ -159,8 +159,12 @@ property the generator enforces; #44 replaced #44's wrong premise with measureme
 path; #45 pinned the model supply chain; #39 closed the host LLM to the LAN; #49 stopped secrets
 reaching the logs.
 
-**Nine of the ten axes are green; the tenth (shadow-AI *blocking*) is detected-not-blocked and needs a
-per-network egress proxy — the one control here that is genuinely a system still to build.**
+**All ten axes are now either enforced-and-tested or closed by a documented, evidence-based decision.**
+The last "gap" — shadow-AI *blocking* — turned out on inspection to be an IP-blocking approach that
+would break legitimate CDN-fronted traffic (providers share Cloudflare/Google anycast IPs), so it was
+replaced by detect-and-alert + policy + no-cloud-configured, with an SNI-filtering egress proxy filed
+([#39b](../todos.md)) for the day a trigger makes it proportionate. That is the honest close: not every
+gap is a build — some are a decision, made on evidence and written down.
 
 The pattern worth keeping: every item landed with a **negative test** — a 429, a `connection refused`,
 a corrupted hash, a revoked key returning 401, a `DETACH DELETE` refused, a canary secret redacted, a
@@ -256,5 +260,6 @@ Prometheus and alerting via Alertmanager → Discord with a dead-man:
 | Secrets (Infisical) | [`docker/core/infisical/README.md`](../docker/core/infisical/README.md) |
 | LLM gateway + virtual keys | [`docker/ai/litellm/README.md`](../docker/ai/litellm/README.md) |
 | Gateway choice: LiteLLM vs Kong (decision) | [gateway-decision.md](gateway-decision.md) |
+| Shadow-AI egress: detect vs block (decision) | [egress-decision.md](egress-decision.md) |
 | KB standards + corpus registry | [kb-standards.md](kb-standards.md) · [kb-manifest.json](kb-manifest.json) |
 | Vulnerability reporting (different thing) | [`SECURITY.md`](../SECURITY.md) |
