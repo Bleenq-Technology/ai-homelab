@@ -1,0 +1,28 @@
+# Re-apply the unsloth :8888 access restriction at boot.
+#
+# iptables rules do NOT survive a reboot and this host runs no ufw/nftables
+# service, so without this unit the guard silently disappears on the next power
+# cycle — and jarvis does get power-cycled (todos.md, 2026-07-04). A control that
+# quietly stops existing is worse than one that was never installed.
+#
+# Ordered After=docker.service because the rule set references Docker's bridge
+# subnets; running before Docker exists would still install correctly (the
+# subnets are a static CIDR, not looked up), but ordering after keeps the intent
+# obvious and avoids racing Docker's own iptables setup.
+#
+# Deploy:
+#   sudo install -m 0755 unsloth-firewall.sh /usr/local/sbin/unsloth-firewall.sh
+#   sudo install -m 0644 unsloth-firewall.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now unsloth-firewall
+[Unit]
+Description=Restrict unsloth Studio (:8888) to Docker networks + localhost
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/unsloth-firewall.sh
+
+[Install]
+WantedBy=multi-user.target

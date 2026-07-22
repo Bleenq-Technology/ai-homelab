@@ -481,3 +481,32 @@ groups:
         annotations:
           summary: "AI-BOM metrics absent — the governance check may not be running"
           description: "node-exporter is not exposing homelab_ai_bom_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (the present-but-unwritable case is the dangerous one — see todos.md #11). Governance is unmonitored until this clears."
+
+  # Shadow-AI egress detection (todos.md #39). NOTE what is deliberately NOT
+  # here: an alert on homelab_ai_egress_open_paths > 0. Those paths ARE open
+  # today — that is the documented state #39 exists to close — so alerting on it
+  # would fire permanently and train us to ignore the whole group. The metric is
+  # tracked for the dashboard; once the blocking half of #39 lands and the
+  # expected value becomes 0, add:
+  #     - alert: AiEgressPathOpen
+  #       expr: homelab_ai_egress_open_paths > 0
+  # Until then the only useful alert is the dead-man on the check itself.
+  - name: ai-egress
+    rules:
+      - alert: AiEgressCheckStale
+        expr: time() - homelab_ai_egress_last_run_timestamp_seconds > 8.5 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No shadow-AI egress check in over 8.5 days"
+          description: "check-egress.sh (weekly, Sun 03:40) has not completed in over a week. While stale, a container reaching a public LLM provider outside the gateway would go unnoticed. See docker/ai/inventory/check-egress.sh."
+
+      - alert: AiEgressMetricsMissing
+        expr: absent(homelab_ai_egress_last_run_timestamp_seconds)
+        for: 8d
+        labels:
+          severity: warning
+        annotations:
+          summary: "Shadow-AI egress metrics absent — the check may not be running"
+          description: "node-exporter is not exposing homelab_ai_egress_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — see todos.md #11)."

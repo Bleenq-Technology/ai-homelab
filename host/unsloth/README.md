@@ -29,6 +29,41 @@ Studio derives the `llama-server` command line from the unit's args:
   pass-through (see its `llama_server_args.py` denylist); tunables like `-c`, `--parallel`,
   `--flash-attn`, `-ngl`, `--cache-type-*` are all overridable.
 
+## Who may reach `:8888` (network guard — added 2026-07-22)
+Studio is launched with **`-H 0.0.0.0`**, so before this it accepted connections from the **entire
+LAN** — any workstation, phone, or IoT-VLAN device could hit the shared model **directly, bypassing
+the LiteLLM gateway** and therefore every governance property that depends on it: per-system virtual
+keys, tier rate limits, and the Langfuse trace. `UNSLOTH_API_KEY` gates it, but that's **one static
+shared token** with no per-consumer identity, no rotation, and no expiry — it tells us nothing about
+*who* called.
+
+**Why not just change the bind address?** LiteLLM reaches unsloth at the host's LAN IP
+(`192.168.2.10:8888`) from inside a Docker network, so `-H 127.0.0.1` breaks the gateway, and binding
+to any single Docker gateway IP breaks the other networks. A **port-scoped firewall rule** is the
+correct control.
+
+[`unsloth-firewall.sh`](unsloth-firewall.sh) builds an `UNSLOTH-GUARD` iptables chain allowing
+**loopback + `172.16.0.0/12` (all Docker bridge networks)** and rejecting everything else on `:8888`
+with a TCP reset (fast "connection refused" beats a hang when debugging; stealth buys nothing on our
+own LAN). It's idempotent — the chain is flushed and rebuilt, and the `INPUT` jump is inserted only
+if absent.
+
+**It is re-applied at boot by [`unsloth-firewall.service`](unsloth-firewall.service)** — iptables
+rules don't survive a reboot and this host runs no ufw/nftables service, so without the unit the
+guard would silently vanish on the next power cycle (and jarvis *does* get power-cycled). Verified:
+LAN → `connection refused`, `ai`-net container → `401` (reachable, key required), host loopback →
+`401`, and a chat completion through LiteLLM still succeeds.
+
+```bash
+sudo install -m 0755 unsloth-firewall.sh /usr/local/sbin/unsloth-firewall.sh
+sudo install -m 0644 unsloth-firewall.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now unsloth-firewall
+sudo iptables -L UNSLOTH-GUARD -n     # inspect
+```
+
+**Gotcha:** the guard means a LAN host can no longer test unsloth directly. Test **through LiteLLM**
+(which is the intended path anyway) or from a container / the host itself.
+
 ## Model & sizing (why these values)
 - **Model:** `unsloth/Qwen3-8B-GGUF`, quant **UD-Q4_K_XL** (~4.8 GB weights). An 8B
   **text-only** model — chosen over the (newer, multimodal) Qwen3.5 line specifically so **no
