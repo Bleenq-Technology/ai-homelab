@@ -76,12 +76,25 @@ so `ai_governance` is included automatically. Verify it stays that way if that e
 - `token` counts are frequently **0** — the local llama.cpp upstream doesn't always report usage.
   Don't build billing on this column; it's for shape, not accounting.
 
-## Known gap
+## Tamper resistance (append-only writer)
 
-**Nothing prevents deletion.** `todos.md` #40 asked that no runtime role be able to `DELETE` from the
-audit record (mirroring the `exampleapp_delivery` REVOKE pattern). ClickHouse access here is a single
-admin user, so that is **not enforced today** — it needs a restricted ClickHouse role, which is its own
-change. Recorded rather than quietly skipped.
+The export connects as **`ai_audit_writer`**, not the ClickHouse admin. That role can
+`CREATE`/`INSERT`/`SELECT`/`OPTIMIZE` on `ai_governance` but is **denied `DELETE`, `TRUNCATE`, `ALTER`
+(covers `ALTER … DELETE` mutations) and `DROP`** — so a compromised or buggy export path cannot erase
+the record it exists to protect. Only a human with the ClickHouse admin credential can prune it. Same
+posture as `exampleapp_delivery` (#27). Role defined in [`writer-role.sql`](writer-role.sql) (SQL
+access store; password in Infisical as `CLICKHOUSE_AI_AUDIT_WRITER_PASSWORD`).
+
+**Negative-tested:** as the writer, `DELETE` / `TRUNCATE` / `ALTER … DELETE` / `DROP` all return *"Not
+enough privileges"* (Code 497), while `INSERT` + `OPTIMIZE` succeed and the admin can still prune.
+`export-audit.sh` **fails closed** if the writer password is absent rather than falling back to admin.
+
+**Honest residual:** the writer holds `INSERT`, and the table is a `ReplacingMergeTree` keyed on
+`trace_id`, so in principle it could *overwrite* an existing row with a same-`trace_id` row carrying a
+later `exported_at` (blanked hashes), and an `OPTIMIZE FINAL` would then collapse to the tampered
+version. Wholesale erasure is blocked; targeted single-row overwrite by the writer is not. Defending
+that would mean an insert-only `MergeTree` with query-time dedup — over-engineering for this record's
+stakes, so it's noted rather than built.
 
 ## Secrets
 

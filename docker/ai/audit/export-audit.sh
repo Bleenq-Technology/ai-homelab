@@ -20,15 +20,30 @@ set -uo pipefail
 LOOKBACK="${2:-${LOOKBACK_DAYS:-3}}"
 TEXTFILE_DIR="${TEXTFILE_DIR:-/var/lib/node_exporter/textfile}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="${HOMELAB_ENV:-/opt/homelab/.env}"
 PUBLISH=0
 [ "${1:-}" = "--publish" ] && PUBLISH=1
 
-ch() { docker exec clickhouse clickhouse-client "$@"; }
+# Connect as the APPEND-ONLY writer, never the admin (todos.md #40). The writer
+# can INSERT/SELECT/OPTIMIZE but is denied DELETE/TRUNCATE/ALTER/DROP, so a
+# compromised or buggy export path cannot erase the audit record it is meant to
+# protect — the same REVOKE-DELETE posture as exampleapp_delivery (#27). Only a
+# human with the ClickHouse admin credential can prune it. If the password is
+# missing we FAIL rather than silently falling back to admin: running the writer
+# as admin would quietly defeat the whole point.
+AUDIT_PW=$(grep -E '^CLICKHOUSE_AI_AUDIT_WRITER_PASSWORD=' "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2-)
+if [ -z "$AUDIT_PW" ]; then
+  echo "[ERROR] CLICKHOUSE_AI_AUDIT_WRITER_PASSWORD not in $ENV_FILE — refusing to run as admin" >&2
+  exit 1
+fi
+ch() { docker exec clickhouse clickhouse-client --user ai_audit_writer --password "$AUDIT_PW" "$@"; }
 
 # Schema is idempotent (IF NOT EXISTS) — applying every run means a fresh host or
-# a dropped table self-heals instead of failing silently for weeks.
+# a dropped table self-heals instead of failing silently for weeks. The writer
+# holds CREATE (self-heal) but not DROP, so this can create but never clobber.
 if [ -f "$HERE/schema.sql" ]; then
-  docker exec -i clickhouse clickhouse-client --multiquery < "$HERE/schema.sql" \
+  docker exec -i clickhouse clickhouse-client --user ai_audit_writer --password "$AUDIT_PW" \
+    --multiquery < "$HERE/schema.sql" \
     || { echo "[ERROR] schema apply failed" >&2; exit 1; }
 fi
 

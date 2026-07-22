@@ -86,6 +86,16 @@ docker exec -i clickhouse clickhouse-client -q "ALTER USER scanner_ro IDENTIFIED
 ./pull-secrets.sh && docker compose -f compose.yml up -d grafana
 ```
 
+## The `ai_audit_writer` user (AI audit record)
+
+Append-only writer for `ai_governance.gateway_calls` — the long-lived AI audit record (todos.md #40).
+`export-audit.sh` connects as this user, not admin, so a compromised export path cannot erase the
+record. Can `CREATE`/`INSERT`/`SELECT`/`OPTIMIZE` on `ai_governance`; **denied** `DELETE`/`TRUNCATE`/
+`ALTER`/`DROP` (verified: Code 497). Defined in `docker/ai/audit/writer-role.sql`; password in Infisical
+as `CLICKHOUSE_AI_AUDIT_WRITER_PASSWORD`. Rotate the same way as `scanner_ro`
+(`ALTER USER ai_audit_writer IDENTIFIED WITH sha256_password BY '<new>'`). See
+[`docker/ai/audit/README.md`](../../ai/audit/README.md).
+
 ## Setup as deployed
 - `CLICKHOUSE_DB=default`, `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1`; user/password from
   `CLICKHOUSE_USER` / `CLICKHOUSE_PASSWORD`.
