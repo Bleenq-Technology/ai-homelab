@@ -553,3 +553,37 @@ groups:
         annotations:
           summary: "Model-verify metrics absent — the check may not be running"
           description: "node-exporter is not exposing homelab_ai_model_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — todos.md #11)."
+
+  # AI audit trail (todos.md #40). Langfuse traces expire at 14 days — right for
+  # debugging, wrong for traceability. The slim record in ai_governance.gateway_calls
+  # keeps who/when/what-model/how-much plus content HASHES (never bodies) for 13
+  # months. If the export stops, evidence is destroyed by the source TTL and is
+  # unrecoverable — which is why the dead-man here matters more than most.
+  - name: ai-audit
+    rules:
+      - alert: AiAuditExportStale
+        expr: time() - homelab_ai_audit_last_run_timestamp_seconds > 36 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI audit export has not run in over 36h"
+          description: "export-audit.sh (daily 02:30) harvests the long-lived audit record from Langfuse BEFORE its 14-day TTL deletes the source. Gaps become permanent holes in the audit trail once that window passes. See /srv/ai-data/backups/ai-audit.log."
+
+      - alert: AiAuditExportMissing
+        expr: absent(homelab_ai_audit_last_run_timestamp_seconds)
+        for: 3d
+        labels:
+          severity: critical
+        annotations:
+          summary: "AI audit export metrics absent — the audit trail may be silently ending"
+          description: "node-exporter is not exposing homelab_ai_audit_*. Every day this persists is a day of AI gateway activity that will be permanently unrecoverable after Langfuse's 14-day TTL. Critical because the loss is irreversible, not because the system is down."
+
+      - alert: AiAuditUnattributedCalls
+        expr: homelab_ai_audit_unattributed_recent > 50
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} gateway calls in the last 2d cannot be attributed to a system"
+          description: "Calls reached LiteLLM without a resolvable user_api_key_alias, so they cannot be tied to an ai-inventory.yml entry. Either a consumer is using an unaliased key, or litellm_settings.langfuse_default_tags has regressed. Threshold is 50, not 0, because historical traces predating attribution (2026-07-22) age out over 14 days."

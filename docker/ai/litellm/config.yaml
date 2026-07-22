@@ -18,6 +18,24 @@ litellm_settings:
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]
   drop_params: true
+  # ---- Trace attribution (todos.md #40, docs/ai-governance.md) --------------
+  # Without this every Langfuse trace arrived with user_id NULL, empty metadata,
+  # and a single "User-Agent: n8n" tag — so a trace could not be attributed to a
+  # SYSTEM. That is fatal for governance twice over: four different systems share
+  # the n8n container (kb flows, content-curator, and both public chat surfaces),
+  # so User-Agent tells us nothing; and an unattributable trace cannot answer
+  # "what did this system do", which is the whole point of keeping traces.
+  #
+  # `user_api_key_alias` stamps each trace with the VIRTUAL KEY ALIAS, which is
+  # exactly the system name in docs/ai-inventory.yml — so traces join directly to
+  # the AI-BOM. This is also what makes the drift checker's shadow-AI probe real:
+  # a trace tagged with an alias nobody registered is ungoverned use.
+  langfuse_default_tags:
+    - user_api_key_alias        # -> the inventory system name
+    - user_api_key_user_id
+    - user_api_key_team_alias
+    - proxy_base_url
+    - cache_hit
   # Note: LiteLLM's Prometheus /metrics emission is gated behind an enterprise
   # license (OSS loads the callback but emits nothing), so LLM-level analytics
   # live in Langfuse instead. Grafana covers LLM *traffic* via Traefik router
