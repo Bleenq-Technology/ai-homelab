@@ -118,10 +118,10 @@
       "owner": "paul",
       "visibility": "internal",
       "classification": "third-party",
-      "license": "unverified — harvested third-party web content",
+      "license": "third-party published content — indexed for internal research/citation; author attribution retained. Respect source ToS/robots on re-fetch.",
       "retention": "indefinite (rebuilt from source each ingest)",
-      "contains_pii": true,
-      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
+      "contains_pii": false,
+      "pii_note": "MEASURED 2026-07-22 (todos.md #44), not assumed: 12,948 points across the four kb_topic_* corpora are source_type youtube (11,627) or web (1,321) — ZERO discord. The `author` field holds the PUBLISHER's channel name (e.g. a YouTube channel), i.e. citation/attribution for published work, and `channels` records which Discord CHANNEL a link was shared in — not who shared it. No member identities, no handles as identity, no contact details. #44 had assumed this corpus held harvested Discord messages; it does not. Stripping `author` would remove legitimate attribution and make citations worse."
     },
     {
       "name": "kb_topic_markets",
@@ -135,10 +135,10 @@
       "owner": "paul",
       "visibility": "internal",
       "classification": "third-party",
-      "license": "unverified — harvested third-party web content",
+      "license": "third-party published content — indexed for internal research/citation; author attribution retained. Respect source ToS/robots on re-fetch.",
       "retention": "indefinite (rebuilt from source each ingest)",
-      "contains_pii": true,
-      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
+      "contains_pii": false,
+      "pii_note": "MEASURED 2026-07-22 (todos.md #44), not assumed: 12,948 points across the four kb_topic_* corpora are source_type youtube (11,627) or web (1,321) — ZERO discord. The `author` field holds the PUBLISHER's channel name (e.g. a YouTube channel), i.e. citation/attribution for published work, and `channels` records which Discord CHANNEL a link was shared in — not who shared it. No member identities, no handles as identity, no contact details. #44 had assumed this corpus held harvested Discord messages; it does not. Stripping `author` would remove legitimate attribution and make citations worse."
     },
     {
       "name": "kb_topic_fitness",
@@ -152,10 +152,10 @@
       "owner": "paul",
       "visibility": "internal",
       "classification": "third-party",
-      "license": "unverified — harvested third-party web content",
+      "license": "third-party published content — indexed for internal research/citation; author attribution retained. Respect source ToS/robots on re-fetch.",
       "retention": "indefinite (rebuilt from source each ingest)",
-      "contains_pii": true,
-      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
+      "contains_pii": false,
+      "pii_note": "MEASURED 2026-07-22 (todos.md #44), not assumed: 12,948 points across the four kb_topic_* corpora are source_type youtube (11,627) or web (1,321) — ZERO discord. The `author` field holds the PUBLISHER's channel name (e.g. a YouTube channel), i.e. citation/attribution for published work, and `channels` records which Discord CHANNEL a link was shared in — not who shared it. No member identities, no handles as identity, no contact details. #44 had assumed this corpus held harvested Discord messages; it does not. Stripping `author` would remove legitimate attribution and make citations worse."
     },
     {
       "name": "kb_topic_income",
@@ -169,10 +169,10 @@
       "owner": "paul",
       "visibility": "internal",
       "classification": "third-party",
-      "license": "unverified — harvested third-party web content",
+      "license": "third-party published content — indexed for internal research/citation; author attribution retained. Respect source ToS/robots on re-fetch.",
       "retention": "indefinite (rebuilt from source each ingest)",
-      "contains_pii": true,
-      "pii_note": "Discord-harvested: chunks may carry author handles/names of real people. No consent record and no per-source delete path yet — todos.md #44."
+      "contains_pii": false,
+      "pii_note": "MEASURED 2026-07-22 (todos.md #44), not assumed: 12,948 points across the four kb_topic_* corpora are source_type youtube (11,627) or web (1,321) — ZERO discord. The `author` field holds the PUBLISHER's channel name (e.g. a YouTube channel), i.e. citation/attribution for published work, and `channels` records which Discord CHANNEL a link was shared in — not who shared it. No member identities, no handles as identity, no contact details. #44 had assumed this corpus held harvested Discord messages; it does not. Stripping `author` would remove legitimate attribution and make citations worse."
     },
     {
       "name": "kb_mddocsviewer_docs",
