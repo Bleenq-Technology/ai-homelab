@@ -35,6 +35,19 @@ cases:
     body: {model: "unsloth/Qwen3-8B-GGUF", messages: [{role: user, content: "hi"}], max_tokens: 5}
     expect_status: 401-403
 
+  - name: research-chat-scope-disjoint
+    blocking: true
+    why: >-
+      The research desk runs TWO disjoint keys on purpose: `research`
+      (embeddings-only) and `research-chat` (chat-only). If the chat key can
+      reach bge-m3, the disjoint-scope guarantee — the thing that keeps each key's
+      blast radius minimal — has silently broken.
+    kind: litellm
+    key_env: RESEARCH_CHAT_LLM_KEY
+    endpoint: /v1/embeddings
+    body: {model: "bge-m3", input: "scope probe"}
+    expect_status: 401-403
+
   - name: graph-search-requires-auth
     blocking: true
     why: >-
