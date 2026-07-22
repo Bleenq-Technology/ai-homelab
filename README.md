@@ -293,6 +293,15 @@ Architect), operational maturity, and observability built in from day one, not b
 **Applying these patterns in your own organization, or building something ambitious with AI/ML?**
 Connect with us on LinkedIn — we'd be glad to talk.
 
+## AI governance
+
+How AI use on this platform is governed — and, more to the point, what it's **technically enforced**
+by: **[docs/ai-governance.md](docs/ai-governance.md)**. It names the four control points (Traefik +
+Keycloak, Infisical, the LiteLLM gateway, and the AI inventory), maps them to the NIST AI RMF /
+ISO 42001 / EU AI Act / OWASP-LLM axes, and keeps a **dated, honest posture table** — including what's
+currently absent. The working thesis: *governance that isn't technically enforced is advisory.*
+Execution backlog: [`todos.md`](todos.md) #36–#46.
+
 ## Contributing & security
 
 Contributions, issues, and questions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
