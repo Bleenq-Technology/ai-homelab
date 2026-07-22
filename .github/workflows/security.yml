@@ -58,3 +58,20 @@ jobs:
           recursive: true
           failure-threshold: warning
         continue-on-error: true
+
+  # AI governance: static half of the AI-BOM drift check (docs/ai-governance.md).
+  # CI cannot reach jarvis's internal networks, so this validates what needs no
+  # platform access — schema, owners, tiers, and the control-matrix rows that are
+  # statically decidable. The LIVE half (credential existence, budgets, expiry,
+  # corpus reality, trace attribution) runs weekly on jarvis via cron and alerts
+  # through Alertmanager -> Discord. See docker/ai/inventory/README.md.
+  ai-bom-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet pyyaml
+      - name: AI-BOM static drift check
+        run: python3 docker/ai/inventory/build-ai-bom.py --check

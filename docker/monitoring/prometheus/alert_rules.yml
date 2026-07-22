@@ -446,3 +446,38 @@ groups:
         annotations:
           summary: "Backup-verify metrics absent — verify-backups.sh may not be running"
           description: "node-exporter is not exposing homelab_backup_verify_* from its textfile collector. Either the weekly verify cron is gone, or the textfile dir is unwritable. See docs/off-host-backup.md."
+
+  # AI governance drift (docs/ai-governance.md, todos.md #36). The AI-BOM check
+  # joins docs/ai-inventory.yml against live platform state; a disagreement means
+  # either an ungoverned system appeared or an approved one drifted out of its
+  # control-matrix requirements. Same three-alert shape as backup-verify above:
+  # the finding, the staleness, and the dead-man — because a governance check that
+  # stops running silently is worse than one that never existed.
+  - name: ai-governance
+    rules:
+      - alert: AiBomDriftDetected
+        expr: homelab_ai_bom_drift_failures > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI governance drift — {{ $value }} failing check(s)"
+          description: "The weekly AI-BOM check found inventory and reality disagree: an unregistered LiteLLM key (shadow AI), a stale inventory entry, a missing owner/tier, a control-matrix violation (budget/rate-limit/expiry/oversight), or traces from an unknown system. Run: python3 /opt/homelab/ai/inventory/build-ai-bom.py --live --check. See /srv/ai-data/backups/ai-bom.log and docs/ai-governance.md."
+
+      - alert: AiBomCheckStale
+        expr: time() - homelab_ai_bom_last_run_timestamp_seconds > 8.5 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No AI-BOM governance check in over 8.5 days"
+          description: "The weekly check (Sun 03:30) has not completed in over a week. The inventory is the control point every other AI governance item depends on — while this is stale, an unregistered system would not be noticed."
+
+      - alert: AiBomMetricsMissing
+        expr: absent(homelab_ai_bom_last_run_timestamp_seconds)
+        for: 8d
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI-BOM metrics absent — the governance check may not be running"
+          description: "node-exporter is not exposing homelab_ai_bom_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (the present-but-unwritable case is the dangerous one — see todos.md #11). Governance is unmonitored until this clears."
