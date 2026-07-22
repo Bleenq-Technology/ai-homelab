@@ -587,3 +587,37 @@ groups:
         annotations:
           summary: "{{ $value }} gateway calls in the last 2d cannot be attributed to a system"
           description: "Calls reached LiteLLM without a resolvable user_api_key_alias, so they cannot be tied to an ai-inventory.yml entry. Either a consumer is using an unaliased key, or litellm_settings.langfuse_default_tags has regressed. Threshold is 50, not 0, because historical traces predating attribution (2026-07-22) age out over 14 days."
+
+  # Governance eval suite (todos.md #42). The blocking cases assert SECURITY and
+  # ISOLATION properties — key scoping, text2cypher guardrails, corpus isolation,
+  # embedding dimension. A failure means one of those regressed, most likely via a
+  # workflow or config edit that looked unrelated. Advisory (quality) cases are
+  # deliberately NOT alerted: a gate that is usually red gets disabled.
+  - name: ai-evals
+    rules:
+      - alert: AiEvalBlockingFailure
+        expr: homelab_ai_eval_blocking_failures > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $value }} BLOCKING AI eval case(s) failing — a security property regressed"
+          description: "docker/ai/evals asserts properties that must always hold: a scoped key cannot reach an out-of-scope model, the text2cypher guard refuses writes and caps LIMIT, the graph webhook requires auth, the Playbook bot cannot cite example.com, embeddings are 1024-dim. One has stopped holding. Run /opt/homelab/ai/evals/run-evals.py for the failing case and its rationale. See /srv/ai-data/backups/ai-evals.log."
+
+      - alert: AiEvalsStale
+        expr: time() - homelab_ai_eval_last_run_timestamp_seconds > 36 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI eval suite has not run in over 36h"
+          description: "The daily suite (03:10) has not completed. While stale, a guardrail could regress unnoticed — which is the exact failure mode the suite exists to prevent."
+
+      - alert: AiEvalsMetricsMissing
+        expr: absent(homelab_ai_eval_last_run_timestamp_seconds)
+        for: 3d
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI eval metrics absent — the suite may not be running"
+          description: "node-exporter is not exposing homelab_ai_eval_*. Either the daily cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — todos.md #11)."
