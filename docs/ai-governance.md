@@ -124,12 +124,12 @@ job that fails loudly; anything marked ⚠️ or ❌ says what is actually missi
 
 | Axis | Posture | Evidence / gap |
 |---|---|---|
-| **Accountability & oversight** | ⚠️ Partial | Every system now has a **named owner and a named human-oversight point** in the inventory, and the kill-switch is **tested** (revoke → 401). Still missing: the incident runbook and a scheduled review commitment → [#46](../todos.md) |
+| **Accountability & oversight** | ✅ Mostly | Named owner + named human-oversight point per system; a **tested** kill-switch (revoke → 401); an [incident runbook](ai-incident-response.md) and [acceptable-use page](ai-acceptable-use.md). Remaining: periodic public-transcript review is still not a scheduled commitment |
 | **Inventory & lifecycle** | ✅ Operating | `ai-inventory.yml` (10 systems + 6 platform components) + a generated AI-BOM; drift fails CI and alerts weekly. Caught 3 master-key consumers, 14 unbounded-key violations, and 6.9 GB of unregistered model weights |
 | **Risk classification** | ✅ Operating | T0–T3 + a control matrix **encoded as code** in the checker — tier requirements are executable, not prose → [`ai-risk-tiers.md`](ai-risk-tiers.md) |
 | **Data governance** | ⚠️ Partial | One embedding standard, a version-controlled KB registry, provenance fields in the payload schema. But `kb-manifest.json` carries **no owner/visibility/classification/license/retention** — drifted from [`kb-standards.md`](kb-standards.md) §6, which specifies owner + visibility → [#43](../todos.md) |
 | **Security** | ✅ Strong / ⚠️ one gap | Keycloak + Traefik chains, three-network segmentation, Infisical, least-privilege DB/object roles **proven by negative test**, pinned images, CI. Now also: **model weights hash-pinned + verified weekly** (#45) and the **host LLM no longer LAN-reachable** (#39). Gap: no injection/output guardrails on agent surfaces, incl. an unguarded text2cypher path → [#41](../todos.md) |
-| **Privacy** | ❌ Absent | Discord-harvested corpora contain third-party PII with no consent record and **no delete path** (ingest clears-and-rebuilds); public prompts logged with no notice → [#44](../todos.md) |
+| **Privacy** | ⚠️ Mostly | **Measured**: the research corpora hold published-author attribution, not member identities (12,948 points, zero Discord-sourced) — #44's premise was wrong. A per-source **erasure path** now exists and is negative-tested; trace-body retention is a recorded decision (14d full / 13mo hashes). Remaining: the public AI-use notice, handed off to the sibling repos → [#44](../todos.md) |
 | **Transparency & traceability** | ✅ Mostly | Traces now carry `user_api_key_alias`, so every call is **attributable to an inventory system**; a slim **13-month** audit record (hashes, no bodies) survives Langfuse's 14-day TTL. Remaining: still only covers traffic that goes through the gateway ([#39](../todos.md)), and nothing prevents `DELETE` on the audit table |
 | **Output safety** | ⚠️ Partial | The text2cypher path is now guarded (auth + write-verb denylist + clause allowlist + LIMIT cap + every statement logged) and regression-tested. Still missing: harm-category refusal testing on the public surfaces → [#41](../todos.md)/[#42](../todos.md) |
 | **Reliability & monitoring** | ✅ Operating | Infra monitoring as before, plus a **9-case eval suite** (7 blocking) running daily and **negative-tested** — widening a key's scope makes it fail. 15 AI-specific alert rules across 5 groups, every one with a dead-man |
@@ -200,7 +200,11 @@ exactly the theater this document exists to avoid.
 
 | Topic | Doc |
 |---|---|
-| Execution backlog (#36–#46) | [`todos.md`](../todos.md) |
+| Execution backlog (#36–#47) | [`todos.md`](../todos.md) |
+| Risk tiers + control matrix | [ai-risk-tiers.md](ai-risk-tiers.md) |
+| AI incident response + kill-switch | [ai-incident-response.md](ai-incident-response.md) |
+| Acceptable use | [ai-acceptable-use.md](ai-acceptable-use.md) |
+| The inventory / generated AI-BOM | [ai-inventory.yml](ai-inventory.yml) · [ai-bom.md](ai-bom.md) |
 | Adding an app/service (the workflow governance hooks into) | [adding-an-app.md](adding-an-app.md) |
 | Identity, SSO, per-app auth decisions | [`docker/core/keycloak/README.md`](../docker/core/keycloak/README.md) |
 | Routing, middleware chains, exposure | [`docker/core/traefik/README.md`](../docker/core/traefik/README.md) |
