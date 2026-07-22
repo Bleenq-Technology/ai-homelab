@@ -2,7 +2,7 @@
 
 **What this is.** How AI governance works on this platform, what it's enforced by, and where it
 currently falls short. This is the **position**; the execution backlog is
-[`todos.md` #36–#49](../todos.md). If you're adding an AI system, read this and
+[`todos.md` #36–#50](../todos.md). If you're adding an AI system, read this and
 [adding-an-app.md](adding-an-app.md).
 
 **Last reviewed:** 2026-07-22 · **Owner:** Paul Vilevac · **Review cadence:** quarterly, plus on any
@@ -240,7 +240,7 @@ Prometheus and alerting via Alertmanager → Discord with a dead-man:
 
 | Topic | Doc |
 |---|---|
-| Execution backlog (#36–#49) | [`todos.md`](../todos.md) |
+| Execution backlog (#36–#50) | [`todos.md`](../todos.md) |
 | Risk tiers + control matrix | [ai-risk-tiers.md](ai-risk-tiers.md) |
 | AI incident response + kill-switch | [ai-incident-response.md](ai-incident-response.md) |
 | Acceptable use | [ai-acceptable-use.md](ai-acceptable-use.md) |
