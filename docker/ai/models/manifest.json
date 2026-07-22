@@ -1,0 +1,53 @@
+{
+  "_comment": "Provenance + integrity record for every model weight on jarvis (todos.md #45). We pin image versions rigorously ('no :latest' is a stated quality bar) and used to pin model weights not at all -- a silently swapped, truncated, or corrupted GGUF was undetectable. verify-models.sh re-hashes these weekly and alerts on mismatch, AND flags any .gguf on the host that is missing from this file. Hashes captured 2026-07-22. Weights themselves stay out of git (huge, gitignored); this manifest is what is committed.",
+  "_license_honesty": "Where upstream terms were not verified from the source repo at capture time, the field says so rather than guessing. An honest 'unverified' is a work item; a guessed license is a liability -- and this repo is heading for open source (todos.md #14).",
+  "scan_paths": [
+    "/opt/homelab/ai",
+    "/opt/unsloth/.cache/huggingface/hub",
+    "/srv/ai-data"
+  ],
+  "ignore_globs": [
+    "*/llama.cpp/models/ggml-vocab-*.gguf"
+  ],
+  "_ignore_reason": "ggml-vocab-* are tiny tokenizer fixtures shipped inside the llama.cpp source tree, not served models.",
+  "models": [
+    {
+      "name": "bge-m3",
+      "status": "served",
+      "path": "/opt/homelab/ai/bge-m3/models/bge-m3-Q8_0.gguf",
+      "sha256": "aa473d51f451a22f0fcf39ba3330c14bed38a385712b1113440f69df4047a173",
+      "size_bytes": 634553760,
+      "served_by": "docker/ai/bge-m3 (llama.cpp server-cuda)",
+      "inventory_ref": "platform/bge-m3",
+      "source_url": "unverified",
+      "upstream_revision": "unverified",
+      "license": "unverified — upstream BAAI/bge-m3 is MIT, but the GGUF conversion repo this file came from was not recorded at download time (2026-06-18)",
+      "notes": "The KB interoperability standard: 1024-dim Cosine. Every kb_* collection is embedded with it, so replacing this file invalidates every collection -- which is exactly why its integrity is worth checking."
+    },
+    {
+      "name": "unsloth-qwen3-8b",
+      "status": "served",
+      "path": "/opt/unsloth/.cache/huggingface/hub/models--unsloth--Qwen3-8B-GGUF/snapshots/a6adef130ffb23ddaf1a62fec9dced968c9bc482/Qwen3-8B-UD-Q4_K_XL.gguf",
+      "sha256": "34a514d08f7449cb4a694a707aaa2eedccb7bb68290121bf5e5a569b2abe71c3",
+      "served_by": "host/unsloth (systemd unsloth-studio.service)",
+      "inventory_ref": "platform/unsloth-qwen3",
+      "source_url": "https://huggingface.co/unsloth/Qwen3-8B-GGUF",
+      "upstream_revision": "a6adef130ffb23ddaf1a62fec9dced968c9bc482",
+      "license": "Apache-2.0 (Qwen3 upstream) — recorded from general knowledge, NOT read from the repo at capture time; confirm before relying on it externally",
+      "notes": "The shared chat LLM. Revision comes from the HF snapshot dir, which is the one piece of real provenance we already had for free."
+    },
+    {
+      "name": "gemma-4-E2B-it",
+      "status": "cached_unused",
+      "path": "/opt/unsloth/.cache/huggingface/hub/models--unsloth--gemma-4-E2B-it-GGUF",
+      "sha256": null,
+      "size_bytes": null,
+      "served_by": null,
+      "inventory_ref": null,
+      "source_url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF",
+      "upstream_revision": "unverified",
+      "license": "REVIEW REQUIRED — Gemma models ship under Google's custom Gemma Terms of Use, not a standard OSS licence. Matters for todos.md #14.",
+      "notes": "FOUND 2026-07-22 by the AI-BOM work, not by anyone remembering it: 6.9 GB of real weights cached on the host, served by nothing and registered nowhere. Dormant, not running -- but it is precisely the class of artifact an AI-BOM exists to surface. DECISION NEEDED: delete to reclaim 6.9 GB, or register it as an intentional platform model. Left in place pending that call; not hashed until then."
+    }
+  ]
+}

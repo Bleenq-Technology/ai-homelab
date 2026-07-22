@@ -513,7 +513,12 @@ def main() -> int:
 
     bom = build_bom(inv, kb, live)
     if a.write:
-        BOM_JSON.write_text(json.dumps(bom, indent=2) + "\n", encoding="utf-8")
+        # default=str: PyYAML parses unquoted `2026-07-22` into a datetime.date,
+        # which json cannot serialize. Sections we pass through verbatim (like
+        # `platform:`) therefore carry raw date objects. Stringify rather than
+        # forcing every date in the inventory to be quoted — the file is meant to
+        # be pleasant to hand-edit.
+        BOM_JSON.write_text(json.dumps(bom, indent=2, default=str) + "\n", encoding="utf-8")
         BOM_MD.write_text(render_md(bom), encoding="utf-8")
         print(f"wrote {BOM_JSON.relative_to(REPO)} and {BOM_MD.relative_to(REPO)}")
 

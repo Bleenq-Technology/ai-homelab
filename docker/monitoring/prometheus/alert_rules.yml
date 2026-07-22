@@ -510,3 +510,46 @@ groups:
         annotations:
           summary: "Shadow-AI egress metrics absent — the check may not be running"
           description: "node-exporter is not exposing homelab_ai_egress_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — see todos.md #11)."
+
+  # Model-weight integrity + provenance (todos.md #45). We pin image versions
+  # rigorously and pinned model weights not at all until 2026-07-22. For bge-m3
+  # this matters more than it looks: every kb_* collection is embedded with it,
+  # so a changed file silently invalidates the whole KB library while every
+  # service keeps starting cleanly.
+  - name: ai-model-integrity
+    rules:
+      - alert: AiModelVerifyFailed
+        expr: homelab_ai_model_verify_failures > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Model weight verification FAILED — {{ $value }} file(s) missing or altered"
+          description: "A GGUF recorded in docker/ai/models/manifest.json is missing or no longer hashes to its recorded sha256. Treat as a supply-chain event until proven otherwise: a weights file does not change on its own. If the change was intentional, update the manifest and record the new source/revision. See /srv/ai-data/backups/ai-models.log."
+
+      - alert: AiModelUnregistered
+        expr: homelab_ai_model_unregistered > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} unregistered model weight file(s) on the host"
+          description: "A .gguf larger than 10MB exists on jarvis with no entry in docker/ai/models/manifest.json — an un-provenanced model artifact. This is the check that found 6.9GB of unregistered gemma-4 weights. Either register it (source, revision, licence) or delete it."
+
+      - alert: AiModelVerifyStale
+        expr: time() - homelab_ai_model_verify_last_run_timestamp_seconds > 8.5 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No model-weight verification in over 8.5 days"
+          description: "verify-models.sh (weekly, Sun 04:00) has not completed in over a week. Weight integrity is unverified while this is stale."
+
+      - alert: AiModelVerifyMetricsMissing
+        expr: absent(homelab_ai_model_verify_last_run_timestamp_seconds)
+        for: 8d
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model-verify metrics absent — the check may not be running"
+          description: "node-exporter is not exposing homelab_ai_model_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — todos.md #11)."
