@@ -79,6 +79,21 @@ MATRIX = {
 }
 
 
+def _days_until(expires: str) -> int | None:
+    """Days until an ISO-8601 expiry. LiteLLM returns e.g.
+    '2027-01-18T05:12:33.123456' or with a trailing 'Z'; be liberal, and return
+    None rather than guessing if the shape changes."""
+    from datetime import datetime, timezone
+    try:
+        s = str(expires).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (dt - datetime.now(timezone.utc)).days
+    except (ValueError, TypeError):
+        return None
+
+
 class Findings:
     """Collected drift. Severity decides the exit code; notes are informational."""
 
@@ -300,6 +315,16 @@ def check_live(inv: dict, live: dict, f: Findings) -> None:
                 f.add("fail", "missing_rate_limit", f"{n} ({tier}): key '{alias}' has no tpm/rpm limit")
             if tier in MATRIX["expiry"] and k["expires"] is None:
                 f.add("fail", "missing_expiry", f"{n} ({tier}): key '{alias}' never expires")
+            elif k["expires"]:
+                # Expiry without early warning is a self-inflicted outage waiting
+                # to happen — a public surface would just start 401ing. Warn well
+                # before it bites so rotation is scheduled, not reactive.
+                days = _days_until(k["expires"])
+                if days is not None and days <= 30:
+                    sev = "fail" if days <= 7 else "warn"
+                    f.add(sev, "key_expiring_soon",
+                          f"{n}: key '{alias}' expires in {days}d — rotate via "
+                          f"push-secret.sh + pull-secrets.sh + recreate")
             declared_models = set(s.get("models") or [])
             if declared_models and set(k["models"]) != declared_models:
                 f.add("warn", "model_scope_drift",

@@ -31,7 +31,7 @@ services:
       # LLM backend: via the LiteLLM gateway (fronts unsloth, traces to Langfuse).
       ENABLE_OPENAI_API: "true"
       OPENAI_API_BASE_URL: "http://litellm:4000/v1"
-      OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      OPENAI_API_KEY: ${OPENWEBUI_LLM_KEY}
       ENABLE_OLLAMA_API: "false"
       # Web search via the internal SearXNG (JSON). Internal URL bypasses the SSO
       # gate on searxng.pdx; the literal <query> placeholder is required.
@@ -129,7 +129,7 @@ services:
       # recreates collections at the new dimension (dimensions can't be mixed).
       RAG_EMBEDDING_ENGINE: "openai"
       RAG_OPENAI_API_BASE_URL: "http://litellm:4000/v1"
-      RAG_OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      RAG_OPENAI_API_KEY: ${OPENWEBUI_LLM_KEY}
       RAG_EMBEDDING_MODEL: "bge-m3"
       # ---- Redis: websocket manager + app cache (shared instance, DB 7) ----
       # (DB 1=infisical, 2-3=netbox, 4=baserow, 5=langfuse, 6=searxng, 7=open-webui)
@@ -170,7 +170,14 @@ services:
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GITHUB_PAT: ${GITHUB_PAT}
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      # LITELLM_MASTER_KEY removed 2026-07-22 (todos.md #38). n8n's LLM nodes now
+      # use per-system SCOPED credentials — "LiteLLM (n8n-kb scoped)",
+      # "(content-curator scoped)", "(web-app scoped)", "(example-site
+      # scoped)" — so traffic is attributable in Langfuse and bounded by tier
+      # limits. Verified before removal: no workflow node referenced $env
+      # .LITELLM_MASTER_KEY and no node bound the master credential. Putting it
+      # back would hand every Code node an ADMIN credential that can mint and
+      # revoke keys — the master key is administrative, never runtime.
       QDRANT_API_KEY: ${QDRANT_API_KEY}
       # web-app public chat: shared BFF<->n8n token checked by the workflow
       # auth-gate Code nodes via $env (the BFF sends it as the x-app-token header).
