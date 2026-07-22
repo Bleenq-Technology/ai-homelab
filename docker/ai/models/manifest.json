@@ -35,19 +35,6 @@
       "upstream_revision": "a6adef130ffb23ddaf1a62fec9dced968c9bc482",
       "license": "Apache-2.0 (Qwen3 upstream) — recorded from general knowledge, NOT read from the repo at capture time; confirm before relying on it externally",
       "notes": "The shared chat LLM. Revision comes from the HF snapshot dir, which is the one piece of real provenance we already had for free."
-    },
-    {
-      "name": "gemma-4-E2B-it",
-      "status": "cached_unused",
-      "path": "/opt/unsloth/.cache/huggingface/hub/models--unsloth--gemma-4-E2B-it-GGUF",
-      "sha256": null,
-      "size_bytes": null,
-      "served_by": null,
-      "inventory_ref": null,
-      "source_url": "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF",
-      "upstream_revision": "unverified",
-      "license": "REVIEW REQUIRED — Gemma models ship under Google's custom Gemma Terms of Use, not a standard OSS licence. Matters for todos.md #14.",
-      "notes": "FOUND 2026-07-22 by the AI-BOM work, not by anyone remembering it: 6.9 GB of real weights cached on the host, served by nothing and registered nowhere. Dormant, not running -- but it is precisely the class of artifact an AI-BOM exists to surface. DECISION NEEDED: delete to reclaim 6.9 GB, or register it as an intentional platform model. Left in place pending that call; not hashed until then."
     }
   ]
 }
