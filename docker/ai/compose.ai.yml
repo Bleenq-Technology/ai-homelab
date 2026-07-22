@@ -169,6 +169,13 @@ services:
       # of the workflow JSON so exported workflows are secret-free + git-committable.
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      # Surface Code-node console.log on n8n's stdout so Promtail ships it to
+      # Loki. Without this n8n sandboxes Code-node output and it goes NOWHERE —
+      # which silently defeated the "log every generated Cypher statement"
+      # guardrail (todos.md #41): the web-app-graph-search guard logs every
+      # allowed/refused text2cypher statement, and none of it was reaching Loki.
+      # Search: {compose_service="n8n"} |= "[graph-guard]"
+      CODE_ENABLE_STDOUT: "true"
       GITHUB_PAT: ${GITHUB_PAT}
       # LITELLM_MASTER_KEY removed 2026-07-22 (todos.md #38). n8n's LLM nodes now
       # use per-system SCOPED credentials — "LiteLLM (n8n-kb scoped)",
