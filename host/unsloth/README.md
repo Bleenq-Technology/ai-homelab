@@ -64,6 +64,27 @@ sudo iptables -L UNSLOTH-GUARD -n     # inspect
 **Gotcha:** the guard means a LAN host can no longer test unsloth directly. Test **through LiteLLM**
 (which is the intended path anyway) or from a container / the host itself.
 
+## Startup banner leaks a key (redacted, not silenceable — 2026-07-22)
+Studio prints a startup banner containing **`API Key: sk-unsloth-…`** and (before `-q`) example
+`curl -H "Authorization: Bearer <key>"` lines. Promtail ships journald here, so with 30-day Loki
+retention those tokens were searchable in Grafana (`todos.md` #49). Findings, in order of what they
+change:
+
+- **`-q` removes the `curl … Bearer` example lines** — the worse leak (they printed the key inside an
+  `Authorization:` header). It's in the `ExecStart` now. Verified it does **not** suppress operational
+  logs (`request_completed`, model-load, errors still print), so it's a clean win.
+- **`--silent`/`-q` does NOT remove the `API Key:` line itself** — that key still hits journald. But it
+  is **redacted in Loki** by Promtail's `\bsk-` rule (verified stored as `API Key: sk-<REDACTED>`), so
+  it doesn't reach Grafana.
+- **The printed key is NOT the gateway credential.** It differs from `UNSLOTH_API_KEY` (SHA mismatch)
+  and **changes on every boot**, so Studio mints a per-boot display key separate from the credential
+  LiteLLM authenticates with. That makes the residual lower still — the raw journald line exposes a
+  rotating, non-gateway key to someone who already has host access.
+
+**Net residual:** the `API Key:` line remains in raw host journald (host-access-only). Compensating
+controls: Promtail redaction (Grafana-safe), the localhost-only firewall guard (above), and the fact
+that it isn't the gateway key. Not worth further effort unless Studio adds a true no-banner flag.
+
 ## Model & sizing (why these values)
 - **Model:** `unsloth/Qwen3-8B-GGUF`, quant **UD-Q4_K_XL** (~4.8 GB weights). An 8B
   **text-only** model — chosen over the (newer, multimodal) Qwen3.5 line specifically so **no
