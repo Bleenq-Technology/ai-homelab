@@ -48,6 +48,18 @@ cases:
     body: {model: "bge-m3", input: "scope probe"}
     expect_status: 401-403
 
+  - name: litellm-admin-ui-sso-enforced
+    blocking: true
+    why: >-
+      The LiteLLM admin UI can mint and revoke EVERY virtual key. It must redirect
+      to Keycloak, not serve a master-key password form. If GENERIC_CLIENT_ID is
+      ever unset the UI silently falls back to master-key login, re-exposing the
+      key-minting surface to anyone on the LAN.
+    kind: litellm_raw
+    path: /sso/key/generate
+    expect_status: 300-399
+    expect_contains_any: []
+
   - name: graph-search-requires-auth
     blocking: true
     why: >-

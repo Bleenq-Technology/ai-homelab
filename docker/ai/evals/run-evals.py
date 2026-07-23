@@ -74,6 +74,21 @@ def http(url: str, body=None, headers=None, method=None, timeout=180):
         return 0, f"__probe_error__ {e}"
 
 
+
+def http_noredirect(url: str, timeout: int = 30):
+    """GET without following redirects — a 3xx is the signal, not a failure."""
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k):
+            return None
+    op = urllib.request.build_opener(_NoRedirect)
+    try:
+        with op.open(urllib.request.Request(url), timeout=timeout) as r:
+            return r.status, r.read().decode(errors="replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode(errors="replace")
+    except Exception as e:
+        return 0, f"__probe_error__ {e}"
+
 def status_ok(spec, got: int) -> bool:
     """Accepts 200, '200', or a '401-403' range — some checks legitimately admit
     more than one refusal code (LiteLLM answers 401 for a bad key and 403 for an
@@ -110,6 +125,10 @@ def run_case(c: dict) -> tuple[bool, str]:
             return False, f"{c['key_env']} not in {ENV_FILE}"
         st, body = http(LITELLM + c["endpoint"], c.get("body"),
                         {"Authorization": f"Bearer {key}"}, c.get("method"))
+    elif kind == "litellm_raw":
+        # Unauthenticated GET that must NOT follow redirects — used to assert the
+        # admin UI hands off to Keycloak instead of serving a password form.
+        st, body = http_noredirect(LITELLM + c["path"])
     elif kind == "webhook":
         headers = {}
         if c.get("send_token"):

@@ -4,7 +4,7 @@
 
 **Purpose:** OpenAI-compatible gateway in front of the local unsloth LLM that logs **every** call to Langfuse — one chokepoint for centralized LLM tracing.
 **URL:** https://litellm.lab.example (API) — in-cluster: `http://litellm:4000`
-**Auth:** LiteLLM **master key** OR a per-app **virtual key** (Bearer). **Not** SSO-gated (it's a programmatic API).
+**Auth:** **API** — per-app **virtual key** (Bearer); the master key is administrative only. **Admin UI (`/ui`)** — **Keycloak SSO** (native OIDC), see below.
 **Image:** `ghcr.io/berriai/litellm:main-stable`
 **Networks / data:** `proxy` + `ai` + `data` (Postgres for the virtual-key store); config at [`config.yaml`](config.yaml)
 
@@ -35,6 +35,35 @@
   it reaches the gateway at `https://litellm.lab.example/v1` (not `http://litellm:4000`).
 - Routed at `litellm.${DOMAIN}` with `secure-chain@file` (master-key auth, **not** SSO). Add a
   `litellm.lab.example → 192.168.2.10` EdgeRouter mapping for by-name access.
+
+## Admin UI login (Keycloak SSO)
+
+**URL:** `https://litellm.${DOMAIN}/ui/` → redirects to Keycloak; sign in with your homelab account.
+
+Before 2026-07-22 the UI was gated only by the **master key used as a web password**, reachable from
+any LAN/VPN device — the weakest link in the key chain, since that UI can **mint and revoke every
+virtual key** and read all spend. Native OIDC gives real **per-user identity**: you can see *who*
+minted or revoked a key.
+
+- Keycloak client: [`../../core/keycloak/provision-litellm-client.sh`](../../core/keycloak/provision-litellm-client.sh)
+  (confidential, exact redirect `https://litellm.${DOMAIN}/sso/callback` — Keycloak 26 rejects
+  wildcards). Secret in Infisical as `LITELLM_OIDC_CLIENT_SECRET`.
+- Env: `PROXY_BASE_URL`, `GENERIC_CLIENT_ID/SECRET`, and the three Keycloak endpoints
+  (`GENERIC_AUTHORIZATION_ENDPOINT` / `_TOKEN_ENDPOINT` / `_USERINFO_ENDPOINT`). The token+userinfo
+  ones are **required** — LiteLLM raises a 500 naming them if unset.
+- **Master-key login still works** as a break-glass fallback if Keycloak is down.
+
+> **⚠️ Free-tier cap: 5 users.** Generic OIDC SSO needs **no enterprise licence** while
+> `LiteLLM_UserTable` holds **≤ 5 users** *and* a DB is connected — verified by reading `ui_sso.py`
+> in `v1.89.1`, not from docs. **Every distinct Keycloak user who logs in becomes a row** counting
+> toward the 5; the 6th gets a hard **403**, not a graceful degrade. (A separate, flat "Enterprise
+> required" gate exists on `/sso/debug/login` — an experimental debug route that does *not* affect
+> normal UI login. Easy to find that message and wrongly conclude SSO is fully paywalled.)
+
+**Don't gate the whole host with `secure-sso@file`** — the router stays `secure-chain@file` because a
+302 to Keycloak would break every programmatic client (assistant-app, both public chats, HA, research,
+n8n). SSO is handled *inside* LiteLLM, on the UI routes only. The
+`litellm-admin-ui-sso-enforced` eval guards against a silent regression to password login.
 
 ## Usage
 ```python

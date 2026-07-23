@@ -442,6 +442,22 @@ services:
     environment:
       UNSLOTH_API_KEY: ${UNSLOTH_API_KEY}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      # ---- Admin UI SSO via Keycloak (OIDC) --------------------------------
+      # The /ui admin surface can mint+revoke every virtual key, and was gated
+      # only by the master key used as a web password. Native OIDC gives real
+      # per-user identity (you see WHO minted/revoked a key), which is what the
+      # governance layer wants. Client: core/keycloak/provision-litellm-client.sh
+      #
+      # FREE without an enterprise licence while LiteLLM_UserTable holds <= 5
+      # users AND a DB is connected — verified in v1.89.1's ui_sso.py, not from
+      # docs. Each Keycloak user who logs in becomes a row counting toward the 5;
+      # the 6th gets a hard 403, not a graceful degrade.
+      PROXY_BASE_URL: https://litellm.${DOMAIN}
+      GENERIC_CLIENT_ID: litellm
+      GENERIC_CLIENT_SECRET: ${LITELLM_OIDC_CLIENT_SECRET}
+      GENERIC_AUTHORIZATION_ENDPOINT: https://keycloak.${DOMAIN}/realms/homelab/protocol/openid-connect/auth
+      GENERIC_TOKEN_ENDPOINT: https://keycloak.${DOMAIN}/realms/homelab/protocol/openid-connect/token
+      GENERIC_USERINFO_ENDPOINT: https://keycloak.${DOMAIN}/realms/homelab/protocol/openid-connect/userinfo
       # Postgres-backed key store — enables per-app virtual keys (/key/generate).
       # LiteLLM runs its Prisma migrations against this DB on startup.
       DATABASE_URL: postgresql://litellm:${LITELLM_DB_PASSWORD}@postgres:5432/litellm
