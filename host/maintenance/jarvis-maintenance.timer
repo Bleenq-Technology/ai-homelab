@@ -1,0 +1,19 @@
+# ONE-SHOT window: a fixed DATE means systemd fires it once and never again.
+#
+# The timezone suffix is load-bearing: this host's clock is UTC, so a bare
+# "06:00" would fire at 23:00 Saturday Pacific. The explicit zone also makes it
+# DST-safe (same pattern as the scanner nightly timer).
+#
+# Persistent=false on purpose: if the box is down at the window, DO NOT run a
+# surprise upgrade+reboot at the next boot. A missed maintenance window should
+# be rescheduled deliberately, not fired at random.
+[Unit]
+Description=jarvis scheduled OS updates (one-shot window)
+
+[Timer]
+OnCalendar=2026-07-26 06:00:00 America/Los_Angeles
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

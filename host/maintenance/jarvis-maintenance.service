@@ -1,0 +1,13 @@
+# One-shot OS maintenance: apply pending apt updates, then reboot.
+# Triggered by jarvis-maintenance.timer. Never enable this unit directly —
+# enabling the SERVICE would run maintenance (and reboot) at every boot.
+[Unit]
+Description=jarvis scheduled OS updates + reboot
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/jarvis-apply-updates.sh
+# The script reboots on success; give it room and don't let systemd kill it.
+TimeoutStartSec=3600

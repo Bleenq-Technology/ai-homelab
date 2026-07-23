@@ -1,0 +1,14 @@
+# Verifies the stack after a MAINTENANCE reboot (gated on a marker file, so
+# ordinary reboots stay quiet). Reports success/failure to Discord.
+[Unit]
+Description=jarvis post-maintenance-reboot verification
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/jarvis-post-boot-verify.sh
+TimeoutStartSec=1800
+
+[Install]
+WantedBy=multi-user.target
