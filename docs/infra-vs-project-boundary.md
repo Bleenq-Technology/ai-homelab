@@ -44,7 +44,7 @@ containers are never added to the infra compose. *(This already holds — see th
 
 **B. Provisioning seam — the platform provisions, the product owns.** A product needs a namespace on a
 shared store (a Postgres DB + roles, a Qdrant collection, a MinIO bucket, a scoped LiteLLM key, an
-isolated Neo4j). It **files an ask** into `todos.md` (the cross-project intake), infra **provisions the
+isolated Neo4j). It **files an ask** into `intake.md` (the cross-project intake queue, separate from the platform's own `todos.md`), infra **provisions the
 namespace + credential** (`provision-*.sh`, the key pipeline), and the product **owns the schema, the
 data, and the app**. Infra creates the empty room; the product furnishes it. This is the model already
 used for #20/#21/#27/#31/#48 — it just needs to be the *only* model.
@@ -90,7 +90,8 @@ badly, but each should be ruled and, where needed, cleaned before the public cut
 - **Your app is yours.** Containers, KB corpus, dashboards, workflows, schema → your repo, deployed
   onto the platform. Don't add them to `ai-homelab-infra`.
 - **File platform asks, don't build them here.** Need a DB/collection/bucket/scoped key/isolated store?
-  File it into `ai-homelab-infra/todos.md` (cross-project intake) with the rationale. Infra provisions
+  File it into `ai-homelab-infra/intake.md` (the cross-project intake queue) with the rationale.
+  No item number needed — intake entries are keyed by repo + date. Infra provisions
   the namespace + credential; you get env-var names back and pin them.
 - **Deploy onto the shared networks.** Ship your own compose that joins `proxy`/`ai`/`data`; get a
   Traefik route + SSO via labels (see [adding-an-app.md](adding-an-app.md)).

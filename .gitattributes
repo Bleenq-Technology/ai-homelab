@@ -22,6 +22,9 @@ docs/todo-24-secrets-resync-runbook.md export-ignore
 # shipping in the archive until 2026-07-22. The manifest describes the exclusion
 # strategy itself; CLAUDE.md is internal working notes (IPs/hosts/sibling repos).
 todos.md export-ignore
+# intake.md is the cross-project request queue — it names the private product
+# portfolio by repo (example-app, research-app, …) in every heading.
+intake.md export-ignore
 docs/open-source-manifest.md export-ignore
 # (glob — gitattributes splits patterns on spaces, so the literal filename with
 #  spaces can't be used; this wildcard uniquely matches the one Week-review file)
