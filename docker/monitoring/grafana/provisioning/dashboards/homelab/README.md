@@ -25,11 +25,11 @@ back). Most panels query the **Prometheus** datasource (pinned `uid: prometheus`
   needed; node-exporter is the Prometheus-native equivalent. Runs with the default collectors plus
   `--collector.processes` and `--collector.interrupts` enabled (see the compose service).
 - **Drive SMART** — `smartctl-exporter` (`prometheuscommunity/smartctl-exporter`, `job=smartctl`,
-  `smartctl_device_*`), added in [compose.monitoring.yml](../../../compose.monitoring.yml). Exposes
+  `smartctl_device_*`), added in [compose.monitoring.yml](../../../../compose.monitoring.yml). Exposes
   per-drive wear/health/temperature for the NVMe + SATA SSD — the signal hwmon can't provide. See
-  [../../../smartctl-exporter/README.md](../../../smartctl-exporter/README.md).
+  [../../../../smartctl-exporter/README.md](../../../../smartctl-exporter/README.md).
 - **GPU** — `nvidia-gpu-exporter` (`utkuozdemir/nvidia_gpu_exporter`, `job=nvidia-gpu`), added in
-  [compose.monitoring.yml](../../../compose.monitoring.yml). Exposes `nvidia_smi_*` (util, VRAM,
+  [compose.monitoring.yml](../../../../compose.monitoring.yml). Exposes `nvidia_smi_*` (util, VRAM,
   temp, power, fan, clocks) for the RTX 3090.
   - **Gotcha:** AUTO field discovery panics on newer nvidia-smi fields like
     `clocks_event_reasons_counters.sync_boost [us]` (invalid Prometheus metric name). Fixed by
@@ -45,7 +45,7 @@ back). Most panels query the **Prometheus** datasource (pinned `uid: prometheus`
 - **Postgres** — `postgres-exporter` (`job=postgres-exporter`, `pg_*`), already scraped. Worth a
   dashboard because it's the shared backbone (Keycloak, NetBox, Infisical, Baserow, Langfuse, n8n…).
 - **Redis** — `redis-exporter` (`oliver006/redis_exporter`, `job=redis`, `redis_*`), added in
-  [compose.monitoring.yml](../../../compose.monitoring.yml); reads via `REDIS_PASSWORD`.
+  [compose.monitoring.yml](../../../../compose.monitoring.yml); reads via `REDIS_PASSWORD`.
 
 > **Deliberately not dashboarded:** **Qdrant** exposes native `/metrics` but it requires an
 > `api-key` *header* that Prometheus scrape configs can't send cleanly — not worth it for a leaf
