@@ -8,10 +8,27 @@
 *.env text eol=lf
 *.env.example text eol=lf
 
-# PRIVATE operational docs — describe live credential/provisioning state; must NOT
-# ship in the public open-source snapshot (see todos.md #14). `export-ignore` drops
-# them from `git archive`; whoever cuts the release must also exclude them if using
-# any other mechanism. Keep this list in sync with the "PRIVATE — do not include"
-# header carried by each such doc.
+# PRIVATE — must NOT ship in the public open-source snapshot. `export-ignore` drops
+# these from `git archive`; whoever cuts the release must also exclude them if using
+# any other mechanism. The authoritative rationale (belongs / excluded / scrub-first)
+# is docs/open-source-manifest.md (§B). Keep this list in sync with it.
+
+# -- Live provisioning/credential runbooks --
 docs/web-app-chat-provisioning.md export-ignore
 docs/todo-24-secrets-resync-runbook.md export-ignore
+
+# -- Internal ops + working notes (backlog, weekly reviews, agent notes) --
+# todos.md exposes the private product portfolio + live provisioning state; it was
+# shipping in the archive until 2026-07-22. The manifest describes the exclusion
+# strategy itself; CLAUDE.md is internal working notes (IPs/hosts/sibling repos).
+todos.md export-ignore
+docs/open-source-manifest.md export-ignore
+docs/Week 1 - 2026-06-15 - Week In Review.md export-ignore
+CLAUDE.md export-ignore
+
+# -- Live governance STATE (the METHOD ships; the populated inventory/BOM does not) --
+# These enumerate every private product (example-app, research-app, …).
+# Publish ai-governance.md + the tooling + a GENERIC example inventory instead.
+docs/ai-inventory.yml export-ignore
+docs/ai-bom.json export-ignore
+docs/ai-bom.md export-ignore
