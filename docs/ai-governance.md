@@ -188,7 +188,7 @@ Borrowed for structure and vocabulary, not compliance:
   why the public-surface notice is in [#44](../todos.md).
 - **OWASP Top 10 for LLM Applications** — the security slice: prompt injection (LLM01), insecure output
   handling (LLM02), supply chain (LLM03), poisoning (LLM04), excessive agency (LLM06), unbounded
-  consumption (LLM10). Mapped item-by-item in the backlog.
+  consumption (LLM10). **Vetted item-by-item in [owasp-llm-top10-coverage.md](owasp-llm-top10-coverage.md)** — 5 enforced-and-tested, 4 partial, 1 gap being closed.
 - **MITRE ATLAS** — adversarial taxonomy for threat modeling AI-specific attack paths.
 
 > **Currency caveat.** The **axes are stable** — they're the load-bearing structure everything new gets
