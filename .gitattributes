@@ -34,3 +34,13 @@ CLAUDE.md export-ignore
 docs/ai-inventory.yml export-ignore
 docs/ai-bom.json export-ignore
 docs/ai-bom.md export-ignore
+
+# -- Product-specific PROVISIONING instances (the infra CAPABILITY ships; the
+#    per-product instances name the portfolio). A generic provisioner template is
+#    the #15b follow-up; adding-an-app.md documents the pattern. See the
+#    infra<->project boundary doc §4. (realm-homelab.json's markets-* clients and
+#    kb-manifest.json's product source-repo entries are functional and handled by
+#    the scrub/#15b, not export-ignore.)
+docker/data/postgres/provision-exampleapp.sh export-ignore
+docker/data/postgres/provision-research.sh export-ignore
+docker/core/keycloak/provision-example-clients.sh export-ignore
