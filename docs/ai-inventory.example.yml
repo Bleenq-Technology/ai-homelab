@@ -1,0 +1,76 @@
+# =============================================================================
+# AI system inventory — EXAMPLE for adopters.
+#
+# The real inventory (docs/ai-inventory.yml) is this platform's live state and is
+# not published (it names internal systems). This example shows the SCHEMA and a
+# couple of generic systems so the tooling — build-ai-bom.py, provision-keys.py,
+# run-evals.py — is runnable out of the box. Replace these with your own systems.
+#
+# Tiers + the control matrix: docs/ai-risk-tiers.md
+# The method:                 docs/ai-governance.md
+# =============================================================================
+version: 1
+updated: 2025-01-01
+
+owners:
+  you: Your Name <you@lab.example>
+
+# Tier limits applied by provision-keys.py (policy as reviewable data).
+tier_limits:
+  T0: {}
+  T1: {rpm_limit: 120, tpm_limit: 200000, max_budget: 25, budget_duration: 30d, expiry_days: null}
+  T2: {rpm_limit: 60,  tpm_limit: 120000, max_budget: 25, budget_duration: 30d, expiry_days: 180}
+  T3: {rpm_limit: 60,  tpm_limit: 120000, max_budget: 25, budget_duration: 30d, expiry_days: 90}
+
+public_surface_overrides:
+  rpm_limit: 20
+  tpm_limit: 40000
+  max_budget: 10
+  expiry_days: 90
+
+systems:
+
+  - name: internal-chat
+    owner: you
+    tier: T1
+    purpose: An internal chat UI over the shared local LLM, behind SSO.
+    surface: internal
+    autonomy: human_per_action     # a human reads every output
+    repo: this
+    credential: {type: litellm_key, alias: internal-chat}
+    models: [your-chat-model, your-embedding-model]
+    corpora: [kb_docs]
+    human_oversight: Every output is read by the person who asked.
+    disclosure: not_required
+    data_classes: [internal]
+
+  - name: public-web-chat
+    owner: you
+    tier: T2                        # public surface => at least T2
+    purpose: A grounded public chatbot answering from a public knowledge base.
+    surface: public
+    autonomy: autonomous            # answers strangers with no human in the loop
+    repo: your-web-repo
+    credential: {type: litellm_key, alias: public-web-chat}
+    models: [your-chat-model, your-embedding-model]
+    corpora: [kb_public]
+    human_oversight: Periodic review of traces; no human per answer.
+    disclosure: required            # tell users it's AI and that prompts are logged
+    data_classes: [public, user_submitted]
+
+platform:
+
+  - name: chat-model
+    kind: model
+    owner: you
+    purpose: Your shared chat LLM.
+    model_id: your-chat-model
+    served_by: host/unsloth
+    license: verify-at-source
+    provenance: record-a-sha256-in-docker/ai/models/manifest.json
+
+  - name: gateway
+    kind: gateway
+    owner: you
+    purpose: The only sanctioned route to a model; issues per-system scoped keys.
+    served_by: docker/ai/litellm
