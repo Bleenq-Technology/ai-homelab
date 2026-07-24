@@ -47,6 +47,7 @@ docs/ai-bom.md export-ignore
 docker/data/postgres/provision-exampleapp.sh export-ignore
 docker/data/postgres/provision-research.sh export-ignore
 docker/core/keycloak/provision-example-clients.sh export-ignore
+docker/core/keycloak/provision-research-client.sh export-ignore
 
 # -- The publish tooling itself (product-map.txt lists the portfolio). Also
 #    stripped from history by publish-public.sh; export-ignore covers the archive path. --
