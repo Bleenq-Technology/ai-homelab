@@ -485,6 +485,20 @@ services:
       TZ: ${TZ}
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
+      # Our own guardrail category files (referenced by `category_file:` in
+      # config.yaml). Read-only: the proxy reads these at request time, and a
+      # writable mount would let a proxy compromise disable its own filters.
+      #
+      # They MUST land inside the package's own categories/ directory — LiteLLM
+      # path-checks `category_file` and silently WARNS-and-skips anything outside
+      # it ("invalid category_file path, skipping"). Skipping is the dangerous
+      # failure mode: the proxy comes up healthy with the filter quietly absent,
+      # which is why `guardrail-blocks-injection` is a BLOCKING eval.
+      #
+      # ⚠️ The path embeds the image's Python version. We pin the image
+      # (v1.89.1) so it is stable, but re-check it on any LiteLLM bump.
+      - ./litellm/guardrails/homelab_malicious_code.yaml:/app/.venv/lib/python3.13/site-packages/litellm/proxy/guardrails/guardrail_hooks/litellm_content_filter/categories/homelab_malicious_code.yaml:ro
+      - ./litellm/guardrails/homelab_prompt_leak.yaml:/app/.venv/lib/python3.13/site-packages/litellm/proxy/guardrails/guardrail_hooks/litellm_content_filter/categories/homelab_prompt_leak.yaml:ro
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     labels:
       - "traefik.enable=true"

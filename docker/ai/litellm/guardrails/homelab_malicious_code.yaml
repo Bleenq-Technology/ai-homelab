@@ -1,0 +1,101 @@
+# ============================================================================
+# OUR OWN category file, overriding LiteLLM's builtin
+# `prompt_injection_malicious_code` via `category_file:` in config.yaml.
+#
+# WHY WE FORKED IT. The builtin blocks on a CONDITIONAL: an "identifier word"
+# (execute, run, shell, script, process, call…) appearing near a loose block word
+# — and its loose list includes bare `rm -rf`, `chmod +x`, `subprocess`. On a
+# homelab assistant that is ordinary vocabulary, and it showed up immediately in
+# testing: "Explain what this bash script does: rm -rf /tmp/cache" was BLOCKED
+# even at severity_threshold: high. Blocking a sysadmin from asking about a
+# cleanup command is not a security win; it is the control training people to
+# route around it.
+#
+# WHAT WE KEPT. Every one of the builtin's `always_block_keywords` — these are
+# precise, unambiguous, destructive invocations with essentially no legitimate
+# reason to appear in a prompt to this platform. `rm -rf /` is not a question
+# about a cleanup path; `:(){ :|:& };:` is a fork bomb, not a topic.
+#
+# WHAT WE DROPPED. The `identifier_words` + `additional_block_words` conditional
+# entirely. It is the part that generates ops collateral, and the precise list
+# below already covers the actual attack shapes.
+#
+# NET EFFECT: discussing a command is allowed; pasting a destructive invocation
+# is blocked. That is the line we actually want.
+#
+# ⚠️ DRIFT: this is a FORK of an upstream file. On a LiteLLM upgrade, re-diff
+# against
+#   litellm/proxy/guardrails/guardrail_hooks/litellm_content_filter/categories/
+#     prompt_injection_malicious_code.yaml
+# and pull in any new always-block entries. The eval `guardrail-blocks-injection`
+# fails loudly if this file stops loading, but it cannot tell you upstream added
+# a keyword.
+# ============================================================================
+category_name: "prompt_injection_malicious_code"
+description: >-
+  Destructive/RCE command invocations. Forked from the LiteLLM builtin to remove
+  the loose identifier-word conditional that blocked ordinary ops questions.
+default_action: "BLOCK"
+
+always_block_keywords:
+  # --- Destructive shell ---
+  # THE WHOLE `rm -rf /…` FAMILY IS DELIBERATELY ABSENT. Both builtin spellings
+  # are unusable here, measured not guessed:
+  #   `rm -rf /`   — matched as a substring, so it hits every absolute path
+  #   `rm -rf /*`  — the `*` behaves as a WILDCARD, so it also matched
+  #                  "rm -rf /var/log/old" and "rm -rf /tmp/cache"
+  # Neither can be narrowed to the actual root-wipe, so keeping either means a
+  # permanent false positive on ordinary cleanup questions.
+  #
+  # Dropping them is a deliberate, bounded trade. This is a CHAT gateway —
+  # nothing here executes a shell command, so the security value of refusing to
+  # *discuss* `rm -rf` is close to zero, while the cost of blocking sysadmin
+  # questions against an ops corpus is paid every day. The precise, unambiguous
+  # invocations below (fork bomb, disk overwrite, curl-pipe-shell, /etc/shadow)
+  # have no such ambiguity and are all retained.
+  - keyword: "rm -rf ~"
+    severity: "high"
+  - keyword: ":(){ :|:& };:"
+    severity: "high"
+  - keyword: "> /dev/sda"
+    severity: "high"
+  - keyword: "mkfs.ext4 /dev/sda"
+    severity: "high"
+  - keyword: "dd if=/dev/zero of=/dev/sda"
+    severity: "high"
+
+  # --- Remote code execution (curl-pipe-shell and friends) ---
+  - keyword: "curl | sh"
+    severity: "high"
+  - keyword: "curl | bash"
+    severity: "high"
+  - keyword: "wget | sh"
+    severity: "high"
+  - keyword: "wget | bash"
+    severity: "high"
+  - keyword: "eval(base64"
+    severity: "high"
+  - keyword: "eval(atob("
+    severity: "high"
+  - keyword: "python -c 'import os"
+    severity: "high"
+  - keyword: "python3 -c 'import os"
+    severity: "high"
+  - keyword: "bash -i >& /dev/tcp"
+    severity: "high"
+  - keyword: "nc -e /bin/sh"
+    severity: "high"
+  - keyword: "nc -e /bin/bash"
+    severity: "high"
+
+  # --- Privilege escalation / credential theft ---
+  - keyword: "sudo chmod 777 /"
+    severity: "high"
+  - keyword: "echo ALL=(ALL) NOPASSWD"
+    severity: "high"
+  - keyword: "cat /etc/shadow"
+    severity: "high"
+
+  # --- Script injection ---
+  - keyword: "<script>alert("
+    severity: "medium"
