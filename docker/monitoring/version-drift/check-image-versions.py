@@ -117,6 +117,21 @@ def quay_tags(repo):
         f"?limit=100&onlyActiveTags=true").get("tags", [])]
 
 
+def github_releases(repo):
+    """Newest non-prerelease tags from the GitHub Releases API.
+
+    PREFERRED over the GHCR tag list for ghcr.io images, because tag listing does
+    not scale: Open WebUI publishes 20,000+ tags, pagination is not ordered
+    newest-first, and a page cap silently returns a STALE slice. That produced the
+    worst possible output — v0.9.6 reported as `current` with "latest 0.3.13"
+    while v0.10.2 existed. An `unknown` that looks like a pass is bad; a `current`
+    that is wrong is worse, because nothing ever prompts a second look.
+    """
+    d = get(f"https://api.github.com/repos/{repo}/releases?per_page=30",
+            {"Accept": "application/vnd.github+json"})
+    return [r["tag_name"] for r in d if not r.get("prerelease") and not r.get("draft")]
+
+
 def ghcr_tags(repo, max_pages=6):
     tok = get(f"https://ghcr.io/token?scope=repository:{repo}:pull")["token"]
     url, out = f"https://ghcr.io/v2/{repo}/tags/list?n=1000", []
@@ -182,7 +197,14 @@ def check(img):
         return row
     try:
         if host.startswith("ghcr.io"):
-            tags = ghcr_tags(repo)
+            # GitHub Releases first (authoritative + one call); fall back to the
+            # registry for images whose repo has no releases or is private.
+            try:
+                tags = github_releases(repo)
+                if not tags:
+                    raise ValueError("no releases")
+            except Exception:
+                tags = ghcr_tags(repo)
         elif host.startswith("quay.io"):
             tags = quay_tags(repo)
         elif host.startswith("docker.io"):
