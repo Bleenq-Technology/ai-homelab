@@ -151,9 +151,21 @@ def discover_litellm(env) -> dict | None:
     # size caps at 100 — LiteLLM 422s above it rather than clamping.
     keys = _get(f"{LITELLM_URL}/key/list?return_full_object=true&size=100", hdr)
     models = _get(f"{LITELLM_URL}/model/info", hdr)
+    # Guardrails are a SECURITY control that is default_on for every consumer,
+    # so "what is actually loaded" belongs in the BOM next to keys and models.
+    # The eval suite catches a guardrail that stops BLOCKING; only this catches
+    # one that is quietly removed while the others still fire.
+    guards = _get(f"{LITELLM_URL}/guardrails/list", hdr)
     if keys is None:
         return None
-    out = {"keys": {}, "models": []}
+    out = {"keys": {}, "models": [], "guardrails": []}
+    if guards:
+        gl = guards.get("guardrails", guards) if isinstance(guards, dict) else guards
+        if isinstance(gl, list):
+            out["guardrails"] = sorted(
+                g.get("guardrail_name") for g in gl
+                if isinstance(g, dict) and g.get("guardrail_name")
+            )
     for k in keys.get("keys", []):
         if isinstance(k, str) or not k.get("key_alias"):
             continue
@@ -347,6 +359,25 @@ def check_live(inv: dict, live: dict, f: Findings) -> None:
                 f.add("warn", "model_scope_drift",
                       f"{n}: key allows {sorted(k['models'])}, inventory declares {sorted(declared_models)}")
 
+    # ---- guardrails: declared vs actually loaded ----------------------------
+    if ll is not None:
+        declared_g = {g["name"] for g in (inv.get("guardrails") or []) if g.get("name")}
+        actual_g = set(ll.get("guardrails") or [])
+        # MISSING is a FAIL, not a warn. LiteLLM warns-and-skips an unreadable
+        # category_file and then starts HEALTHY, so a filter can vanish with no
+        # other symptom — exactly the silent-degradation case this file exists for.
+        for g in sorted(declared_g - actual_g):
+            f.add("fail", "guardrail_missing",
+                  f"guardrail '{g}' is declared in the inventory but is NOT loaded on the "
+                  f"gateway — every consumer is running without it (check config.yaml and "
+                  f"the category_file mounts)")
+        # UNDECLARED is a warn: someone added a control through the admin UI, which
+        # stores it in Postgres where it is invisible to git and to review.
+        for g in sorted(actual_g - declared_g):
+            f.add("warn", "guardrail_undeclared",
+                  f"guardrail '{g}' is live but not declared in ai-inventory.yml — if it was "
+                  f"added via the admin UI it lives only in the DB (not in git, not reviewable)")
+
     qd = live.get("qdrant")
     if qd is not None:
         manifest_cols = {k["collection"] for k in live["kb"].get("kbs", [])}
@@ -413,6 +444,15 @@ def build_bom(inv: dict, kb: dict, live: dict) -> dict:
         "live_probes": sorted(k for k, v in live.items() if v),
         "systems": systems,
         "platform": inv.get("platform", []),
+        # Guardrails are a control, not a system — but "what is enforcing right
+        # now" is exactly the question the BOM exists to answer without anyone
+        # having to remember.
+        "guardrails": inv.get("guardrails", []),
+        # What the gateway ACTUALLY has loaded, so the rendered BOM can mark each
+        # declared guardrail live-or-missing rather than just restating intent.
+        # Empty on a static (--check without --live) run, and the renderer says
+        # "not probed" rather than inventing a tick.
+        "live_guardrails": sorted((live.get("litellm") or {}).get("guardrails") or []),
         "corpora": [
             {"name": k["name"], "collection": k["collection"], "enabled": k.get("enabled")}
             for k in kb.get("kbs", [])
@@ -448,6 +488,19 @@ def render_md(bom: dict) -> str:
           "| System | Tier | Where a human is in the loop |", "|---|---|---|"]
     for s in bom["systems"]:
         L.append(f"| `{s['name']}` | {s['tier']} | {s['human_oversight'] or '—'} |")
+    if bom.get("guardrails"):
+        L += ["", "## Guardrails (gateway, `pre_call`, all consumers)", "",
+              "| Name | Categories | Ours | Live |", "|---|---|---|---|"]
+        live_g = set(bom.get("live_guardrails") or [])
+        probed = bool(live_g)
+        for g in bom["guardrails"]:
+            cats = ", ".join(f"`{c}`" for c in (g.get("categories") or [])) or "—"
+            own = ", ".join(f"`{c}`" for c in (g.get("custom_categories") or [])) or "—"
+            # Only claim liveness when a live probe actually ran; a static build
+            # must not render an unverified "yes".
+            live = ("✅" if g.get("name") in live_g else "❌ NOT LOADED") if probed else "not probed"
+            L.append(f"| `{g.get('name')}` | {cats} | {own} | {live} |")
+
     L += ["", "## Platform components", "",
           "| Name | Kind | Model / served by | License | Provenance |", "|---|---|---|---|---|"]
     for p in bom["platform"]:
