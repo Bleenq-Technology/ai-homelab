@@ -68,12 +68,11 @@ git. (Monitoring images are all in `docker/monitoring/compose.monitoring.yml`; a
 
 ## Pre-window (do NOT let these block the upgrades)
 
-- [ ] **`kb_homelab_docs` is missing from Qdrant** — found 2026-07-24 by `verify-stack.sh`, **unrelated
-  to any upgrade** (nothing touched Qdrant). Every other `kb_*` collection is present; only this one is
-  gone, and `kb-ingest` (n8n, active) has no recorded executions. The advisory eval
-  `kb-retrieval-finds-known-answer` has been failing as a result. **Rebuild via the kb-ingest workflow
-  and confirm the eval goes green** — separate thread from the window, but do it first so the harness's
-  baseline is clean going in.
+- [x] **`kb_homelab_docs` was missing from Qdrant** — REBUILT 2026-07-24 (729 points, eval green) via
+  `docker/ai/kb/rebuild-collection.py`. Root cause was NOT an upgrade: the new gateway guardrails filter
+  `/embeddings`, so the daily ingest cleared the collection then got blocked re-embedding it. `kb-ingest`
+  is **deactivated** until the systemic fix (**todos.md #53**) lands — so **KB auto-refresh is paused**;
+  don't be surprised by stale KBs, and reactivate kb-ingest as part of #53, not this window.
 
 ## Rollback (whole window)
 
