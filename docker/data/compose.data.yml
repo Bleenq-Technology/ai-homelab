@@ -260,7 +260,12 @@ services:
 
   # ---- MinIO — S3-compatible object storage -------------------------------
   minio:
-    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    # Bumped 2026-07-24 from RELEASE.2025-04-08 — it was 15 months stale, which
+    # was drift rather than a decision (found by monitoring/version-drift/).
+    # Pre-upgrade on-disk format captured for rollback: xl-single, format v1,
+    # xl v3 — a MinIO upgrade that bumps the format is NOT downgradable, so
+    # compare before rolling back rather than assuming.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: minio
     restart: unless-stopped
     networks: [proxy, data]
