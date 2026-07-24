@@ -30,8 +30,28 @@ It exists because policy that names the paved road only works if the goat path i
 
 5. **Sensitive content stays local.** The local model is the default and that is a genuine privacy
    advantage — a deliberate posture, not an accident of the hardware. **Do not** paste credentials,
-   customer data, entitled third-party feeds, or markets positions into a cloud model. Today no cloud
-   provider is configured in LiteLLM at all; if one is added, this rule is what governs its use.
+   customer data, entitled third-party feeds, or markets positions into a cloud model.
+
+   ⚠️ **This rule went live on 2026-07-23 and is no longer hypothetical.** Three third-party models
+   are now on the gateway and selectable in OpenWebUI:
+
+   | Model in the picker | Goes to |
+   |---|---|
+   | `openrouter/claude-sonnet-5` | Anthropic, via OpenRouter |
+   | `openrouter/gpt-5-mini` | OpenAI, via OpenRouter |
+   | `openrouter/gemini-2.5-flash-lite` | Google, via OpenRouter |
+
+   **Anything you type into a model whose name starts with `openrouter/` leaves the building.** That
+   is the entire reason the prefix is in the model name rather than hidden in config — you should be
+   able to see the boundary in the picker, at the moment you choose. Models with no prefix
+   (`unsloth/Qwen3-8B-GGUF`, `bge-m3`) still run on our own hardware and never leave.
+
+   These exist for **testing and demonstration** — evaluating frontier quality, and showing that a
+   third-party model is subject to the same scoping, budget, rate limit, and trace attribution as a
+   local one. They are not the default, and nothing routes to them automatically.
+
+   OpenRouter's **`:free`** tier is deliberately **not** configured: free variants are generally
+   served by providers that may train on submitted prompts, which is incompatible with this rule.
 
 6. **A public surface may only reach a `public` corpus.** Enforced by `build_kb_workflows.py`
    (`select_for_surface`), asserted by the eval suite. If you find yourself wanting an exception,

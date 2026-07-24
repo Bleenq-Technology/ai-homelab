@@ -14,6 +14,48 @@ model_list:
       api_base: http://bge-m3:8080/v1            # internal ai-net container
       api_key: "sk-noauth"                       # llama.cpp on ai-net has no auth; value unused
 
+  # ---- Third-party frontier models via OpenRouter (2026-07-23) ---------------
+  # WHY OPENROUTER, AND WHY THESE THREE. Until now the gateway was local-only:
+  # nothing we ran could reach a cloud model. That was a genuinely strong posture,
+  # but it also meant we could not demonstrate the one thing the gateway exists
+  # for — that a THIRD-PARTY model is subject to the same scoping, budget, rate
+  # limit, and Langfuse attribution as a local one. These three make that real.
+  #
+  # COST IS BOUNDED BY CONSTRUCTION, not by trust: the OpenRouter account holds a
+  # $10 prepaid credit with no auto-recharge, so $10 is the absolute ceiling on
+  # what any bug, loop, or leaked key can spend. The `rpm` caps below are the
+  # second layer — they stop a runaway loop from burning that $10 in an afternoon.
+  #
+  # We deliberately do NOT set `litellm_settings.max_budget` (a global cap across
+  # all keys): exhausting it would 429 the LOCAL models too, taking down internal
+  # chat and the KB flows because a demo model overspent. Blast radius stays on
+  # the paid models where it belongs.
+  #
+  # The `openrouter/` prefix is deliberate and load-bearing: it is what the user
+  # sees in the OpenWebUI model picker, so "this prompt leaves the box" is legible
+  # at the point of use rather than buried in config.
+  #
+  # NOT ADDED: OpenRouter's `:free` tier. Free variants are generally routed to
+  # providers that may train on submitted prompts, which conflicts with the
+  # `internal` data class OpenWebUI carries (docs/ai-acceptable-use.md).
+  - model_name: openrouter/claude-sonnet-5       # frontier quality  ($2/$10 per 1M)
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-5
+      api_key: os.environ/OPENROUTER_TOKEN
+      rpm: 20
+
+  - model_name: openrouter/gpt-5-mini            # balanced, 400k ctx ($0.25/$2 per 1M)
+    litellm_params:
+      model: openrouter/openai/gpt-5-mini
+      api_key: os.environ/OPENROUTER_TOKEN
+      rpm: 20
+
+  - model_name: openrouter/gemini-2.5-flash-lite # cheapest, 1M ctx  ($0.10/$0.40 per 1M)
+    litellm_params:
+      model: openrouter/google/gemini-2.5-flash-lite
+      api_key: os.environ/OPENROUTER_TOKEN
+      rpm: 20
+
 litellm_settings:
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]

@@ -442,6 +442,11 @@ services:
     environment:
       UNSLOTH_API_KEY: ${UNSLOTH_API_KEY}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      # The only third-party provider on the gateway (the `openrouter/*` models
+      # in litellm/config.yaml). Prepaid, no auto-recharge — the balance is the
+      # hard spend ceiling. Absent this var LiteLLM starts fine and only fails at
+      # call time with a 401, so a missing key looks like a model outage.
+      OPENROUTER_TOKEN: ${OPENROUTER_TOKEN}
       # ---- Admin UI SSO via Keycloak (OIDC) --------------------------------
       # The /ui admin surface can mint+revoke every virtual key, and was gated
       # only by the master key used as a web password. Native OIDC gives real

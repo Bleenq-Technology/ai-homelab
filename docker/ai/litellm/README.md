@@ -13,6 +13,9 @@
   - `unsloth/Qwen3-8B-GGUF` (chat) → unsloth host at `http://192.168.2.10:8888/v1` (key `UNSLOTH_API_KEY`).
   - `bge-m3` (1024-dim embeddings) → the `bge-m3` llama.cpp container at `http://bge-m3:8080/v1`
     (ai-net internal, no auth — see [`../bge-m3/README.md`](../bge-m3/README.md)).
+  - **`openrouter/*` (third-party, added 2026-07-23)** → OpenRouter, key `OPENROUTER_TOKEN`:
+    `openrouter/claude-sonnet-5`, `openrouter/gpt-5-mini`, `openrouter/gemini-2.5-flash-lite`.
+    See [Third-party models](#third-party-models-via-openrouter) below.
 - **Langfuse logging:** `success_callback`/`failure_callback: ["langfuse"]`; `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY`
   + `LANGFUSE_HOST=http://langfuse-web:3000` (internal). Verified: calls appear as `litellm-acompletion` traces.
 - **Master key:** `LITELLM_MASTER_KEY` — clients send `Authorization: Bearer <key>`.
@@ -75,10 +78,60 @@ client.chat.completions.create(model="unsloth/Qwen3-8B-GGUF",
 Every call is traced in Langfuse. To trace **OpenWebUI** too, set its
 `OPENAI_API_BASE_URL=http://litellm:4000/v1` and key = the master key.
 
+## Third-party models via OpenRouter
+
+Added **2026-07-23**. Until then the gateway was local-only, which was a strong privacy posture but
+meant we could never demonstrate the gateway's actual point: that a **third-party** model is subject
+to the same scoping, budget, rate limit and trace attribution as a local one. These three make that
+demonstrable, across three different vendors through one key.
+
+| Model in the picker | Upstream | $/1M in → out | Context |
+|---|---|---|---|
+| `openrouter/claude-sonnet-5` | Anthropic | $2.00 → $10.00 | 1M |
+| `openrouter/gpt-5-mini` | OpenAI | $0.25 → $2.00 | 400k |
+| `openrouter/gemini-2.5-flash-lite` | Google | $0.10 → $0.40 | 1M |
+
+**Why cost is safe.** The OpenRouter account holds a **$10 prepaid credit with auto-recharge OFF**, so
+$10 is the arithmetic ceiling on what any bug, loop, or leaked key can spend — not a limit we trust
+someone to respect. `rpm: 20` per model is the second layer, so a runaway loop can't burn the balance
+in an afternoon.
+
+**Why there is no global `max_budget`.** `litellm_settings.max_budget` caps spend across *all* keys —
+exhausting it would 429 the **local** models too, taking down internal chat and the KB flows because a
+demo model overspent. Blast radius stays on the paid models.
+
+**The `openrouter/` prefix is load-bearing.** It's what a user sees in the OpenWebUI picker, so "this
+prompt leaves the box" is legible at the point of use instead of buried in config. See
+[`docs/ai-acceptable-use.md`](../../../docs/ai-acceptable-use.md) §5.
+
+**`:free` is deliberately not configured** — free variants generally route to providers that may train
+on submitted prompts, which conflicts with the `internal` data class OpenWebUI carries.
+
+### Gotcha: reasoning models need `max_tokens` headroom
+`gpt-5-mini` is a reasoning model and its **reasoning tokens count against `max_tokens`**. At
+`max_tokens: 20` it returns `content: null` with an empty string — it *looks* like a broken model but
+the budget was spent thinking. Measured: at `max_tokens: 600` the same prompt used 93 completion
+tokens, **64 of them reasoning**. OpenWebUI doesn't set a small cap, so this only bites scripted calls.
+
+### Exposing a new model to an app
+Models are **key-scoped** — adding one to `config.yaml` does *not* make it visible to any app. Update
+the app's virtual key too, or it 403s with `key_model_access_denied`:
+```bash
+# /key/update with the FULL model list (it replaces, not appends)
+curl -sX POST https://litellm.${DOMAIN}/key/update \
+  -H "Authorization: Bearer $LITELLM_MASTER_KEY" -H 'Content-Type: application/json' \
+  -d '{"key":"<hashed-token-from-/key/list>","models":["unsloth/Qwen3-8B-GGUF","bge-m3","openrouter/claude-sonnet-5"]}'
+```
+Then mirror the same list into that system's `models:` in `docs/ai-inventory.yml` — the AI-BOM live
+check raises `model_scope_drift` when the key and the inventory disagree (negative-tested).
+
 ## Secrets
 - `.env` keys: `LITELLM_MASTER_KEY`, `UNSLOTH_API_KEY`, `LITELLM_DB_PASSWORD`, `LANGFUSE_PUBLIC_KEY`,
-  `LANGFUSE_SECRET_KEY`. All in Infisical; nothing committed to git. Per-app virtual keys live in
-  the `litellm` Postgres DB (not in `.env`).
+  `LANGFUSE_SECRET_KEY`, `OPENROUTER_TOKEN`. All in Infisical; nothing committed to git. Per-app
+  virtual keys live in the `litellm` Postgres DB (not in `.env`).
+  - `OPENROUTER_TOKEN` must also be passed through in `compose.ai.yml` — without it LiteLLM starts
+    **cleanly** and only fails at call time with a 401, so a missing key presents as a model outage
+    rather than a config error.
 
 ## Issues & Fixes
 **Symptom:** test call returned `000` right after recreate.

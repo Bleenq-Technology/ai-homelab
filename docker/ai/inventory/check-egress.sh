@@ -53,10 +53,30 @@ PROVIDERS=(
   "openrouter.ai"
 )
 
+# SANCTIONED providers — configured ON the gateway, so traffic to them is
+# EXPECTED and is NOT evidence of shadow AI. Keep in sync with the `openrouter/*`
+# entries in ai/litellm/config.yaml.
+#
+# WHY THIS LIST EXISTS (2026-07-23). Until OpenRouter was wired in, LiteLLM had no
+# cloud provider at all, so ANY hit here was unexplained by design and the script
+# could treat every provider identically. That is no longer true: openrouter.ai is
+# now resolved legitimately on every gateway call. Without this split the weekly
+# run would report a "SEEN" line forever, and a control that cries wolf every week
+# is a control you stop reading — which would cost us the actual shadow-AI signal.
+# So sanctioned hits are reported as EXPECTED and excluded from the anomaly metric.
+SANCTIONED_PROVIDERS=(
+  "openrouter.ai"
+)
+is_sanctioned() {
+  local p="$1" s
+  for s in "${SANCTIONED_PROVIDERS[@]}"; do [ "$p" = "$s" ] && return 0; done
+  return 1
+}
+
 # Networks whose containers should NEVER need to reach a provider directly.
-# LiteLLM is the sanctioned exception and lives on `ai` — today it has NO cloud
-# provider configured at all (local unsloth + bge-m3 only), so a hit from any of
-# these is unexplained by design.
+# LiteLLM is the sanctioned exception and lives on `ai`; it reaches exactly the
+# SANCTIONED_PROVIDERS above and nothing else. A hit on any OTHER provider from
+# these networks is still unexplained by design.
 NETWORKS=("${EGRESS_NETWORKS:-ai data monitoring}")
 
 echo "== shadow-AI egress detection =="
@@ -83,24 +103,31 @@ done
 echo
 echo "-- usage: provider hostnames resolved in the last ${LOOKBACK_DAYS}d (AdGuard) --"
 usage_hits=0
+unsanctioned_hits=0
 if docker ps --format '{{.Names}}' | grep -qx adguard; then
   since=$(date -u -d "-${LOOKBACK_DAYS} days" +%Y-%m-%d 2>/dev/null || echo "")
   for p in "${PROVIDERS[@]}"; do
     n=$(docker exec adguard sh -c "grep -F '\"QH\":\"$p\"' '$ADGUARD_LOG' 2>/dev/null | wc -l" 2>/dev/null | tr -d '[:space:]')
     n=${n:-0}
     if [ "$n" -gt 0 ] 2>/dev/null; then
-      echo "  SEEN   $p  ($n queries in the retained log)"
+      if is_sanctioned "$p"; then
+        echo "  expected $p  ($n queries — SANCTIONED, configured on the gateway)"
+      else
+        echo "  SEEN   $p  ($n queries in the retained log)  <-- NOT configured on the gateway"
+        unsanctioned_hits=$((unsanctioned_hits + n))
+      fi
       usage_hits=$((usage_hits + n))
     fi
   done
   [ "$usage_hits" -eq 0 ] && echo "  (no provider hostnames resolved)"
+  [ "$unsanctioned_hits" -eq 0 ] && [ "$usage_hits" -gt 0 ] && echo "  (all hits are sanctioned providers)"
   echo "  NOTE: client attribution is the router, not the container — see header."
 else
   echo "  (adguard not running; usage detection unavailable)"
 fi
 
 echo
-echo "== $open_paths open path(s), $usage_hits provider DNS query/queries =="
+echo "== $open_paths open path(s), $usage_hits provider DNS query/queries ($unsanctioned_hits unsanctioned) =="
 
 if [ "$PUBLISH" = "1" ]; then
   if [ ! -d "$TEXTFILE_DIR" ]; then
@@ -115,9 +142,15 @@ if [ "$PUBLISH" = "1" ]; then
       echo "# HELP homelab_ai_egress_open_paths Container->public-LLM-provider paths currently reachable."
       echo "# TYPE homelab_ai_egress_open_paths gauge"
       echo "homelab_ai_egress_open_paths $open_paths"
-      echo "# HELP homelab_ai_egress_provider_dns_queries Provider hostnames resolved in the retained AdGuard log."
+      echo "# HELP homelab_ai_egress_provider_dns_queries Provider hostnames resolved in the retained AdGuard log (sanctioned + unsanctioned)."
       echo "# TYPE homelab_ai_egress_provider_dns_queries gauge"
       echo "homelab_ai_egress_provider_dns_queries $usage_hits"
+      # The ANOMALY signal. The total above now includes sanctioned gateway
+      # traffic (openrouter.ai) and so is expected to be permanently non-zero;
+      # alert on THIS one instead.
+      echo "# HELP homelab_ai_egress_unsanctioned_dns_queries Provider hostnames resolved that are NOT configured on the gateway — candidate shadow AI."
+      echo "# TYPE homelab_ai_egress_unsanctioned_dns_queries gauge"
+      echo "homelab_ai_egress_unsanctioned_dns_queries $unsanctioned_hits"
       echo "# HELP homelab_ai_egress_last_run_timestamp_seconds Unix time of the last egress check."
       echo "# TYPE homelab_ai_egress_last_run_timestamp_seconds gauge"
       echo "homelab_ai_egress_last_run_timestamp_seconds $(date +%s)"
