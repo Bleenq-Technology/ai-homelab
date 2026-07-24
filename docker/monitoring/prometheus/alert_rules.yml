@@ -511,6 +511,46 @@ groups:
           summary: "Shadow-AI egress metrics absent — the check may not be running"
           description: "node-exporter is not exposing homelab_ai_egress_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — see todos.md #11)."
 
+  # Container image drift. We pin every image deliberately, which means nothing
+  # updates unless a human looks — and on 2026-07-24 nobody had looked in a while
+  # (cloudflared 17 months old, minio 15). Pinning without a drift check is a
+  # slower way to run old software.
+  #
+  # NOTE WHAT IS **NOT** ALERTED: `_behind > 0`. Being behind is a decision to
+  # make on a schedule, not a page — 30 images are behind right now and that is
+  # fine. Alerting on it would be permanently firing, i.e. permanently ignored.
+  # What IS alerted: the check going stale, and FLOATING tags, because an unpinned
+  # image silently changing under a recreate is a reproducibility bug, not a
+  # backlog item.
+  - name: image-drift
+    rules:
+      - alert: ImageDriftCheckStale
+        expr: time() - homelab_image_versions_last_run_timestamp_seconds > 8.5 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No container image drift check in over 8.5 days"
+          description: "check-image-versions.py (weekly, Mon 16:00 UTC) has not completed in over a week. While stale, an image going years out of date is invisible. See docker/monitoring/version-drift/."
+
+      - alert: ImageTagsFloating
+        expr: homelab_image_versions_floating > 0
+        for: 24h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} running image(s) are on a floating tag"
+          description: "An image pinned to :latest or a major-only tag (e.g. caddy:2-alpine) can change content on any recreate, so the deployed state is not reproducible and a rollback target does not exist. CLAUDE.md requires pinned versions. Run docker/monitoring/version-drift/check-image-versions.py to list them."
+
+      - alert: ImageDriftMetricsMissing
+        expr: absent(homelab_image_versions_last_run_timestamp_seconds)
+        for: 8d
+        labels:
+          severity: warning
+        annotations:
+          summary: "Image drift metrics absent — the check may not be running"
+          description: "node-exporter is not exposing homelab_image_versions_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — see todos.md #11)."
+
   # Human oversight of the PUBLIC chat surfaces (todos.md #46). Every T2 public
   # system in ai-inventory.yml names "periodic review of Langfuse traces" as its
   # human_oversight mechanism. Until 2026-07-24 that was the one claim on the
