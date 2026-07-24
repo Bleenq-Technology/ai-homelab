@@ -511,6 +511,44 @@ groups:
           summary: "Shadow-AI egress metrics absent — the check may not be running"
           description: "node-exporter is not exposing homelab_ai_egress_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — see todos.md #11)."
 
+  # Human oversight of the PUBLIC chat surfaces (todos.md #46). Every T2 public
+  # system in ai-inventory.yml names "periodic review of Langfuse traces" as its
+  # human_oversight mechanism. Until 2026-07-24 that was the one claim on the
+  # posture table with nothing running behind it.
+  #
+  # NOTE THE SECOND ALERT. A dead-man on the JOB only proves a file was written.
+  # The realistic failure of periodic review is not that it stops generating —
+  # it is that it keeps generating and nobody reads it. So the ACK is a separate
+  # metric with its own alert, and it is the one that makes the oversight real.
+  - name: ai-oversight
+    rules:
+      - alert: AiOversightReviewStale
+        expr: time() - homelab_ai_oversight_last_run_timestamp_seconds > 8.5 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No public-surface AI review in over 8.5 days"
+          description: "review-public-transcripts.py (weekly, Mon 15:00 UTC) has not completed in over a week. Trace bodies age out at 14 days, so an unreviewed window becomes permanently unreviewable. See docker/ai/oversight/."
+
+      - alert: AiOversightUnacknowledged
+        expr: time() - homelab_ai_oversight_ack_timestamp_seconds > 14 * 24 * 3600
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Public-surface AI reviews are being generated but not read"
+          description: "No human has run `review-public-transcripts.py --ack` in 14 days. The inventory claims periodic human review as the oversight control for the public T2 surfaces; unacknowledged reviews mean that claim is currently false. Read the latest in /srv/ai-data/oversight/ and ack it, or change the inventory to stop claiming it."
+
+      - alert: AiOversightMetricsMissing
+        expr: absent(homelab_ai_oversight_last_run_timestamp_seconds)
+        for: 8d
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI oversight metrics absent — the review may not be running"
+          description: "node-exporter is not exposing homelab_ai_oversight_* from its textfile collector. Either the weekly cron is gone or the textfile dir is unwritable (present-but-unwritable is the dangerous case — see todos.md #11)."
+
   # Model-weight integrity + provenance (todos.md #45). We pin image versions
   # rigorously and pinned model weights not at all until 2026-07-22. For bge-m3
   # this matters more than it looks: every kb_* collection is embedded with it,

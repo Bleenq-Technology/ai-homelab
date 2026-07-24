@@ -10,7 +10,7 @@ new external-facing AI surface.
 
 > **Implementation status (2026-07-22).** The backlog #36–#46 has been **largely built**, not just
 > filed — each item landed with a live negative test and a scheduled check. What's genuinely still open
-> is small: a scheduled **public-transcript review** ([#46](../todos.md)), the public **AI-use notice**
+> is small: the public **AI-use notice**
 > handed to the sibling repos ([#44](../todos.md)), and **harm-category refusal testing** ([#42](../todos.md)).
 > Egress *blocking* was evaluated and **closed by decision** (detect + policy; IP-blocking rejected as it
 > breaks CDN-shared traffic — [#39/#39b](../todos.md)). Everything else on the ten axes is enforced and tested.
@@ -139,7 +139,7 @@ job that fails loudly; anything marked ⚠️ or ❌ says what is actually missi
 
 | Axis | Posture | Evidence / gap |
 |---|---|---|
-| **Accountability & oversight** | ✅ Operating | Named owner + named human-oversight point per system; a **tested** kill-switch (revoke → 401); an [incident runbook](ai-incident-response.md) and [acceptable-use page](ai-acceptable-use.md). One gap: periodic public-transcript review is named as the T2 oversight mechanism but is **not yet a scheduled commitment** → [#46](../todos.md) |
+| **Accountability & oversight** | ✅ Operating | Named owner + named human-oversight point per system; a **tested** kill-switch (revoke → 401); an [incident runbook](ai-incident-response.md) and [acceptable-use page](ai-acceptable-use.md). **Closed 2026-07-24:** the public-transcript review is now a weekly job with an artifact, four metrics and a dead-man — and, unusually, a **second dead-man on the human**: `AiOversightUnacknowledged` fires if nobody runs `--ack` in 14 days, because the realistic failure of periodic review is that it keeps generating and nobody reads it. See `docker/ai/oversight/` |
 | **Inventory & lifecycle** | ✅ Operating | `ai-inventory.yml` (11 systems + 6 platform components) + a generated AI-BOM; drift fails CI (static) and alerts weekly (live). Earned its keep on run one: caught 3 master-key consumers, 14 unbounded-key violations, and 6.9 GB of unregistered model weights |
 | **Risk classification** | ✅ Operating | T0–T3 + a control matrix **encoded as `MATRIX{}`** in the checker — tier requirements are executable, not prose → [`ai-risk-tiers.md`](ai-risk-tiers.md) |
 | **Data governance** | ✅ Operating | Every corpus carries owner/visibility/classification/licence/retention/`contains_pii`, and the KB generator **refuses to build** from an incomplete manifest or to wire a non-public corpus into a public surface (**both negative-tested**). `kb-standards.md` §6 and the manifest re-synced → [#43](../todos.md) |
