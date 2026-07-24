@@ -38,23 +38,41 @@ model_list:
   # NOT ADDED: OpenRouter's `:free` tier. Free variants are generally routed to
   # providers that may train on submitted prompts, which conflicts with the
   # `internal` data class OpenWebUI carries (docs/ai-acceptable-use.md).
+  #
+  # WHERE THE SPEND LIMIT ACTUALLY LIVES — MEASURED, NOT ASSUMED (2026-07-23).
+  # There are no `rpm`/`tpm` entries below on purpose. We tested all of these
+  # against a real 40k tpm ceiling by pushing 5 x 13k tokens through in a minute:
+  #
+  #   litellm_params: tpm/rpm (deployment level)     -> NOT enforced (65k passed)
+  #   + router_settings.enable_pre_call_checks       -> NOT enforced (65k passed)
+  #   + routing_strategy: usage-based-routing-v2     -> NOT enforced (65k passed)
+  #   virtual-key `tpm_limit`                        -> NOT enforced (65k passed)
+  #   virtual-key `rpm_limit`                        -> ENFORCED (19x200, 6x429)
+  #   virtual-key `max_budget`                       -> ENFORCED (429 budget_exceeded)
+  #
+  # Deployment-level limits are routing HINTS for choosing between multiple
+  # deployments of one model, not admission control — with a single deployment
+  # they bound nothing. Leaving them in would be config that lies.
+  #
+  # So the real control is the `openwebui-external` VIRTUAL KEY: max_budget $5/30d
+  # (a dollar cap that binds BEFORE the $10 prepaid credit, leaving headroom) plus
+  # rpm_limit 20. That key is scoped to exactly these three models, so external
+  # spend is separately budgeted AND separately attributable in Langfuse from
+  # local chat. See ../litellm/README.md -> "Third-party models via OpenRouter".
   - model_name: openrouter/claude-sonnet-5       # frontier quality  ($2/$10 per 1M)
     litellm_params:
       model: openrouter/anthropic/claude-sonnet-5
       api_key: os.environ/OPENROUTER_TOKEN
-      rpm: 20
 
   - model_name: openrouter/gpt-5-mini            # balanced, 400k ctx ($0.25/$2 per 1M)
     litellm_params:
       model: openrouter/openai/gpt-5-mini
       api_key: os.environ/OPENROUTER_TOKEN
-      rpm: 20
 
   - model_name: openrouter/gemini-2.5-flash-lite # cheapest, 1M ctx  ($0.10/$0.40 per 1M)
     litellm_params:
       model: openrouter/google/gemini-2.5-flash-lite
       api_key: os.environ/OPENROUTER_TOKEN
-      rpm: 20
 
 litellm_settings:
   success_callback: ["langfuse"]

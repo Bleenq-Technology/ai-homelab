@@ -30,8 +30,21 @@ services:
       ENABLE_PERSISTENT_CONFIG: "False"
       # LLM backend: via the LiteLLM gateway (fronts unsloth, traces to Langfuse).
       ENABLE_OPENAI_API: "true"
-      OPENAI_API_BASE_URL: "http://litellm:4000/v1"
-      OPENAI_API_KEY: ${OPENWEBUI_LLM_KEY}
+      # TWO connections to the SAME gateway, on purpose (`;`-separated — Open WebUI
+      # zips URLS with KEYS positionally, so the two lists must stay same-length
+      # and same-order). Both point at LiteLLM; they differ only in the KEY:
+      #   1. OPENWEBUI_LLM_KEY          -> local models only (unsloth, bge-m3)
+      #   2. OPENWEBUI_EXTERNAL_LLM_KEY -> the three `openrouter/*` models
+      #
+      # WHY SPLIT rather than one key holding all five. The external key carries
+      # max_budget $5/30d, which is the ONLY spend control LiteLLM actually
+      # enforces (deployment rpm/tpm and key tpm_limit were all measured NOT to
+      # bite — see ai/litellm/config.yaml). Putting that budget on the shared key
+      # would mean a demo overspend also 429s local chat and OpenWebUI's RAG
+      # embeddings. Split, the blast radius stays on the paid models — and
+      # Langfuse attributes external spend to its own alias.
+      OPENAI_API_BASE_URLS: "http://litellm:4000/v1;http://litellm:4000/v1"
+      OPENAI_API_KEYS: ${OPENWEBUI_LLM_KEY};${OPENWEBUI_EXTERNAL_LLM_KEY}
       ENABLE_OLLAMA_API: "false"
       # Web search via the internal SearXNG (JSON). Internal URL bypasses the SSO
       # gate on searxng.pdx; the literal <query> placeholder is required.

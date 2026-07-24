@@ -15,6 +15,7 @@
     (ai-net internal, no auth — see [`../bge-m3/README.md`](../bge-m3/README.md)).
   - **`openrouter/*` (third-party, added 2026-07-23)** → OpenRouter, key `OPENROUTER_TOKEN`:
     `openrouter/claude-sonnet-5`, `openrouter/gpt-5-mini`, `openrouter/gemini-2.5-flash-lite`.
+    Reached only by the `openwebui-external` virtual key ($5/30d budget).
     See [Third-party models](#third-party-models-via-openrouter) below.
 - **Langfuse logging:** `success_callback`/`failure_callback: ["langfuse"]`; `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY`
   + `LANGFUSE_HOST=http://langfuse-web:3000` (internal). Verified: calls appear as `litellm-acompletion` traces.
@@ -91,14 +92,34 @@ demonstrable, across three different vendors through one key.
 | `openrouter/gpt-5-mini` | OpenAI | $0.25 → $2.00 | 400k |
 | `openrouter/gemini-2.5-flash-lite` | Google | $0.10 → $0.40 | 1M |
 
-**Why cost is safe.** The OpenRouter account holds a **$10 prepaid credit with auto-recharge OFF**, so
-$10 is the arithmetic ceiling on what any bug, loop, or leaked key can spend — not a limit we trust
-someone to respect. `rpm: 20` per model is the second layer, so a runaway loop can't burn the balance
-in an afternoon.
+### Which spend limits actually enforce (measured 2026-07-23)
 
-**Why there is no global `max_budget`.** `litellm_settings.max_budget` caps spend across *all* keys —
-exhausting it would 429 the **local** models too, taking down internal chat and the KB flows because a
-demo model overspent. Blast radius stays on the paid models.
+Don't assume any of these — most don't work. Tested by pushing **5 × 13k tokens through in one
+minute** against a 40,000 tpm ceiling:
+
+| Control | Result |
+|---|---|
+| `litellm_params: tpm` / `rpm` (deployment level) | ❌ **not enforced** — all 65k passed |
+| + `router_settings.enable_pre_call_checks: true` | ❌ not enforced |
+| + `routing_strategy: usage-based-routing-v2` | ❌ not enforced |
+| Virtual-key `tpm_limit` | ❌ **not enforced** — all 65k passed |
+| Virtual-key `rpm_limit` | ✅ **enforced** — 19×200, 6×429 `Limit type: requests` |
+| Virtual-key `max_budget` | ✅ **enforced** — 429 `budget_exceeded` |
+| `model_max_budget` (per-model $ cap on a key) | 🔒 requires an **enterprise licence** (400) |
+
+Deployment-level `rpm`/`tpm` are **routing hints** for choosing between multiple deployments of one
+model — with a single deployment they bound nothing. That's why `config.yaml` carries none of them:
+config that lies is worse than no config.
+
+**So the spend control is the key, not the model.** `openwebui-external` carries **`max_budget` $5 /
+30d** and **`rpm_limit` 20**, the two that were proven to bite. The $5 binds *before* the $10 prepaid
+OpenRouter credit (auto-recharge OFF), so there's headroom rather than a hard stop at the wall.
+
+**Why a separate key from `openwebui`.** Put that $5 budget on the shared key and a demo overspend
+would 429 **local** chat and OpenWebUI's RAG embeddings too. Split, the blast radius stays on the paid
+models — and Langfuse attributes external spend to its own alias, so "what did we send off-box?" is a
+query, not an inference. Open WebUI holds both via `OPENAI_API_BASE_URLS`/`OPENAI_API_KEYS`
+(`;`-separated, zipped positionally — keep the lists same-length and same-order).
 
 **The `openrouter/` prefix is load-bearing.** It's what a user sees in the OpenWebUI picker, so "this
 prompt leaves the box" is legible at the point of use instead of buried in config. See
@@ -123,11 +144,12 @@ curl -sX POST https://litellm.${DOMAIN}/key/update \
   -d '{"key":"<hashed-token-from-/key/list>","models":["unsloth/Qwen3-8B-GGUF","bge-m3","openrouter/claude-sonnet-5"]}'
 ```
 Then mirror the same list into that system's `models:` in `docs/ai-inventory.yml` — the AI-BOM live
-check raises `model_scope_drift` when the key and the inventory disagree (negative-tested).
+check raises `model_scope_drift` when the key and the inventory disagree (negative-tested). A brand-new
+key also needs its own inventory entry, or the check FAILS it as an `unregistered_credential`.
 
 ## Secrets
 - `.env` keys: `LITELLM_MASTER_KEY`, `UNSLOTH_API_KEY`, `LITELLM_DB_PASSWORD`, `LANGFUSE_PUBLIC_KEY`,
-  `LANGFUSE_SECRET_KEY`, `OPENROUTER_TOKEN`. All in Infisical; nothing committed to git. Per-app
+  `LANGFUSE_SECRET_KEY`, `OPENROUTER_TOKEN`, `OPENWEBUI_EXTERNAL_LLM_KEY`. All in Infisical; nothing committed to git. Per-app
   virtual keys live in the `litellm` Postgres DB (not in `.env`).
   - `OPENROUTER_TOKEN` must also be passed through in `compose.ai.yml` — without it LiteLLM starts
     **cleanly** and only fails at call time with a 401, so a missing key presents as a model outage
