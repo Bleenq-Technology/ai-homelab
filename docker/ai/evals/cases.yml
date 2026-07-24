@@ -266,6 +266,23 @@ cases:
 
   # ---- Quality — reported, never gates -------------------------------------
 
+  - name: kb-homelab-collection-populated
+    blocking: true
+    why: >-
+      Guards todos.md #53. The ingest embeds first-party docs DIRECT to bge-m3,
+      bypassing the gateway's injection guardrail (which filters /embeddings and
+      trips on our own "enable … override" config text). If someone reverts the
+      kb-ingest embed nodes to the gateway credential, the 04:00 run clears
+      kb_homelab_docs then gets blocked re-embedding it — leaving it EMPTY. This
+      asserts the collection still returns content; an empty collection (the
+      regression signature) fails it. Distinct from the advisory quality check
+      below: this is "the collection is alive", not "retrieval found the answer".
+    kind: webhook
+    path: /webhook/kb-search
+    send_token: false
+    body: {collection: "kb_homelab_docs", query: "traefik", topK: 1}
+    expect_contains_any: ["content", "metadata"]
+
   - name: kb-retrieval-finds-known-answer
     blocking: false
     why: >-
