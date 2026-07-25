@@ -89,5 +89,13 @@ one-way door in this set (that caution is a Tier 2 concern — see the minio bum
 - Behind count before → after: **30 → 18** (remaining 18 are Tier 2 — LiteLLM/Keycloak/Langfuse/etc.).
 - verify-stack.sh --verify: **VERIFY OK** (all containers back, GPU, gateway, public chat, 20/20 evals,
   promtool 59 rules, AI-BOM 0 fail).
-- Sunday OS window: **decision pending** — sibling projects parked for this window; confirm whether the
-  Sun 13:00 UTC reboot stays armed or is deferred.
+- **SCOPE EXPANDED (founder greenlit full scope): Tier 2 + OS + firmware + reboot all done same day.**
+  - Tier 2 (16 images): prometheus, grafana, piper, whisper, neo4j x2, redpanda, traefik, infisical,
+    qdrant, clickhouse, langfuse x2, litellm, open-webui, keycloak, n8n — each verified individually.
+  - Firmware: Secure Boot KEK 2011->2023 + dbx updates applied (BIOS/SSDs had none; SB disabled, so
+    hygiene-only). OS: apt full-upgrade 144 pkgs; rebooted onto kernel 7.0.0-28 (was -27).
+  - **Post-boot verify: VERIFY OK** — 59/59 containers back, GPU (drv 595.71.05), gateway 200, public
+    chat 200, 20/20 evals.
+- **Sunday OS window: DISABLED** — the maintenance we did today is exactly what it would have run;
+  `jarvis-maintenance.timer` disabled to avoid a redundant Sun reboot. Re-arm for the next cycle.
+- Behind count: 30 -> ~2 (only the two patches that dropped mid-window: homarr 1.72, nvidia_gpu_exporter 1.13.1).
