@@ -81,7 +81,7 @@ services:
   # crash-consistent convenience copy; authoritative recovery is a rebuild.
   # Sized small (phase-1 graph ~1k nodes): 512M pagecache, 512M–1G heap.
   neo4j-example:
-    image: neo4j:5.26.27
+    image: neo4j:5.26.28
     container_name: neo4j-example
     restart: unless-stopped
     networks: [data]
@@ -176,7 +176,7 @@ services:
   # uid 101; data on the SSD via the bind-backed redpanda_data volume. Capped for
   # the modest host (--smp/--memory/--overprovisioned). See data/redpanda/README.md.
   redpanda:
-    image: redpandadata/redpanda:v26.1.10
+    image: redpandadata/redpanda:v26.1.14
     container_name: redpanda
     restart: unless-stopped
     networks: [data]
@@ -335,7 +335,7 @@ services:
 
   # ---- ClickHouse — OLAP (Langfuse analytics backend) ---------------------
   clickhouse:
-    image: clickhouse/clickhouse-server:26.3.12.3
+    image: clickhouse/clickhouse-server:26.7.1.1315
     container_name: clickhouse
     restart: unless-stopped
     networks: [proxy, data]

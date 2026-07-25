@@ -33,7 +33,7 @@ services:
 
   # ---- Prometheus ---------------------------------------------------------
   prometheus:
-    image: prom/prometheus:v3.11.3
+    image: prom/prometheus:v3.13.1
     container_name: prometheus
     restart: unless-stopped
     # `data` lets Prometheus scrape data-only services that expose native metrics
@@ -82,7 +82,7 @@ services:
 
   # ---- Grafana ------------------------------------------------------------
   grafana:
-    image: grafana/grafana:13.0.2
+    image: grafana/grafana:13.1.1
     container_name: grafana
     restart: unless-stopped
     networks: [proxy, monitoring]

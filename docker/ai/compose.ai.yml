@@ -20,7 +20,7 @@ services:
 
   # ---- Open WebUI — LLM frontend ------------------------------------------
   openwebui:
-    image: ghcr.io/open-webui/open-webui:v0.9.6
+    image: ghcr.io/open-webui/open-webui:v0.10.2
     container_name: openwebui
     restart: unless-stopped
     networks: [proxy, ai, data]   # data: reach shared Redis (Qdrant is on ai)
@@ -163,7 +163,7 @@ services:
 
   # ---- n8n — workflow automation ------------------------------------------
   n8n:
-    image: n8nio/n8n:2.27.0
+    image: n8nio/n8n:2.32.5
     container_name: n8n
     restart: unless-stopped
     networks: [proxy, ai, data]
@@ -289,7 +289,7 @@ services:
   # Consumed by Home Assistant etc. over the Wyoming TCP protocol, so it is
   # published as a raw TCP port rather than routed through Traefik.
   wyoming-piper:
-    image: rhasspy/wyoming-piper:2.2.2
+    image: rhasspy/wyoming-piper:2.3.1
     container_name: wyoming-piper
     restart: unless-stopped
     networks: [ai]
@@ -308,7 +308,7 @@ services:
 
   # ---- Wyoming Faster-Whisper — STT (Wyoming protocol, TCP) ----------------
   wyoming-faster-whisper:
-    image: rhasspy/wyoming-whisper:3.2.0
+    image: rhasspy/wyoming-whisper:3.5.0
     container_name: wyoming-faster-whisper
     restart: unless-stopped
     networks: [ai]
@@ -330,7 +330,7 @@ services:
 
   # ---- Qdrant — vector database -------------------------------------------
   qdrant:
-    image: qdrant/qdrant:v1.16.1   # within 1 minor of Open WebUI's 1.17 client
+    image: qdrant/qdrant:v1.18.3   # within 1 minor of Open WebUI's 1.17 client
     container_name: qdrant
     restart: unless-stopped
     networks: [proxy, ai]
@@ -349,7 +349,7 @@ services:
 
   # ---- Neo4j — graph database ---------------------------------------------
   neo4j:
-    image: neo4j:5.26.27
+    image: neo4j:5.26.28
     container_name: neo4j
     restart: unless-stopped
     networks: [proxy, ai]
@@ -395,7 +395,7 @@ services:
 
   # ---- Langfuse v3 — AI observability (web + worker) ----------------------
   langfuse-web:
-    image: langfuse/langfuse:3.187.0
+    image: langfuse/langfuse:3.224.1
     container_name: langfuse-web
     restart: unless-stopped
     networks: [proxy, ai, data]
@@ -437,7 +437,7 @@ services:
       - "traefik.http.services.langfuse.loadbalancer.server.port=3000"
 
   langfuse-worker:
-    image: langfuse/langfuse-worker:3.187.0
+    image: langfuse/langfuse-worker:3.224.1
     container_name: langfuse-worker
     restart: unless-stopped
     networks: [ai, data]
@@ -448,7 +448,7 @@ services:
   # every call is traced in Langfuse. UI/API not SSO-gated (it's a programmatic
   # API); auth is the LiteLLM master key.
   litellm:
-    image: ghcr.io/berriai/litellm:v1.89.1
+    image: ghcr.io/berriai/litellm:v1.93.0
     container_name: litellm
     restart: unless-stopped
     networks: [proxy, ai, data]   # data: Postgres for virtual-key store

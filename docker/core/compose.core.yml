@@ -22,7 +22,7 @@ networks:
 services:
     # ---- Traefik — reverse proxy + wildcard TLS (EasyDNS DNS-01) -------------
     traefik:
-        image: traefik:v3.7.5
+        image: traefik:v3.7.9
         container_name: traefik
         restart: unless-stopped
         networks: [proxy]
@@ -67,7 +67,7 @@ services:
 
     # ---- Keycloak — identity / SSO ------------------------------------------
     keycloak:
-        image: quay.io/keycloak/keycloak:26.6.3
+        image: quay.io/keycloak/keycloak:26.7.0
         container_name: keycloak
         restart: unless-stopped
         command: start
@@ -148,7 +148,7 @@ services:
 
     # ---- Infisical — secrets management (adopt as backend later) ------------
     infisical:
-        image: infisical/infisical:v0.161.0
+        image: infisical/infisical:v0.162.13
         container_name: infisical
         restart: unless-stopped
         networks: [proxy, data]
