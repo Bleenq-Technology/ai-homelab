@@ -236,7 +236,7 @@ services:
   # Full admin power over the unauthenticated broker → the SSO gate is mandatory.
   # Shares the one oauth2-proxy client (secure-sso@file) — no per-app Keycloak client.
   redpanda-console:
-    image: redpandadata/console:v3.7.4
+    image: redpandadata/console:v3.9.0
     container_name: redpanda-console
     restart: unless-stopped
     networks: [proxy, data]
@@ -370,7 +370,7 @@ services:
 
   # ---- Baserow — no-code DB (backed by unified Postgres + Redis) ----------
   baserow:
-    image: baserow/baserow:2.2.2
+    image: baserow/baserow:2.3.3
     container_name: baserow
     restart: unless-stopped
     networks: [proxy, data]
@@ -407,7 +407,7 @@ services:
 
   # ---- pgAdmin — Postgres admin UI ----------------------------------------
   pgadmin:
-    image: dpage/pgadmin4:9.15
+    image: dpage/pgadmin4:9.16
     container_name: pgadmin
     restart: unless-stopped
     networks: [proxy, data]

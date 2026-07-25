@@ -68,11 +68,9 @@ git. (Monitoring images are all in `docker/monitoring/compose.monitoring.yml`; a
 
 ## Pre-window (do NOT let these block the upgrades)
 
-- [x] **`kb_homelab_docs` was missing from Qdrant** — REBUILT 2026-07-24 (729 points, eval green) via
-  `docker/ai/kb/rebuild-collection.py`. Root cause was NOT an upgrade: the new gateway guardrails filter
-  `/embeddings`, so the daily ingest cleared the collection then got blocked re-embedding it. `kb-ingest`
-  is **deactivated** until the systemic fix (**todos.md #53**) lands — so **KB auto-refresh is paused**;
-  don't be surprised by stale KBs, and reactivate kb-ingest as part of #53, not this window.
+- [x] **`kb_homelab_docs` was missing from Qdrant** — REBUILT + **#53 FIXED 2026-07-24** (Option A: ingest
+  embeds bypass the gateway guardrail via bge-m3 direct). **kb-ingest is ACTIVE again** — KB auto-refresh is
+  NOT paused. (This item was written mid-fix; resolved before the window.)
 
 ## Rollback (whole window)
 
@@ -82,7 +80,14 @@ one-way door in this set (that caution is a Tier 2 concern — see the minio bum
 
 ## Outcome (fill in after)
 
-- Completed: …
-- Rolled back: …
-- Behind count before → after: 30 → …
-- Sunday OS window kept / cancelled: …
+- **Completed 2026-07-25 (~09:00–10:15 PT): all 13 Tier 1 images upgraded, 0 rollbacks.**
+  node-exporter v1.12.1, alertmanager v0.33.1, postgres-exporter v0.20.1, redis_exporter v1.88.0,
+  nvidia_gpu_exporter 1.13.0, telegraf 1.39.2, loki 3.7.4, pgadmin 9.16, portainer 2.43.0, homarr v1.71.0,
+  baserow 2.3.3, redpanda-console v3.9.0, adguard v0.107.78 (done last — DNS verified: .pdx→jarvis, public
+  resolves, containers resolve normally).
+- Rolled back: none.
+- Behind count before → after: **30 → 18** (remaining 18 are Tier 2 — LiteLLM/Keycloak/Langfuse/etc.).
+- verify-stack.sh --verify: **VERIFY OK** (all containers back, GPU, gateway, public chat, 20/20 evals,
+  promtool 59 rules, AI-BOM 0 fail).
+- Sunday OS window: **decision pending** — sibling projects parked for this window; confirm whether the
+  Sun 13:00 UTC reboot stays armed or is deferred.

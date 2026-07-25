@@ -62,7 +62,7 @@ The service block is committed (between `portainer` and `infisical`):
 
 ```yaml
 homarr:
-    image: ghcr.io/homarr-labs/homarr:v1.67.0
+    image: ghcr.io/homarr-labs/homarr:v1.71.0
     container_name: homarr
     restart: unless-stopped
     networks: [proxy, data]

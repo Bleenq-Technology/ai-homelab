@@ -60,7 +60,7 @@ services:
 
   # ---- Alertmanager -------------------------------------------------------
   alertmanager:
-    image: prom/alertmanager:v0.33.0
+    image: prom/alertmanager:v0.33.1
     container_name: alertmanager
     restart: unless-stopped
     networks: [proxy, monitoring]
@@ -134,7 +134,7 @@ services:
 
   # ---- Loki ---------------------------------------------------------------
   loki:
-    image: grafana/loki:3.7.2
+    image: grafana/loki:3.7.4
     container_name: loki
     restart: unless-stopped
     networks: [monitoring]
@@ -168,7 +168,7 @@ services:
   # so it gets real container names/compose labels even with the containerd
   # image store (which broke cadvisor's cgroup->name mapping). Prometheus format.
   telegraf:
-    image: telegraf:1.39.0-alpine
+    image: telegraf:1.39.2-alpine
     container_name: telegraf
     restart: unless-stopped
     networks: [monitoring]
@@ -181,7 +181,7 @@ services:
 
   # ---- Node Exporter (host metrics) ---------------------------------------
   node-exporter:
-    image: prom/node-exporter:v1.11.1
+    image: prom/node-exporter:v1.12.1
     container_name: node-exporter
     restart: unless-stopped
     networks: [monitoring]
@@ -227,7 +227,7 @@ services:
   # ---- NVIDIA GPU Exporter (nvidia-smi -> Prometheus) ---------------------
   # Scrapes the RTX 3090: utilisation, VRAM used/total, temp, power, clocks.
   nvidia-gpu-exporter:
-    image: utkuozdemir/nvidia_gpu_exporter:1.4.1
+    image: utkuozdemir/nvidia_gpu_exporter:1.13.0
     container_name: nvidia-gpu-exporter
     restart: unless-stopped
     networks: [monitoring]
@@ -262,7 +262,7 @@ services:
 
   # ---- Exporters that read the data layer ---------------------------------
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.19.1
+    image: prometheuscommunity/postgres-exporter:v0.20.1
     container_name: postgres-exporter
     restart: unless-stopped
     networks: [data, monitoring]
@@ -270,7 +270,7 @@ services:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_SUPERUSER}:${POSTGRES_PASSWORD}@postgres:5432/postgres?sslmode=disable"
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.86.0
+    image: oliver006/redis_exporter:v1.88.0
     container_name: redis-exporter
     restart: unless-stopped
     networks: [data, monitoring]
