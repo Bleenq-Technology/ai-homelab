@@ -25,7 +25,7 @@
 
 The `example-app` product (sibling repo) gets a dedicated DB **`exampleapp`** with **two
 least-privilege login roles**, provisioned by the idempotent
-[`provision-exampleapp.sh`](provision-exampleapp.sh) — **not** the init script:
+`provision-exampleapp.sh` — **not** the init script:
 
 - **Why not `init/01-init-databases.sh`?** That only runs on a *first, empty* volume (ours is
   long populated), and the role passwords live in the **example-app Infisical project** (prod),

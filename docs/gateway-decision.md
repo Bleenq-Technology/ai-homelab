@@ -1,7 +1,7 @@
 # LLM gateway: stay on LiteLLM, or move to Kong? — the decision
 
 **Verdict (2026-07-22): STAY on LiteLLM. Do not swap for reputation alone.** Revisit only on a concrete
-trigger (below). This is the written recommendation [`todos.md` #5](../todos.md) asks for.
+trigger (below). This is the written recommendation `todos.md` #5 asks for.
 
 **Owner:** Paul Vilevac. **One-line summary for anyone who asks "why LiteLLM after its CVE year":**
 we run a patched build, internal-only, CI-scanned, wrapped in a scoped-key governance layer — and a

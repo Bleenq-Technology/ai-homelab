@@ -1,0 +1,102 @@
+{
+  "generated_from": "docs/ai-inventory.yml + live platform state",
+  "inventory_updated": "2025-01-01",
+  "live_probes": [
+    "kb"
+  ],
+  "systems": [
+    {
+      "name": "internal-chat",
+      "owner": "you",
+      "tier": "T1",
+      "purpose": "An internal chat UI over the shared local LLM, behind SSO.",
+      "surface": "internal",
+      "autonomy": "human_per_action",
+      "repo": "this",
+      "credential": {
+        "type": "litellm_key",
+        "alias": "internal-chat"
+      },
+      "models": [
+        "your-chat-model",
+        "your-embedding-model"
+      ],
+      "corpora": [
+        "kb_docs"
+      ],
+      "data_classes": [
+        "internal"
+      ],
+      "human_oversight": "Every output is read by the person who asked.",
+      "live": {
+        "key_exists": false,
+        "max_budget": null,
+        "tpm_limit": null,
+        "rpm_limit": null,
+        "expires": null,
+        "last_trace": null
+      }
+    },
+    {
+      "name": "public-web-chat",
+      "owner": "you",
+      "tier": "T2",
+      "purpose": "A grounded public chatbot answering from a public knowledge base.",
+      "surface": "public",
+      "autonomy": "autonomous",
+      "repo": "your-web-repo",
+      "credential": {
+        "type": "litellm_key",
+        "alias": "public-web-chat"
+      },
+      "models": [
+        "your-chat-model",
+        "your-embedding-model"
+      ],
+      "corpora": [
+        "kb_public"
+      ],
+      "data_classes": [
+        "public",
+        "user_submitted"
+      ],
+      "human_oversight": "Periodic review of traces; no human per answer.",
+      "live": {
+        "key_exists": false,
+        "max_budget": null,
+        "tpm_limit": null,
+        "rpm_limit": null,
+        "expires": null,
+        "last_trace": null
+      }
+    }
+  ],
+  "platform": [
+    {
+      "name": "chat-model",
+      "kind": "model",
+      "owner": "you",
+      "purpose": "Your shared chat LLM.",
+      "model_id": "your-chat-model",
+      "served_by": "host/unsloth",
+      "license": "verify-at-source",
+      "provenance": "record-a-sha256-in-docker/ai/models/manifest.json"
+    },
+    {
+      "name": "gateway",
+      "kind": "gateway",
+      "owner": "you",
+      "purpose": "The only sanctioned route to a model; issues per-system scoped keys.",
+      "served_by": "docker/ai/litellm"
+    }
+  ],
+  "guardrails": [],
+  "live_guardrails": [],
+  "corpora": [
+    {
+      "name": "kb_homelab_docs",
+      "collection": "kb_homelab_docs",
+      "enabled": true
+    }
+  ]
+}

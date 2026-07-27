@@ -104,6 +104,6 @@ badly, but each should be ruled and, where needed, cleaned before the public cut
 
 If the boundary holds, the platform repo is **naturally clean**: no product apps, no product data, no
 portfolio — just the reusable platform + the governance framework. The open-source scrub
-([open-source-manifest.md](open-source-manifest.md)) then only has to handle the domain and a thin layer
+(open-source-manifest.md) then only has to handle the domain and a thin layer
 of doc prose, not disentangle products from infra. **The boundary is the real open-source-readiness
 control; the scrub is the finish.**

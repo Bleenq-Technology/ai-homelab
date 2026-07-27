@@ -90,7 +90,7 @@ ssh Jarvis 'install -m 0775 -g homelab /tmp/bom.py /opt/homelab/ai/inventory/bui
 ```
 
 Per-file `install` rather than a blanket `chmod -R g+rwX` — the blanket form widens `.env` and
-`acme.json` (see [`CLAUDE.md`](../../../CLAUDE.md)).
+`acme.json` (see `CLAUDE.md`).
 
 ## Secrets
 

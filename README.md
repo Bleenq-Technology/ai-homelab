@@ -300,7 +300,7 @@ by: **[docs/ai-governance.md](docs/ai-governance.md)**. It names the four contro
 Keycloak, Infisical, the LiteLLM gateway, and the AI inventory), maps them to the NIST AI RMF /
 ISO 42001 / EU AI Act / OWASP-LLM axes, and keeps a **dated, honest posture table** — including what's
 currently absent. The working thesis: *governance that isn't technically enforced is advisory.*
-Execution backlog: [`todos.md`](todos.md) #36–#46.
+Execution backlog: `todos.md` #36–#46.
 
 ## Contributing & security
 
